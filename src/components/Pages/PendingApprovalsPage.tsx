@@ -9,14 +9,22 @@ const PendingApprovalsPage: React.FC = () => {
   const [selectedRole, setSelectedRole] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [usersPerPage, setUsersPerPage] = useState(20); // New dynamic page size
+  const [totalPages, setTotalPages] = useState(1);
+  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
 
   useEffect(() => {
     fetchLocations();
   }, []);
 
   useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedLocation, selectedRole, usersPerPage]);
+
+  useEffect(() => {
     fetchPendingUsers();
-  }, [selectedLocation, selectedRole]);
+  }, [selectedLocation, selectedRole, currentPage, usersPerPage]);
 
   const fetchLocations = async () => {
     try {
@@ -34,10 +42,13 @@ const PendingApprovalsPage: React.FC = () => {
     try {
       setLoading(true);
       const token = localStorage.getItem("accessToken");
+
       const queryParams = new URLSearchParams({
         status: "pending",
         ...(selectedLocation && { location: selectedLocation }),
         ...(selectedRole && { role: selectedRole }),
+        page: currentPage.toString(),
+        limit: usersPerPage.toString(), // Use dynamic page size
       });
 
       const res = await fetch(
@@ -53,6 +64,8 @@ const PendingApprovalsPage: React.FC = () => {
       const data = await res.json();
       if (data.status === "success") {
         setPendingUsers(data.data.users);
+        setTotalPages(data.data.pagination.totalPages);
+        setSelectedUsers([]);
       } else {
         throw new Error(data.message || "Failed to fetch pending users");
       }
@@ -113,7 +126,45 @@ const PendingApprovalsPage: React.FC = () => {
     }
   };
 
+  const handleBulkApprove = async () => {
+    const token = localStorage.getItem("accessToken");
+    try {
+      await Promise.all(
+        selectedUsers.map((userId) =>
+          fetch(`http://localhost:5000/api/users/${userId}/approve`, {
+            method: "PUT",
+            headers: { Authorization: `Bearer ${token}` },
+          })
+        )
+      );
+      setPendingUsers((prev) =>
+        prev.filter((user) => !selectedUsers.includes(user._id))
+      );
+      setSelectedUsers([]);
+      alert("Selected users approved successfully");
+    } catch (err: any) {
+      setError("Bulk approval failed.");
+    }
+  };
+
   const columns = [
+    {
+      key: "select",
+      label: "",
+      render: (_: any, row: any) => (
+        <input
+          type="checkbox"
+          checked={selectedUsers.includes(row._id)}
+          onChange={(e) => {
+            if (e.target.checked) {
+              setSelectedUsers([...selectedUsers, row._id]);
+            } else {
+              setSelectedUsers(selectedUsers.filter((id) => id !== row._id));
+            }
+          }}
+        />
+      ),
+    },
     {
       key: "name",
       label: "Name",
@@ -151,11 +202,7 @@ const PendingApprovalsPage: React.FC = () => {
         </span>
       ),
     },
-    {
-      key: "phoneNumber",
-      label: "Phone",
-      sortable: true,
-    },
+    { key: "phoneNumber", label: "Phone", sortable: true },
     {
       key: "locationId.name",
       label: "Location",
@@ -235,6 +282,40 @@ const PendingApprovalsPage: React.FC = () => {
             <option value="parent">Parent</option>
           </select>
 
+          <select
+            className="border border-gray-300 rounded px-3 py-2 text-sm"
+            value={usersPerPage}
+            onChange={(e) => {
+              setUsersPerPage(parseInt(e.target.value));
+              setCurrentPage(1);
+            }}
+          >
+            <option value={10}>Show 10</option>
+            <option value={20}>Show 20</option>
+            <option value={50}>Show 50</option>
+          </select>
+
+          <button
+            onClick={() => {
+              setSelectedLocation("");
+              setSelectedRole("");
+              setCurrentPage(1);
+              setUsersPerPage(20);
+            }}
+            className="px-3 py-2 bg-gray-200 rounded hover:bg-gray-300 text-sm"
+          >
+            Clear Filters
+          </button>
+
+          {selectedUsers.length > 0 && (
+            <button
+              onClick={handleBulkApprove}
+              className="px-3 py-2 bg-green-500 text-white rounded hover:bg-green-600 text-sm"
+            >
+              Approve Selected ({selectedUsers.length})
+            </button>
+          )}
+
           <div className="bg-white px-4 py-2 rounded-lg border border-gray-200">
             <span className="text-sm text-gray-600">Pending Users: </span>
             <span className="font-semibold text-gray-900">
@@ -243,13 +324,11 @@ const PendingApprovalsPage: React.FC = () => {
           </div>
         </div>
       </div>
-
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-md p-4">
           <p className="text-sm text-red-600">{error}</p>
         </div>
       )}
-
       {loading ? (
         <div className="flex justify-center items-center h-64">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-teal-500"></div>
@@ -265,11 +344,39 @@ const PendingApprovalsPage: React.FC = () => {
           </p>
         </div>
       ) : (
-        <DataTable
-          columns={columns}
-          data={pendingUsers}
-          title="Pending User Registrations"
-        />
+        <>
+          <DataTable
+            columns={columns}
+            data={pendingUsers}
+            title="Pending User Registrations"
+          />
+
+          {totalPages > 1 && (
+            <div className="flex justify-end mt-4 px-1">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1 border rounded disabled:opacity-50"
+                >
+                  Prev
+                </button>
+                <span className="text-sm text-gray-700">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <button
+                  onClick={() =>
+                    setCurrentPage((p) => Math.min(p + 1, totalPages))
+                  }
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1 border rounded disabled:opacity-50"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

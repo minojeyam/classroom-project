@@ -12,10 +12,13 @@ router.get("/", auth, authorize(["admin"]), async (req, res) => {
   try {
     const { page = 1, limit = 10, role, status, location, search } = req.query;
 
+    // Build query
     const query = {};
+
     if (role) query.role = role;
     if (status) query.status = status;
     if (location) query.locationId = location;
+
     if (search) {
       query.$or = [
         { firstName: { $regex: search, $options: "i" } },
@@ -24,13 +27,18 @@ router.get("/", auth, authorize(["admin"]), async (req, res) => {
       ];
     }
 
+    // Calculate pagination
     const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    // Get users with pagination
     const users = await User.find(query)
       .populate("locationId", "name address")
       .populate("classIds", "title level")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
+
+    // Get total count for pagination
     const total = await User.countDocuments(query);
 
     res.json({
@@ -48,7 +56,10 @@ router.get("/", auth, authorize(["admin"]), async (req, res) => {
     });
   } catch (error) {
     console.error("Get users error:", error);
-    res.status(500).json({ status: "error", message: "Internal server error" });
+    res.status(500).json({
+      status: "error",
+      message: "Internal server error",
+    });
   }
 });
 
@@ -62,41 +73,53 @@ router.get("/:id", auth, async (req, res) => {
       .populate("classIds", "title level subject schedule");
 
     if (!user) {
-      return res
-        .status(404)
-        .json({ status: "error", message: "User not found" });
+      return res.status(404).json({
+        status: "error",
+        message: "User not found",
+      });
     }
 
+    // Check authorization - users can only view their own profile unless admin
     if (req.user.role !== "admin" && req.user.id !== user._id.toString()) {
-      return res
-        .status(403)
-        .json({ status: "error", message: "Access denied" });
+      return res.status(403).json({
+        status: "error",
+        message: "Access denied",
+      });
     }
 
-    res.json({ status: "success", data: { user } });
+    res.json({
+      status: "success",
+      data: {
+        user,
+      },
+    });
   } catch (error) {
     console.error("Get user error:", error);
-    res.status(500).json({ status: "error", message: "Internal server error" });
+    res.status(500).json({
+      status: "error",
+      message: "Internal server error",
+    });
   }
 });
 
 // @route   PUT /api/users/:id/approve
-// @desc    Approve pending or rejected user (admin only)
+// @desc    Approve pending user (admin only)
 // @access  Private (Admin)
 router.put("/:id/approve", auth, authorize(["admin"]), async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
 
     if (!user) {
-      return res
-        .status(404)
-        .json({ status: "error", message: "User not found" });
+      return res.status(404).json({
+        status: "error",
+        message: "User not found",
+      });
     }
 
-    if (!["pending", "rejected"].includes(user.status)) {
+    if (user.status !== "pending") {
       return res.status(400).json({
         status: "error",
-        message: "User is not in a re-approvable status",
+        message: "User is not in pending status",
       });
     }
 
@@ -106,11 +129,16 @@ router.put("/:id/approve", auth, authorize(["admin"]), async (req, res) => {
     res.json({
       status: "success",
       message: "User approved successfully",
-      data: { user },
+      data: {
+        user,
+      },
     });
   } catch (error) {
     console.error("Approve user error:", error);
-    res.status(500).json({ status: "error", message: "Internal server error" });
+    res.status(500).json({
+      status: "error",
+      message: "Internal server error",
+    });
   }
 });
 
@@ -122,29 +150,32 @@ router.put("/:id/reject", auth, authorize(["admin"]), async (req, res) => {
     const user = await User.findById(req.params.id);
 
     if (!user) {
-      return res
-        .status(404)
-        .json({ status: "error", message: "User not found" });
+      return res.status(404).json({
+        status: "error",
+        message: "User not found",
+      });
     }
 
     if (user.status !== "pending") {
       return res.status(400).json({
         status: "error",
-        message: "Only pending users can be rejected",
+        message: "User is not in pending status",
       });
     }
 
-    user.status = "rejected";
-    await user.save();
+    // Delete the user instead of just changing status
+    await User.findByIdAndDelete(req.params.id);
 
     res.json({
       status: "success",
-      message: "User has been rejected",
-      data: { user },
+      message: "User registration rejected and removed",
     });
   } catch (error) {
     console.error("Reject user error:", error);
-    res.status(500).json({ status: "error", message: "Internal server error" });
+    res.status(500).json({
+      status: "error",
+      message: "Internal server error",
+    });
   }
 });
 
@@ -177,6 +208,7 @@ router.put(
   ],
   async (req, res) => {
     try {
+      // Check for validation errors
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
         return res.status(400).json({
@@ -187,25 +219,33 @@ router.put(
       }
 
       const user = await User.findById(req.params.id);
+
       if (!user) {
-        return res
-          .status(404)
-          .json({ status: "error", message: "User not found" });
+        return res.status(404).json({
+          status: "error",
+          message: "User not found",
+        });
       }
 
+      // Check authorization - users can only update their own profile unless admin
       if (req.user.role !== "admin" && req.user.id !== user._id.toString()) {
-        return res
-          .status(403)
-          .json({ status: "error", message: "Access denied" });
+        return res.status(403).json({
+          status: "error",
+          message: "Access denied",
+        });
       }
 
+      // Update allowed fields
       const allowedUpdates = ["firstName", "lastName", "phoneNumber"];
       const updates = {};
 
       allowedUpdates.forEach((field) => {
-        if (req.body[field] !== undefined) updates[field] = req.body[field];
+        if (req.body[field] !== undefined) {
+          updates[field] = req.body[field];
+        }
       });
 
+      // Admin can update additional fields
       if (req.user.role === "admin") {
         const adminUpdates = [
           "email",
@@ -215,10 +255,13 @@ router.put(
           "classIds",
         ];
         adminUpdates.forEach((field) => {
-          if (req.body[field] !== undefined) updates[field] = req.body[field];
+          if (req.body[field] !== undefined) {
+            updates[field] = req.body[field];
+          }
         });
       }
 
+      // Check if email is being changed and if it already exists
       if (updates.email && updates.email !== user.email) {
         const existingUser = await User.findOne({ email: updates.email });
         if (existingUser) {
@@ -239,13 +282,16 @@ router.put(
       res.json({
         status: "success",
         message: "User updated successfully",
-        data: { user: updatedUser },
+        data: {
+          user: updatedUser,
+        },
       });
     } catch (error) {
       console.error("Update user error:", error);
-      res
-        .status(500)
-        .json({ status: "error", message: "Internal server error" });
+      res.status(500).json({
+        status: "error",
+        message: "Internal server error",
+      });
     }
   }
 );
@@ -258,11 +304,13 @@ router.delete("/:id", auth, authorize(["admin"]), async (req, res) => {
     const user = await User.findById(req.params.id);
 
     if (!user) {
-      return res
-        .status(404)
-        .json({ status: "error", message: "User not found" });
+      return res.status(404).json({
+        status: "error",
+        message: "User not found",
+      });
     }
 
+    // Prevent admin from deleting themselves
     if (req.user.id === user._id.toString()) {
       return res.status(400).json({
         status: "error",
@@ -272,10 +320,16 @@ router.delete("/:id", auth, authorize(["admin"]), async (req, res) => {
 
     await User.findByIdAndDelete(req.params.id);
 
-    res.json({ status: "success", message: "User deleted successfully" });
+    res.json({
+      status: "success",
+      message: "User deleted successfully",
+    });
   } catch (error) {
     console.error("Delete user error:", error);
-    res.status(500).json({ status: "error", message: "Internal server error" });
+    res.status(500).json({
+      status: "error",
+      message: "Internal server error",
+    });
   }
 });
 
@@ -321,7 +375,10 @@ router.get("/stats/overview", auth, authorize(["admin"]), async (req, res) => {
     });
   } catch (error) {
     console.error("Get user stats error:", error);
-    res.status(500).json({ status: "error", message: "Internal server error" });
+    res.status(500).json({
+      status: "error",
+      message: "Internal server error",
+    });
   }
 });
 
