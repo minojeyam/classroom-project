@@ -1,34 +1,34 @@
-import React, { useState } from 'react';
-import { Eye, EyeOff, GraduationCap } from 'lucide-react';
-import { useAuth } from '../../contexts/AuthContext';
+import React, { useState } from "react";
+import { Eye, EyeOff, GraduationCap } from "lucide-react";
+import { useAuth } from "../../contexts/AuthContext";
 
 interface LoginFormProps {
   onToggleForm: () => void;
 }
 
 const LoginForm: React.FC<LoginFormProps> = ({ onToggleForm }) => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const { login, loading } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-    
+    setError("");
+
     try {
       await login(email, password);
     } catch (err) {
-      setError('Invalid email or password');
+      setError("Invalid email or password");
     }
   };
 
   const demoLogins = [
-    { email: 'admin@school.com', password: 'password', role: 'Admin' },
-    { email: 'teacher@school.com', password: 'password', role: 'Teacher' },
-    { email: 'student@school.com', password: 'password', role: 'Student' },
-    { email: 'parent@school.com', password: 'password', role: 'Parent' },
+    { email: "admin@school.com", password: "password", role: "Admin" },
+    { email: "teacher@school.com", password: "password", role: "Teacher" },
+    { email: "student@school.com", password: "password", role: "Student" },
+    { email: "parent@school.com", password: "password", role: "Parent" },
   ];
 
   return (
@@ -40,17 +40,25 @@ const LoginForm: React.FC<LoginFormProps> = ({ onToggleForm }) => {
               <GraduationCap className="w-8 h-8 text-white" />
             </div>
           </div>
-          <h2 className="mt-6 text-3xl font-bold text-gray-900">ClassroomPro</h2>
+          <h2 className="mt-6 text-3xl font-bold text-gray-900">
+            ClassroomPro
+          </h2>
           <h2 className="mt-6 text-3xl font-bold text-gray-900">IO Space</h2>
           <p className="mt-2 text-sm text-gray-600">
             Multi-Location Classroom Management System
           </p>
         </div>
 
-        <form className="mt-8 space-y-6 bg-white p-8 rounded-xl shadow-lg border border-gray-100" onSubmit={handleSubmit}>
+        <form
+          className="mt-8 space-y-6 bg-white p-8 rounded-xl shadow-lg border border-gray-100"
+          onSubmit={handleSubmit}
+        >
           <div className="space-y-4">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="email"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Email Address
               </label>
               <input
@@ -66,14 +74,17 @@ const LoginForm: React.FC<LoginFormProps> = ({ onToggleForm }) => {
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Password
               </label>
               <div className="relative">
                 <input
                   id="password"
                   name="password"
-                  type={showPassword ? 'text' : 'password'}
+                  type={showPassword ? "text" : "password"}
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -106,7 +117,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onToggleForm }) => {
             disabled={loading}
             className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
           >
-            {loading ? 'Signing in...' : 'Sign In'}
+            {loading ? "Signing in..." : "Sign In"}
           </button>
 
           <div className="text-center">
@@ -125,7 +136,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onToggleForm }) => {
           </div>
         </form>
 
-        <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
+        {/* <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Demo Accounts</h3>
           <p className="text-sm text-gray-600 mb-4">
             Use these credentials to explore different user roles:
@@ -146,7 +157,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onToggleForm }) => {
               </button>
             ))}
           </div>
-        </div>
+        </div> */}
       </div>
     </div>
   );

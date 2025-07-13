@@ -1,5 +1,6 @@
 import express from "express";
 import jwt from "jsonwebtoken";
+import bcrypt from "bcryptjs";
 import { body, validationResult } from "express-validator";
 import User from "../models/User.js";
 import { auth, authorize } from "../middleware/auth.js";
@@ -9,8 +10,8 @@ const router = express.Router();
 
 // Rate limiting for auth routes
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 5,
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // limit each IP to 5 requests per windowMs for auth routes
   message: "Too many authentication attempts, please try again later.",
   standardHeaders: true,
   legacyHeaders: false,
@@ -32,11 +33,7 @@ const registerValidation = [
     .withMessage("Please enter a valid email address"),
   body("password")
     .isLength({ min: 6 })
-    .withMessage("Password must be at least 6 characters long")
-    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
-    .withMessage(
-      "Password must contain at least one uppercase letter, one lowercase letter, and one number"
-    ),
+    .withMessage("Password must be at least 6 characters long"),
   body("role")
     .isIn(["admin", "teacher", "student", "parent"])
     .withMessage("Invalid role specified"),
@@ -49,10 +46,6 @@ const registerValidation = [
     .isEmail()
     .normalizeEmail()
     .withMessage("Parent email is required for students and must be valid"),
-  body("locationId")
-    .if(body("role").isIn(["student", "teacher"]))
-    .notEmpty()
-    .withMessage("Location is required for students and teachers"),
 ];
 
 const loginValidation = [
@@ -68,9 +61,9 @@ const loginValidation = [
 // @access  Public
 router.post("/register", authLimiter, registerValidation, async (req, res) => {
   try {
+    // Check for validation errors
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      console.log("Validation errors:", errors.array());
       return res.status(400).json({
         status: "error",
         message: "Validation failed",
@@ -89,6 +82,7 @@ router.post("/register", authLimiter, registerValidation, async (req, res) => {
       locationId,
     } = req.body;
 
+    // Check if user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(409).json({
@@ -97,6 +91,9 @@ router.post("/register", authLimiter, registerValidation, async (req, res) => {
       });
     }
 
+    // Hash password
+
+    // Create user data object
     const userData = {
       firstName,
       lastName,
@@ -104,32 +101,22 @@ router.post("/register", authLimiter, registerValidation, async (req, res) => {
       password,
       role,
       phoneNumber,
-      status: "pending",
+      parentEmail,
+      locationId,
+      status: role === "admin" ? "active" : "pending",
     };
-
-    if (role === "student" && parentEmail) {
-      userData.parentEmail = parentEmail;
-    }
-
-    if ((role === "student" || role === "teacher") && locationId) {
-      userData.locationId = locationId;
-    }
 
     const user = new User(userData);
     await user.save();
+
+    // Remove password from response
+    const userResponse = user.toJSON();
 
     res.status(201).json({
       status: "success",
       message: "Registration successful. Please wait for admin approval.",
       data: {
-        user: {
-          id: user._id,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          email: user.email,
-          role: user.role,
-          status: user.status,
-        },
+        user: userResponse,
       },
     });
   } catch (error) {
