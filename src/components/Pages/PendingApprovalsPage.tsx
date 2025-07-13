@@ -1,167 +1,245 @@
-import React, { useState, useEffect } from 'react';
-import { UserCheck, UserX, User } from 'lucide-react';
-import DataTable from '../Common/DataTable';
+import React, { useState, useEffect } from "react";
+import { UserCheck, UserX, User } from "lucide-react";
+import DataTable from "../Common/DataTable";
 
 const PendingApprovalsPage: React.FC = () => {
   const [pendingUsers, setPendingUsers] = useState<any[]>([]);
+  const [locations, setLocations] = useState<any[]>([]);
+  const [selectedLocation, setSelectedLocation] = useState("");
+  const [selectedRole, setSelectedRole] = useState("");
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    fetchLocations();
+  }, []);
 
   useEffect(() => {
     fetchPendingUsers();
-  }, []);
+  }, [selectedLocation, selectedRole]);
+
+  const fetchLocations = async () => {
+    try {
+      const res = await fetch("http://localhost:5000/api/locations");
+      const data = await res.json();
+      if (data.status === "success") {
+        setLocations(data.data.locations);
+      }
+    } catch (error) {
+      console.error("Failed to fetch locations");
+    }
+  };
 
   const fetchPendingUsers = async () => {
     try {
       setLoading(true);
-      // In a real implementation, this would be an API call
-      // For now, we'll use mock data
-      const mockPendingUsers = [
+      const token = localStorage.getItem("accessToken");
+      const queryParams = new URLSearchParams({
+        status: "pending",
+        ...(selectedLocation && { location: selectedLocation }),
+        ...(selectedRole && { role: selectedRole }),
+      });
+
+      const res = await fetch(
+        `http://localhost:5000/api/users?${queryParams}`,
         {
-          id: 1,
-          firstName: 'John',
-          lastName: 'Smith',
-          email: 'john.smith@example.com',
-          role: 'teacher',
-          phoneNumber: '+1234567890',
-          locationName: 'Nelliyadi',
-          createdAt: '2024-03-10T10:30:00Z'
-        },
-        {
-          id: 2,
-          firstName: 'Sarah',
-          lastName: 'Johnson',
-          email: 'sarah.j@example.com',
-          role: 'student',
-          phoneNumber: '+1234567891',
-          locationName: 'Chavakacheri',
-          parentEmail: 'parent@example.com',
-          createdAt: '2024-03-11T14:20:00Z'
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
         }
-      ];
-      
-      setPendingUsers(mockPendingUsers);
-      setLoading(false);
+      );
+
+      const data = await res.json();
+      if (data.status === "success") {
+        setPendingUsers(data.data.users);
+      } else {
+        throw new Error(data.message || "Failed to fetch pending users");
+      }
     } catch (err: any) {
-      setError(err.message || 'Failed to fetch pending users');
+      setError(err.message || "Failed to fetch pending users");
+    } finally {
       setLoading(false);
     }
   };
 
-  const handleApprove = async (userId: number) => {
+  const handleApprove = async (userId: string) => {
     try {
-      // In a real implementation, this would be an API call
-      // For now, we'll just update the local state
-      setPendingUsers(pendingUsers.filter(user => user.id !== userId));
-      
-      // Show success message or notification
-      alert('User approved successfully');
+      const token = localStorage.getItem("accessToken");
+      const res = await fetch(
+        `http://localhost:5000/api/users/${userId}/approve`,
+        {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const data = await res.json();
+      if (data.status === "success") {
+        setPendingUsers((prev) => prev.filter((user) => user._id !== userId));
+        alert("User approved successfully");
+      } else {
+        throw new Error(data.message);
+      }
     } catch (err: any) {
-      setError(err.message || 'Failed to approve user');
+      setError(err.message || "Failed to approve user");
     }
   };
 
-  const handleReject = async (userId: number) => {
+  const handleReject = async (userId: string) => {
     try {
-      // In a real implementation, this would be an API call
-      // For now, we'll just update the local state
-      setPendingUsers(pendingUsers.filter(user => user.id !== userId));
-      
-      // Show success message or notification
-      alert('User rejected successfully');
+      const token = localStorage.getItem("accessToken");
+      const res = await fetch(
+        `http://localhost:5000/api/users/${userId}/reject`,
+        {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const data = await res.json();
+      if (data.status === "success") {
+        setPendingUsers((prev) => prev.filter((user) => user._id !== userId));
+        alert("User rejected successfully");
+      } else {
+        throw new Error(data.message);
+      }
     } catch (err: any) {
-      setError(err.message || 'Failed to reject user');
+      setError(err.message || "Failed to reject user");
     }
   };
 
   const columns = [
     {
-      key: 'name',
-      label: 'Name',
+      key: "name",
+      label: "Name",
       sortable: true,
-      render: (value: string, row: any) => (
+      render: (_: string, row: any) => (
         <div className="flex items-center space-x-3">
           <div className="w-8 h-8 bg-teal-500 rounded-full flex items-center justify-center">
             <span className="text-white text-sm font-medium">
-              {row.firstName.charAt(0)}{row.lastName.charAt(0)}
+              {row.firstName.charAt(0)}
+              {row.lastName.charAt(0)}
             </span>
           </div>
           <div>
-            <p className="font-medium text-gray-900">{row.firstName} {row.lastName}</p>
+            <p className="font-medium text-gray-900">
+              {row.firstName} {row.lastName}
+            </p>
             <p className="text-sm text-gray-500">{row.email}</p>
           </div>
         </div>
-      )
+      ),
     },
     {
-      key: 'role',
-      label: 'Role',
+      key: "role",
+      label: "Role",
       sortable: true,
       render: (value: string) => (
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-          value === 'teacher' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
-        }`}>
+        <span
+          className={`px-2 py-1 rounded-full text-xs font-medium ${
+            value === "teacher"
+              ? "bg-blue-100 text-blue-800"
+              : "bg-green-100 text-green-800"
+          }`}
+        >
           {value.charAt(0).toUpperCase() + value.slice(1)}
         </span>
-      )
+      ),
     },
     {
-      key: 'phoneNumber',
-      label: 'Phone',
-      sortable: true
-    },
-    {
-      key: 'locationName',
-      label: 'Location',
-      sortable: true
-    },
-    {
-      key: 'parentEmail',
-      label: 'Parent Email',
+      key: "phoneNumber",
+      label: "Phone",
       sortable: true,
-      render: (value: string) => value || '-'
     },
     {
-      key: 'createdAt',
-      label: 'Requested On',
+      key: "locationId.name",
+      label: "Location",
       sortable: true,
-      render: (value: string) => new Date(value).toLocaleDateString()
+      render: (_: any, row: any) => row.locationId?.name || "-",
     },
     {
-      key: 'actions',
-      label: 'Actions',
-      render: (value: any, row: any) => (
+      key: "parentEmail",
+      label: "Parent Email",
+      sortable: true,
+      render: (value: string) => value || "-",
+    },
+    {
+      key: "createdAt",
+      label: "Requested On",
+      sortable: true,
+      render: (value: string) => new Date(value).toLocaleDateString(),
+    },
+    {
+      key: "actions",
+      label: "Actions",
+      render: (_: any, row: any) => (
         <div className="flex items-center space-x-2">
           <button
-            onClick={() => handleApprove(row.id)}
+            onClick={() => handleApprove(row._id)}
             className="p-1 bg-green-50 rounded-md hover:bg-green-100 text-green-600 transition-colors duration-200"
             title="Approve"
           >
             <UserCheck className="w-5 h-5" />
           </button>
           <button
-            onClick={() => handleReject(row.id)}
+            onClick={() => handleReject(row._id)}
             className="p-1 bg-red-50 rounded-md hover:bg-red-100 text-red-600 transition-colors duration-200"
             title="Reject"
           >
             <UserX className="w-5 h-5" />
           </button>
         </div>
-      )
-    }
+      ),
+    },
   ];
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Pending Approvals</h2>
-          <p className="text-gray-600 mt-1">Review and approve new user registrations</p>
+          <h2 className="text-2xl font-bold text-gray-900">
+            Pending Approvals
+          </h2>
+          <p className="text-gray-600 mt-1">
+            Review and approve new user registrations
+          </p>
         </div>
-        <div className="flex items-center space-x-3">
+
+        <div className="flex flex-wrap items-center gap-3">
+          <select
+            className="border border-gray-300 rounded px-3 py-2 text-sm"
+            value={selectedLocation}
+            onChange={(e) => setSelectedLocation(e.target.value)}
+          >
+            <option value="">All Locations</option>
+            {locations.map((loc) => (
+              <option key={loc._id} value={loc._id}>
+                {loc.name}
+              </option>
+            ))}
+          </select>
+
+          <select
+            className="border border-gray-300 rounded px-3 py-2 text-sm"
+            value={selectedRole}
+            onChange={(e) => setSelectedRole(e.target.value)}
+          >
+            <option value="">All Roles</option>
+            <option value="student">Student</option>
+            <option value="teacher">Teacher</option>
+            <option value="parent">Parent</option>
+          </select>
+
           <div className="bg-white px-4 py-2 rounded-lg border border-gray-200">
             <span className="text-sm text-gray-600">Pending Users: </span>
-            <span className="font-semibold text-gray-900">{pendingUsers.length}</span>
+            <span className="font-semibold text-gray-900">
+              {pendingUsers.length}
+            </span>
           </div>
         </div>
       </div>
@@ -179,8 +257,12 @@ const PendingApprovalsPage: React.FC = () => {
       ) : pendingUsers.length === 0 ? (
         <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-200 flex flex-col items-center justify-center h-64">
           <User className="w-12 h-12 text-gray-300 mb-4" />
-          <h3 className="text-lg font-medium text-gray-900">No Pending Approvals</h3>
-          <p className="text-gray-500 mt-1">All user registrations have been processed</p>
+          <h3 className="text-lg font-medium text-gray-900">
+            No Pending Approvals
+          </h3>
+          <p className="text-gray-500 mt-1">
+            All user registrations have been processed
+          </p>
         </div>
       ) : (
         <DataTable
