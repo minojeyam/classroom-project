@@ -1,3 +1,4 @@
+// Updated UsersPage.tsx
 import React, { useEffect, useState } from "react";
 import { Plus, Edit, Trash2, Eye, UserCheck, UserX } from "lucide-react";
 import DataTable from "../Common/DataTable";
@@ -5,7 +6,9 @@ import Modal from "../Common/Modal";
 
 const UsersPage: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editMode, setEditMode] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [formData, setFormData] = useState<any>({});
   const [users, setUsers] = useState<any[]>([]);
   const token = localStorage.getItem("accessToken");
 
@@ -68,6 +71,26 @@ const UsersPage: React.FC = () => {
       }
     } catch (error) {
       console.error("Reject failed", error);
+    }
+  };
+
+  const disableUser = async (userId: string) => {
+    try {
+      const res = await fetch(`http://localhost:5000/api/users/${userId}`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ status: "inactive" }),
+      });
+      if (res.ok) {
+        setUsers((prev) =>
+          prev.map((u) => (u.id === userId ? { ...u, status: "inactive" } : u))
+        );
+      }
+    } catch (error) {
+      console.error("Disable failed", error);
     }
   };
 
@@ -157,6 +180,7 @@ const UsersPage: React.FC = () => {
             onClick={() => {
               setSelectedUser(row);
               setIsModalOpen(true);
+              setEditMode(false);
             }}
             className="text-teal-600 hover:text-teal-800"
           >
@@ -167,7 +191,10 @@ const UsersPage: React.FC = () => {
             className="text-blue-600 hover:text-blue-800"
             onClick={() => {
               if (window.confirm("Edit this user?")) {
-                // Edit logic here
+                setSelectedUser(row);
+                setIsModalOpen(true);
+                setEditMode(true);
+                setFormData(row);
               }
             }}
           >
@@ -208,6 +235,19 @@ const UsersPage: React.FC = () => {
                 <UserX className="w-4 h-4" />
               </button>
             </>
+          )}
+
+          {row.status === "active" && (
+            <button
+              className="text-yellow-600 hover:text-yellow-800"
+              onClick={() => {
+                if (window.confirm("Disable this user?")) {
+                  disableUser(row.id);
+                }
+              }}
+            >
+              <UserX className="w-4 h-4" />
+            </button>
           )}
         </div>
       ),
@@ -253,69 +293,159 @@ const UsersPage: React.FC = () => {
 
       <Modal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title="User Details"
+        onClose={() => {
+          setIsModalOpen(false);
+          setEditMode(false);
+        }}
+        title={editMode ? "Edit User" : "User Details"}
       >
         {selectedUser && (
           <div className="space-y-4">
-            <div className="flex items-center space-x-4">
-              <div className="w-16 h-16 bg-teal-500 rounded-full flex items-center justify-center">
-                <span className="text-white text-xl font-medium">
-                  {selectedUser.firstName.charAt(0)}
-                  {selectedUser.lastName.charAt(0)}
-                </span>
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">
-                  {selectedUser.firstName} {selectedUser.lastName}
-                </h3>
-                <p className="text-gray-600">{selectedUser.email}</p>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Role
-                </label>
-                <p className="text-sm text-gray-900">{selectedUser.role}</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Status
-                </label>
-                <p className="text-sm text-gray-900">{selectedUser.status}</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Phone
-                </label>
-                <p className="text-sm text-gray-900">
-                  {selectedUser.phoneNumber}
-                </p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Location
-                </label>
-                <p className="text-sm text-gray-900">
-                  {selectedUser.locationName}
-                </p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Join Date
-                </label>
-                <p className="text-sm text-gray-900">{selectedUser.joinDate}</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-3 pt-4">
-              <button className="px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700">
-                Edit User
-              </button>
-              <button className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">
-                Delete User
-              </button>
-            </div>
+            {editMode ? (
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  try {
+                    const res = await fetch(
+                      `http://localhost:5000/api/users/${selectedUser.id}`,
+                      {
+                        method: "PUT",
+                        headers: {
+                          "Content-Type": "application/json",
+                          Authorization: `Bearer ${token}`,
+                        },
+                        body: JSON.stringify(formData),
+                      }
+                    );
+                    if (res.ok) {
+                      setUsers((prev) =>
+                        prev.map((u) =>
+                          u.id === selectedUser.id ? { ...u, ...formData } : u
+                        )
+                      );
+                      setEditMode(false);
+                      setIsModalOpen(false);
+                    }
+                  } catch (err) {
+                    console.error("Update failed", err);
+                  }
+                }}
+                className="space-y-4"
+              >
+                <div className="grid grid-cols-2 gap-4">
+                  <input
+                    type="text"
+                    placeholder="First Name"
+                    value={formData.firstName || ""}
+                    onChange={(e) =>
+                      setFormData({ ...formData, firstName: e.target.value })
+                    }
+                    className="border p-2 rounded"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Last Name"
+                    value={formData.lastName || ""}
+                    onChange={(e) =>
+                      setFormData({ ...formData, lastName: e.target.value })
+                    }
+                    className="border p-2 rounded"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Phone"
+                    value={formData.phoneNumber || ""}
+                    onChange={(e) =>
+                      setFormData({ ...formData, phoneNumber: e.target.value })
+                    }
+                    className="border p-2 rounded"
+                  />
+                </div>
+                <div className="flex space-x-3 pt-4">
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                  >
+                    Save Changes
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditMode(false)}
+                    className="px-4 py-2 bg-gray-400 text-white rounded hover:bg-gray-500"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <>
+                <div className="flex items-center space-x-4">
+                  <div className="w-16 h-16 bg-teal-500 rounded-full flex items-center justify-center">
+                    <span className="text-white text-xl font-medium">
+                      {selectedUser.firstName.charAt(0)}
+                      {selectedUser.lastName.charAt(0)}
+                    </span>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      {selectedUser.firstName} {selectedUser.lastName}
+                    </h3>
+                    <p className="text-gray-600">{selectedUser.email}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Role
+                    </label>
+                    <p className="text-sm text-gray-900">{selectedUser.role}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Status
+                    </label>
+                    <p className="text-sm text-gray-900">
+                      {selectedUser.status}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Phone
+                    </label>
+                    <p className="text-sm text-gray-900">
+                      {selectedUser.phoneNumber}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Location
+                    </label>
+                    <p className="text-sm text-gray-900">
+                      {selectedUser.locationName}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Join Date
+                    </label>
+                    <p className="text-sm text-gray-900">
+                      {selectedUser.joinDate}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-3 pt-4">
+                  <button
+                    onClick={() => {
+                      setEditMode(true);
+                      setFormData(selectedUser);
+                    }}
+                    className="px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700"
+                  >
+                    Edit User
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         )}
       </Modal>
