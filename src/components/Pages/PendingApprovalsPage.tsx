@@ -10,9 +10,10 @@ const PendingApprovalsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [usersPerPage, setUsersPerPage] = useState(20); // New dynamic page size
+  const [usersPerPage, setUsersPerPage] = useState(20);
   const [totalPages, setTotalPages] = useState(1);
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
+  const [showRejected, setShowRejected] = useState(false);
 
   useEffect(() => {
     fetchLocations();
@@ -20,11 +21,11 @@ const PendingApprovalsPage: React.FC = () => {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedLocation, selectedRole, usersPerPage]);
+  }, [selectedLocation, selectedRole, usersPerPage, showRejected]);
 
   useEffect(() => {
-    fetchPendingUsers();
-  }, [selectedLocation, selectedRole, currentPage, usersPerPage]);
+    fetchUsers();
+  }, [selectedLocation, selectedRole, currentPage, usersPerPage, showRejected]);
 
   const fetchLocations = async () => {
     try {
@@ -38,17 +39,17 @@ const PendingApprovalsPage: React.FC = () => {
     }
   };
 
-  const fetchPendingUsers = async () => {
+  const fetchUsers = async () => {
     try {
       setLoading(true);
       const token = localStorage.getItem("accessToken");
 
       const queryParams = new URLSearchParams({
-        status: "pending",
+        status: showRejected ? "rejected" : "pending",
         ...(selectedLocation && { location: selectedLocation }),
         ...(selectedRole && { role: selectedRole }),
         page: currentPage.toString(),
-        limit: usersPerPage.toString(), // Use dynamic page size
+        limit: usersPerPage.toString(),
       });
 
       const res = await fetch(
@@ -67,10 +68,10 @@ const PendingApprovalsPage: React.FC = () => {
         setTotalPages(data.data.pagination.totalPages);
         setSelectedUsers([]);
       } else {
-        throw new Error(data.message || "Failed to fetch pending users");
+        throw new Error(data.message || "Failed to fetch users");
       }
     } catch (err: any) {
-      setError(err.message || "Failed to fetch pending users");
+      setError(err.message || "Failed to fetch users");
     } finally {
       setLoading(false);
     }
@@ -102,6 +103,7 @@ const PendingApprovalsPage: React.FC = () => {
   };
 
   const handleReject = async (userId: string) => {
+    const reason = prompt("Enter rejection reason (optional):") || "";
     try {
       const token = localStorage.getItem("accessToken");
       const res = await fetch(
@@ -110,7 +112,9 @@ const PendingApprovalsPage: React.FC = () => {
           method: "PUT",
           headers: {
             Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
           },
+          body: JSON.stringify({ reason }),
         }
       );
 
@@ -151,19 +155,20 @@ const PendingApprovalsPage: React.FC = () => {
     {
       key: "select",
       label: "",
-      render: (_: any, row: any) => (
-        <input
-          type="checkbox"
-          checked={selectedUsers.includes(row._id)}
-          onChange={(e) => {
-            if (e.target.checked) {
-              setSelectedUsers([...selectedUsers, row._id]);
-            } else {
-              setSelectedUsers(selectedUsers.filter((id) => id !== row._id));
-            }
-          }}
-        />
-      ),
+      render: (_: any, row: any) =>
+        !showRejected && (
+          <input
+            type="checkbox"
+            checked={selectedUsers.includes(row._id)}
+            onChange={(e) => {
+              if (e.target.checked) {
+                setSelectedUsers([...selectedUsers, row._id]);
+              } else {
+                setSelectedUsers(selectedUsers.filter((id) => id !== row._id));
+              }
+            }}
+          />
+        ),
     },
     {
       key: "name",
@@ -217,31 +222,60 @@ const PendingApprovalsPage: React.FC = () => {
     },
     {
       key: "createdAt",
-      label: "Requested On",
+      label: showRejected ? "Rejected On" : "Requested On",
       sortable: true,
       render: (value: string) => new Date(value).toLocaleDateString(),
     },
+    ...(showRejected
+      ? [
+          {
+            key: "rejectionReason",
+            label: "Rejection Reason",
+            render: (_: any, row: any) =>
+              row.rejectionReason || "No reason provided",
+          },
+          {
+            key: "rejectedBy",
+            label: "Rejected By",
+            render: (_: any, row: any) =>
+              row.rejectedBy?.firstName && row.rejectedBy?.lastName
+                ? `${row.rejectedBy.firstName} ${row.rejectedBy.lastName}`
+                : "Unknown",
+          },
+        ]
+      : []),
     {
       key: "actions",
       label: "Actions",
-      render: (_: any, row: any) => (
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={() => handleApprove(row._id)}
-            className="p-1 bg-green-50 rounded-md hover:bg-green-100 text-green-600 transition-colors duration-200"
-            title="Approve"
-          >
-            <UserCheck className="w-5 h-5" />
-          </button>
-          <button
-            onClick={() => handleReject(row._id)}
-            className="p-1 bg-red-50 rounded-md hover:bg-red-100 text-red-600 transition-colors duration-200"
-            title="Reject"
-          >
-            <UserX className="w-5 h-5" />
-          </button>
-        </div>
-      ),
+      render: (_: any, row: any) =>
+        showRejected ? (
+          <div className="flex items-center">
+            <button
+              onClick={() => handleApprove(row._id)}
+              className="p-1 bg-blue-50 rounded-md hover:bg-blue-100 text-blue-600 transition-colors duration-200"
+              title="Re-approve"
+            >
+              <UserCheck className="w-5 h-5" />
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => handleApprove(row._id)}
+              className="p-1 bg-green-50 rounded-md hover:bg-green-100 text-green-600 transition-colors duration-200"
+              title="Approve"
+            >
+              <UserCheck className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => handleReject(row._id)}
+              className="p-1 bg-red-50 rounded-md hover:bg-red-100 text-red-600 transition-colors duration-200"
+              title="Reject"
+            >
+              <UserX className="w-5 h-5" />
+            </button>
+          </div>
+        ),
     },
   ];
 
@@ -250,10 +284,12 @@ const PendingApprovalsPage: React.FC = () => {
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">
-            Pending Approvals
+            {showRejected ? "Rejected Users" : "Pending Approvals"}
           </h2>
           <p className="text-gray-600 mt-1">
-            Review and approve new user registrations
+            {showRejected
+              ? "View users who were rejected"
+              : "Review and approve new user registrations"}
           </p>
         </div>
 
@@ -295,19 +331,33 @@ const PendingApprovalsPage: React.FC = () => {
             <option value={50}>Show 50</option>
           </select>
 
+          <label className="flex items-center gap-2 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              checked={showRejected}
+              onChange={() => {
+                setShowRejected(!showRejected);
+                setSelectedUsers([]);
+                setCurrentPage(1);
+              }}
+            />
+            Show Rejected
+          </label>
+
           <button
             onClick={() => {
               setSelectedLocation("");
               setSelectedRole("");
               setCurrentPage(1);
               setUsersPerPage(20);
+              setShowRejected(false);
             }}
             className="px-3 py-2 bg-gray-200 rounded hover:bg-gray-300 text-sm"
           >
             Clear Filters
           </button>
 
-          {selectedUsers.length > 0 && (
+          {!showRejected && selectedUsers.length > 0 && (
             <button
               onClick={handleBulkApprove}
               className="px-3 py-2 bg-green-500 text-white rounded hover:bg-green-600 text-sm"
@@ -317,18 +367,22 @@ const PendingApprovalsPage: React.FC = () => {
           )}
 
           <div className="bg-white px-4 py-2 rounded-lg border border-gray-200">
-            <span className="text-sm text-gray-600">Pending Users: </span>
+            <span className="text-sm text-gray-600">
+              {showRejected ? "Rejected Users:" : "Pending Users:"}
+            </span>
             <span className="font-semibold text-gray-900">
               {pendingUsers.length}
             </span>
           </div>
         </div>
       </div>
+
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-md p-4">
           <p className="text-sm text-red-600">{error}</p>
         </div>
       )}
+
       {loading ? (
         <div className="flex justify-center items-center h-64">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-teal-500"></div>
@@ -337,7 +391,7 @@ const PendingApprovalsPage: React.FC = () => {
         <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-200 flex flex-col items-center justify-center h-64">
           <User className="w-12 h-12 text-gray-300 mb-4" />
           <h3 className="text-lg font-medium text-gray-900">
-            No Pending Approvals
+            No {showRejected ? "Rejected" : "Pending"} Users
           </h3>
           <p className="text-gray-500 mt-1">
             All user registrations have been processed
@@ -348,7 +402,9 @@ const PendingApprovalsPage: React.FC = () => {
           <DataTable
             columns={columns}
             data={pendingUsers}
-            title="Pending User Registrations"
+            title={
+              showRejected ? "Rejected Users" : "Pending User Registrations"
+            }
           />
 
           {totalPages > 1 && (

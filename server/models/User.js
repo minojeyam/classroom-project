@@ -52,6 +52,17 @@ const userSchema = new mongoose.Schema(
       enum: ["active", "inactive", "pending"],
       default: "pending",
     },
+    rejectionReason: {
+      type: String,
+      trim: true,
+      maxlength: 300,
+      default: null,
+    },
+    rejectedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
     locationId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Location",
