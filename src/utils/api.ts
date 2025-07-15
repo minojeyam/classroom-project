@@ -2,16 +2,16 @@ import axios from "axios";
 
 const API_BASE_URL = "http://localhost:5000/api";
 
-const getAuthHeader = () => {
-  const token = localStorage.getItem("accessToken");
-  return token ? { Authorization: `Bearer ${token}` } : {};
+export const getAuthHeader = (token?: string) => {
+  const jwt = token || localStorage.getItem("token");
+  return jwt ? { Authorization: `Bearer ${jwt}` } : {};
 };
 
 // Locations API
 export const locationsAPI = {
-  getLocations: async () => {
+  getLocations: async (token?: string) => {
     const res = await axios.get(`${API_BASE_URL}/locations`, {
-      headers: getAuthHeader(),
+      headers: getAuthHeader(token),
     });
     return res.data;
   },
@@ -46,55 +46,61 @@ export const locationsAPI = {
 
 // Classes API
 export const classesAPI = {
-  getClasses: async (params = {}) => {
+  getClasses: async (params = {}, token?: string) => {
     const res = await axios.get(`${API_BASE_URL}/classes`, {
       params,
-      headers: getAuthHeader(),
+      headers: {
+        ...getAuthHeader(token),
+      },
     });
     return res.data;
   },
 
-  getClassById: async (id: string) => {
+  getClassById: async (id: string, token?: string) => {
     const res = await axios.get(`${API_BASE_URL}/classes/${id}`, {
-      headers: getAuthHeader(),
+      headers: {
+        ...getAuthHeader(token),
+      },
     });
     return res.data;
   },
 
-  createClass: async (data: any) => {
+  createClass: async (data: any, token?: string) => {
     const res = await axios.post(`${API_BASE_URL}/classes`, data, {
       headers: {
-        ...getAuthHeader(),
+        ...getAuthHeader(token),
         "Content-Type": "application/json",
       },
     });
     return res.data;
   },
 
-  updateClass: async (id: string, data: any) => {
+  updateClass: async (id: string, data: any, token?: string) => {
     const res = await axios.put(`${API_BASE_URL}/classes/${id}`, data, {
       headers: {
-        ...getAuthHeader(),
+        ...getAuthHeader(token),
         "Content-Type": "application/json",
       },
     });
     return res.data;
   },
 
-  deleteClass: async (id: string) => {
+  deleteClass: async (id: string, token?: string) => {
     const res = await axios.delete(`${API_BASE_URL}/classes/${id}`, {
-      headers: getAuthHeader(),
+      headers: {
+        ...getAuthHeader(token),
+      },
     });
     return res.data;
   },
 
-  enrollStudent: async (classId: string, studentId: string) => {
+  enrollStudent: async (classId: string, studentId: string, token?: string) => {
     const res = await axios.post(
       `${API_BASE_URL}/classes/${classId}/enroll`,
       { studentId },
       {
         headers: {
-          ...getAuthHeader(),
+          ...getAuthHeader(token),
           "Content-Type": "application/json",
         },
       }
@@ -105,10 +111,10 @@ export const classesAPI = {
 
 // Users API
 export const usersAPI = {
-  getUsers: async (params = {}) => {
+  getUsers: async (params = {}, token?: string) => {
     const res = await axios.get(`${API_BASE_URL}/users`, {
       params,
-      headers: getAuthHeader(),
+      headers: getAuthHeader(token),
     });
     return res.data;
   },

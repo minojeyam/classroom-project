@@ -14,6 +14,9 @@ import ComingSoonPage from "./components/Pages/ComingSoonPage";
 import LocationsPage from "./components/Pages/LocationsPage";
 import ClassesPage from "./components/Pages/ClassesPage";
 
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+
 const pages = {
   "/dashboard": "Dashboard",
   "/users": "Users",
@@ -159,6 +162,7 @@ const App: React.FC = () => {
   return (
     <AuthProvider>
       <AppContent />
+      <ToastContainer position="top-right" autoClose={3000} />
     </AuthProvider>
   );
 };

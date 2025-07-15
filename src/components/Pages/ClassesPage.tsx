@@ -1,44 +1,70 @@
 import React, { useState, useEffect } from "react";
-import {
-  Plus,
-  Edit,
-  Trash2,
-  Eye,
-  BookOpen,
-  Users,
-  Clock,
-  MapPin,
-} from "lucide-react";
+import { Plus, Edit, Trash2, BookOpen } from "lucide-react";
 import DataTable from "../Common/DataTable";
 import Modal from "../Common/Modal";
 import { classesAPI, locationsAPI, usersAPI } from "../../utils/api";
+import AssignStudentsModal from "../Classes/AssignStudentsModal";
+import "react-toastify/dist/ReactToastify.css";
 
-interface Class {
-  id: string;
+export type Frequency = "monthly" | "semester" | "annual" | "one-time";
+
+export type Category =
+  | "tuition"
+  | "lab"
+  | "library"
+  | "sports"
+  | "transport"
+  | "exam"
+  | "other";
+
+export interface Fee {
+  name: string;
+  amount: number;
+  frequency: Frequency;
+  category: Category;
+}
+
+export interface Class {
+  _id: string;
   title: string;
   level: string;
   subject: string;
   description?: string;
-  locationId: string;
-  locationName?: string;
-  teacherId: string;
-  teacherName?: string;
-  schedule: {
-    dayOfWeek: number;
-    startTime: string;
-    endTime: string;
-    duration: number;
+
+  locationId: {
+    _id: string;
+    name: string;
+    address: any; // Consider defining a structured Address type later
   };
+
+  teacherId: {
+    _id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+  };
+
+  schedule: {
+    dayOfWeek: number; // 0 = Sunday, 6 = Saturday
+    startTime: string; // HH:MM
+    endTime: string; // HH:MM
+    duration: number; // in minutes
+  };
+
   capacity: number;
   currentEnrollment: number;
+
   monthlyFee: {
     amount: number;
     currency: string;
   };
+
+  fees?: Fee[]; // Optional; used only in UI for form inputs
+
   status: "active" | "inactive" | "completed" | "cancelled";
-  startDate: string;
-  endDate: string;
-  createdAt: string;
+
+  startDate: string; // ISO string
+  endDate: string; // ISO string
 }
 
 const ClassesPage: React.FC = () => {
@@ -68,7 +94,7 @@ const ClassesPage: React.FC = () => {
         name: "Monthly Tuition",
         amount: 450,
         frequency: "monthly",
-        category: "tuition",
+        category: "tution",
       },
     ],
     status: "active",
@@ -90,32 +116,101 @@ const ClassesPage: React.FC = () => {
   ];
 
   useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const token = localStorage.getItem("accessToken") ?? undefined;
+
+        const [classesResponse, locationsResponse, usersResponse] =
+          await Promise.all([
+            classesAPI.getClasses({}, token),
+            locationsAPI.getLocations(token),
+            usersAPI.getUsers({ role: "teacher" }, token),
+          ]);
+
+        setClasses(classesResponse.data.classes || []);
+        setLocations(locationsResponse.data.locations || []);
+        setTeachers(usersResponse.data.users || []);
+      } catch (err: any) {
+        setError(err.message || "Failed to fetch data");
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchData();
   }, []);
 
-  const fetchData = async () => {
+  const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
+  const [showAssignModal, setShowAssignModal] = useState(false);
+
+  const handleOpenAssignModal = (classId: string) => {
+    setSelectedClassId(classId);
+    setShowAssignModal(true);
+  };
+
+  // Refreshes the class list by refetching from the server
+  const refreshClasses = async () => {
     try {
       setLoading(true);
+      const token = localStorage.getItem("accessToken") ?? undefined;
+
       const [classesResponse, locationsResponse, usersResponse] =
         await Promise.all([
-          classesAPI.getClasses(),
-          locationsAPI.getLocations(),
-          usersAPI.getUsers({ role: "teacher" }),
+          classesAPI.getClasses({}, token),
+          locationsAPI.getLocations(token),
+          usersAPI.getUsers({ role: "teacher" }, token),
         ]);
 
       setClasses(classesResponse.data.classes || []);
       setLocations(locationsResponse.data.locations || []);
       setTeachers(usersResponse.data.users || []);
     } catch (err: any) {
-      setError(err.message || "Failed to fetch data");
+      setError(err.message || "Failed to refresh classes");
     } finally {
       setLoading(false);
     }
   };
 
+  // Closes the modal and resets the form to initial state
+  const onClose = () => {
+    setIsModalOpen(false);
+    setIsEditMode(false);
+    setSelectedClass(null);
+    setFormData({
+      title: "",
+      level: "",
+      subject: "",
+      description: "",
+      locationId: "",
+      teacherId: "",
+      dayOfWeek: 1,
+      startTime: "09:00",
+      endTime: "10:30",
+      capacity: 30,
+      fees: [
+        {
+          name: "Monthly Tuition",
+          amount: 450,
+          frequency: "monthly",
+          category: "tuition",
+        },
+      ],
+      status: "active",
+      startDate: "",
+      endDate: "",
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
     try {
+      if (formData.fees.length === 0) {
+        toast.error("Please add at least one fee");
+        return;
+      }
+
       const classData = {
         title: formData.title,
         level: formData.level,
@@ -130,22 +225,28 @@ const ClassesPage: React.FC = () => {
           duration: calculateDuration(formData.startTime, formData.endTime),
         },
         capacity: formData.capacity,
-        fees: formData.fees,
         status: formData.status,
         startDate: formData.startDate,
         endDate: formData.endDate,
+        fees: formData.fees,
+        currency: "LKR",
       };
 
+      const token = localStorage.getItem("accessToken") ?? undefined;
+
       if (isEditMode && selectedClass) {
-        await classesAPI.updateClass(selectedClass.id, classData);
+        await classesAPI.updateClass(selectedClass._id, classData, token);
+        toast.success("Class updated");
       } else {
-        await classesAPI.createClass(classData);
+        await classesAPI.createClass(classData, token);
+        toast.success("Class created");
       }
 
-      await fetchData();
-      handleCloseModal();
+      onClose();
+      refreshClasses();
     } catch (err: any) {
-      setError(err.message || "Failed to save class");
+      console.error("Submission error:", err.response?.data || err.message);
+      toast.error(err.response?.data?.message || "Failed to save class");
     }
   };
 
@@ -162,8 +263,8 @@ const ClassesPage: React.FC = () => {
       level: classItem.level,
       subject: classItem.subject,
       description: classItem.description || "",
-      locationId: classItem.locationId,
-      teacherId: classItem.teacherId,
+      locationId: classItem.locationId._id,
+      teacherId: classItem.teacherId._id,
       dayOfWeek: classItem.schedule.dayOfWeek,
       startTime: classItem.schedule.startTime,
       endTime: classItem.schedule.endTime,
@@ -184,10 +285,33 @@ const ClassesPage: React.FC = () => {
     setIsModalOpen(true);
   };
 
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem("accessToken") ?? undefined;
+
+      const [classesResponse, locationsResponse, usersResponse] =
+        await Promise.all([
+          classesAPI.getClasses({}, token),
+          locationsAPI.getLocations(token),
+          usersAPI.getUsers({ role: "teacher" }, token),
+        ]);
+
+      setClasses(classesResponse.data.classes || []);
+      setLocations(locationsResponse.data.locations || []);
+      setTeachers(usersResponse.data.users || []);
+    } catch (err: any) {
+      setError(err.message || "Failed to fetch data");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleDelete = async (id: string) => {
     if (window.confirm("Are you sure you want to delete this class?")) {
       try {
-        await classesAPI.deleteClass(id);
+        const token = localStorage.getItem("accessToken") ?? undefined;
+        await classesAPI.deleteClass(id, token);
         await fetchData();
       } catch (err: any) {
         setError(err.message || "Failed to delete class");
@@ -227,7 +351,8 @@ const ClassesPage: React.FC = () => {
   // Filter classes based on selected location and grade
   const filteredClasses = classes.filter((classItem) => {
     const locationMatch =
-      selectedLocation === "all" || classItem.locationId === selectedLocation;
+      selectedLocation === "all" ||
+      classItem.locationId._id === selectedLocation;
     const gradeMatch =
       selectedGrade === "all" || classItem.level === selectedGrade;
     return locationMatch && gradeMatch;
@@ -258,9 +383,13 @@ const ClassesPage: React.FC = () => {
       render: (value: any, row: Class) => (
         <div>
           <p className="text-sm font-medium text-gray-900">
-            {row.teacherName || "Not Assigned"}
+            {row.teacherId?.firstName
+              ? `${row.teacherId.firstName} ${row.teacherId.lastName}`
+              : "Not Assigned"}
           </p>
-          <p className="text-sm text-gray-500">{row.locationName}</p>
+          <p className="text-sm text-gray-500">
+            {row.locationId?.name || "No Location"}
+          </p>
         </div>
       ),
     },
@@ -357,12 +486,24 @@ const ClassesPage: React.FC = () => {
             <Edit className="w-4 h-4" />
           </button>
           <button
-            onClick={() => handleDelete(row.id)}
+            onClick={() => handleDelete(row._id)}
             className="text-red-600 hover:text-red-800 transition-colors duration-200"
           >
             <Trash2 className="w-4 h-4" />
           </button>
         </div>
+      ),
+    },
+    {
+      key: "assign",
+      label: "Add Students",
+      render: (_: any, row: Class) => (
+        <button
+          onClick={() => handleOpenAssignModal(row._id)}
+          className="bg-teal-600 text-white px-3 py-1 rounded text-sm hover:bg-teal-700"
+        >
+          Assign
+        </button>
       ),
     },
   ];
@@ -473,14 +614,22 @@ const ClassesPage: React.FC = () => {
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
         </div>
       ) : (
-        <DataTable
-          columns={columns}
-          data={filteredClasses}
-          title="All Classes"
-          actions={actions}
-        />
+        <>
+          <DataTable
+            columns={columns}
+            data={filteredClasses}
+            title="All Classes"
+            actions={actions}
+          />
+          {showAssignModal && selectedClassId && (
+            <AssignStudentsModal
+              classId={selectedClassId}
+              token={localStorage.getItem("accessToken") || ""}
+              onClose={() => setShowAssignModal(false)}
+            />
+          )}
+        </>
       )}
-
       <Modal
         isOpen={isModalOpen}
         onClose={handleCloseModal}
@@ -712,7 +861,7 @@ const ClassesPage: React.FC = () => {
               </button>
             </div>
             <div className="space-y-3 max-h-40 overflow-y-auto">
-              {formData.fees.map((fee, index) => (
+              {formData.fees.map((fee: Fee, index: number) => (
                 <div
                   key={index}
                   className="grid grid-cols-1 md:grid-cols-4 gap-3 p-3 bg-gray-50 rounded-lg"
@@ -720,7 +869,7 @@ const ClassesPage: React.FC = () => {
                   <div>
                     <input
                       type="text"
-                      placeholder="Fee name (e.g., Monthly Tuition)"
+                      placeholder="Fee name (eg: Monthly Tuition)"
                       value={fee.name}
                       onChange={(e) => {
                         const newFees = [...formData.fees];
@@ -733,7 +882,7 @@ const ClassesPage: React.FC = () => {
                   <div>
                     <div className="relative">
                       <span className="absolute left-2 top-1 text-sm text-gray-500">
-                        ₹
+                        LKR
                       </span>
                       <input
                         type="number"
@@ -756,7 +905,17 @@ const ClassesPage: React.FC = () => {
                       value={fee.frequency}
                       onChange={(e) => {
                         const newFees = [...formData.fees];
-                        newFees[index].frequency = e.target.value;
+                        const value = e.target.value as Frequency;
+                        if (
+                          [
+                            "monthly",
+                            "semester",
+                            "annual",
+                            "one-time",
+                          ].includes(value)
+                        ) {
+                          newFees[index].frequency = value;
+                        }
                         setFormData({ ...formData, fees: newFees });
                       }}
                       className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -772,7 +931,20 @@ const ClassesPage: React.FC = () => {
                       value={fee.category}
                       onChange={(e) => {
                         const newFees = [...formData.fees];
-                        newFees[index].category = e.target.value;
+                        const value = e.target.value as Category;
+                        if (
+                          [
+                            "tuition",
+                            "lab",
+                            "library",
+                            "sports",
+                            "transport",
+                            "exam",
+                            "other",
+                          ].includes(value)
+                        ) {
+                          newFees[index].category = value;
+                        }
                         setFormData({ ...formData, fees: newFees });
                       }}
                       className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
