@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { Plus, Edit, Trash2, Building } from "lucide-react";
+import { Plus, Edit, Trash2, Building, Power } from "lucide-react";
 import DataTable from "../Common/DataTable";
 import Modal from "../Common/Modal";
 import { locationsAPI } from "../../utils/api";
+import { toast } from "react-toastify";
 
 interface Location {
   id: string;
@@ -19,6 +20,7 @@ interface Location {
   capacity: number;
   currentEnrollment: number;
   status: "active" | "inactive" | "maintenance";
+  color: string;
   createdAt: string;
 }
 
@@ -31,6 +33,8 @@ const LocationsPage: React.FC = () => {
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(
     null
   );
+  const [filter, setFilter] = useState<string>("all");
+
   const [formData, setFormData] = useState({
     name: "",
     street: "",
@@ -41,6 +45,7 @@ const LocationsPage: React.FC = () => {
     phoneNumber: "",
     email: "",
     capacity: 100,
+    color: "#14B8A6",
     status: "active",
   });
 
@@ -52,7 +57,6 @@ const LocationsPage: React.FC = () => {
     try {
       setLoading(true);
       const response = await locationsAPI.getLocations();
-
       if (response.status === "success") {
         setLocations(response.data.locations || []);
       } else {
@@ -62,6 +66,34 @@ const LocationsPage: React.FC = () => {
       setError(err.message || "Failed to fetch locations");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleToggleStatus = async (location: Location) => {
+    const newStatus = location.status === "active" ? "inactive" : "active";
+    if (
+      !window.confirm(
+        `Are you sure you want to ${
+          newStatus === "inactive" ? "disable" : "enable"
+        } "${location.name}"?`
+      )
+    )
+      return;
+
+    try {
+      await locationsAPI.updateLocation(location.id, {
+        ...location,
+        status: newStatus,
+        address: location.address, // ensure structure
+      });
+      toast.success(
+        `"${location.name}" ${
+          newStatus === "inactive" ? "disabled" : "enabled"
+        }`
+      );
+      fetchLocations();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update location status");
     }
   };
 
@@ -80,6 +112,7 @@ const LocationsPage: React.FC = () => {
         phoneNumber: formData.phoneNumber,
         email: formData.email,
         capacity: formData.capacity,
+        color: formData.color,
         status: formData.status,
       };
 
@@ -89,10 +122,10 @@ const LocationsPage: React.FC = () => {
         await locationsAPI.createLocation(locationData);
       }
 
-      await fetchLocations();
+      fetchLocations();
       handleCloseModal();
     } catch (err: any) {
-      setError(err.message || "Failed to save location");
+      toast.error(err.message || "Failed to save location");
     }
   };
 
@@ -108,6 +141,7 @@ const LocationsPage: React.FC = () => {
       phoneNumber: location.phoneNumber,
       email: location.email,
       capacity: location.capacity,
+      color: location.color,
       status: location.status,
     });
     setIsEditMode(true);
@@ -118,9 +152,9 @@ const LocationsPage: React.FC = () => {
     if (window.confirm("Are you sure you want to delete this location?")) {
       try {
         await locationsAPI.deleteLocation(id);
-        await fetchLocations();
+        fetchLocations();
       } catch (err: any) {
-        setError(err.message || "Failed to delete location");
+        toast.error(err.message || "Failed to delete location");
       }
     }
   };
@@ -139,22 +173,31 @@ const LocationsPage: React.FC = () => {
       phoneNumber: "",
       email: "",
       capacity: 100,
+      color: "#14B8A6",
       status: "active",
     });
   };
+
+  const filteredLocations =
+    filter === "all"
+      ? locations
+      : locations.filter((loc) => loc.status === filter);
 
   const columns = [
     {
       key: "name",
       label: "Location",
       sortable: true,
-      render: (value: string, row: Location) => (
+      render: (_: string, row: Location) => (
         <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-teal-500 rounded-lg flex items-center justify-center">
+          <div
+            className={`w-10 h-10 rounded-lg flex items-center justify-center`}
+            style={{ backgroundColor: row.color }}
+          >
             <Building className="w-5 h-5 text-white" />
           </div>
           <div>
-            <p className="font-medium text-gray-900">{value}</p>
+            <p className="font-medium text-gray-900">{row.name}</p>
             <p className="text-sm text-gray-500">
               {row.address.city}, {row.address.state}
             </p>
@@ -163,40 +206,19 @@ const LocationsPage: React.FC = () => {
       ),
     },
     {
-      key: "address",
-      label: "Address",
-      render: (_: any, row: Location) => (
-        <div>
-          <p className="text-sm text-gray-900">{row.address.street}</p>
-          <p className="text-sm text-gray-500">
-            {row.address.city}, {row.address.state} {row.address.zipCode}
-          </p>
-        </div>
-      ),
-    },
-    {
-      key: "contact",
-      label: "Contact",
-      render: (_: any, row: Location) => (
-        <div>
-          <p className="text-sm text-gray-900">{row.phoneNumber}</p>
-          <p className="text-sm text-gray-500">{row.email}</p>
-        </div>
-      ),
-    },
-    {
       key: "capacity",
       label: "Capacity",
-      sortable: true,
-      render: (value: number, row: Location) => (
+      render: (_: any, row: Location) => (
         <div>
           <p className="text-sm font-medium text-gray-900">
-            {row.currentEnrollment} / {value}
+            {row.currentEnrollment} / {row.capacity}
           </p>
           <div className="w-16 bg-gray-200 rounded-full h-2 mt-1">
             <div
               className="bg-teal-500 h-2 rounded-full"
-              style={{ width: `${(row.currentEnrollment / value) * 100}%` }}
+              style={{
+                width: `${(row.currentEnrollment / row.capacity) * 100}%`,
+              }}
             ></div>
           </div>
         </div>
@@ -205,7 +227,6 @@ const LocationsPage: React.FC = () => {
     {
       key: "status",
       label: "Status",
-      sortable: true,
       render: (value: string) => (
         <span
           className={`px-2 py-1 rounded-full text-xs font-medium ${
@@ -227,13 +248,24 @@ const LocationsPage: React.FC = () => {
         <div className="flex items-center space-x-2">
           <button
             onClick={() => handleEdit(row)}
-            className="text-blue-600 hover:text-blue-800 transition-colors duration-200"
+            className="text-blue-600 hover:text-blue-800"
           >
             <Edit className="w-4 h-4" />
           </button>
           <button
+            onClick={() => handleToggleStatus(row)}
+            className={
+              row.status === "active"
+                ? "text-yellow-600 hover:text-yellow-800"
+                : "text-green-600 hover:text-green-800"
+            }
+            title={row.status === "active" ? "Disable" : "Enable"}
+          >
+            <Power className="w-4 h-4" />
+          </button>
+          <button
             onClick={() => handleDelete(row.id)}
-            className="text-red-600 hover:text-red-800 transition-colors duration-200"
+            className="text-red-600 hover:text-red-800"
           >
             <Trash2 className="w-4 h-4" />
           </button>
@@ -243,13 +275,25 @@ const LocationsPage: React.FC = () => {
   ];
 
   const actions = (
-    <button
-      onClick={() => setIsModalOpen(true)}
-      className="px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700 transition-colors duration-200 flex items-center space-x-2"
-    >
-      <Plus className="w-4 h-4" />
-      <span>Add Location</span>
-    </button>
+    <div className="flex items-center space-x-4">
+      <select
+        value={filter}
+        onChange={(e) => setFilter(e.target.value)}
+        className="px-3 py-2 border border-gray-300 rounded-md text-sm"
+      >
+        <option value="all">All</option>
+        <option value="active">Active</option>
+        <option value="inactive">Inactive</option>
+        <option value="maintenance">Maintenance</option>
+      </select>
+      <button
+        onClick={() => setIsModalOpen(true)}
+        className="px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700 flex items-center space-x-2"
+      >
+        <Plus className="w-4 h-4" />
+        <span>Add Location</span>
+      </button>
+    </div>
   );
 
   return (
@@ -263,13 +307,11 @@ const LocationsPage: React.FC = () => {
             Manage school locations and facilities
           </p>
         </div>
-        <div className="flex items-center space-x-3">
-          <div className="bg-white px-4 py-2 rounded-lg border border-gray-200">
-            <span className="text-sm text-gray-600">Total Locations: </span>
-            <span className="font-semibold text-gray-900">
-              {locations.length}
-            </span>
-          </div>
+        <div className="bg-white px-4 py-2 rounded-lg border border-gray-200">
+          <span className="text-sm text-gray-600">Total Locations: </span>
+          <span className="font-semibold text-gray-900">
+            {locations.length}
+          </span>
         </div>
       </div>
 
@@ -286,7 +328,7 @@ const LocationsPage: React.FC = () => {
       ) : (
         <DataTable
           columns={columns}
-          data={locations}
+          data={filteredLocations}
           title="All Locations"
           actions={actions}
         />
@@ -299,167 +341,112 @@ const LocationsPage: React.FC = () => {
         size="lg"
       >
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Location Name
-              </label>
-              <input
-                type="text"
-                required
-                value={formData.name}
-                onChange={(e) =>
-                  setFormData({ ...formData, name: e.target.value })
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
-                placeholder="Enter location name"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Status
-              </label>
-              <select
-                value={formData.status}
-                onChange={(e) =>
-                  setFormData({ ...formData, status: e.target.value })
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
-              >
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-                <option value="maintenance">Maintenance</option>
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Street Address
-            </label>
+          <div className="grid grid-cols-2 gap-4">
             <input
               type="text"
+              placeholder="Name"
+              className="border p-2 rounded"
+              value={formData.name}
+              onChange={(e) =>
+                setFormData({ ...formData, name: e.target.value })
+              }
               required
+            />
+            <input
+              type="tel"
+              placeholder="Phone"
+              className="border p-2 rounded"
+              value={formData.phoneNumber}
+              onChange={(e) =>
+                setFormData({ ...formData, phoneNumber: e.target.value })
+              }
+              required
+            />
+            <input
+              type="email"
+              placeholder="Email"
+              className="border p-2 rounded"
+              value={formData.email}
+              onChange={(e) =>
+                setFormData({ ...formData, email: e.target.value })
+              }
+              required
+            />
+            <input
+              type="number"
+              placeholder="Capacity"
+              className="border p-2 rounded"
+              value={formData.capacity}
+              onChange={(e) =>
+                setFormData({ ...formData, capacity: +e.target.value })
+              }
+              required
+            />
+            <input
+              type="text"
+              placeholder="Street"
+              className="border p-2 rounded"
               value={formData.street}
               onChange={(e) =>
                 setFormData({ ...formData, street: e.target.value })
               }
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
-              placeholder="Enter street address"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                City
-              </label>
-              <input
-                type="text"
-                required
-                value={formData.city}
-                onChange={(e) =>
-                  setFormData({ ...formData, city: e.target.value })
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
-                placeholder="City"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                State
-              </label>
-              <input
-                type="text"
-                required
-                value={formData.state}
-                onChange={(e) =>
-                  setFormData({ ...formData, state: e.target.value })
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
-                placeholder="State"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Zip Code
-              </label>
-              <input
-                type="text"
-                required
-                value={formData.zipCode}
-                onChange={(e) =>
-                  setFormData({ ...formData, zipCode: e.target.value })
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
-                placeholder="Zip Code"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Phone Number
-              </label>
-              <input
-                type="tel"
-                required
-                value={formData.phoneNumber}
-                onChange={(e) =>
-                  setFormData({ ...formData, phoneNumber: e.target.value })
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
-                placeholder="Phone number"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Email
-              </label>
-              <input
-                type="email"
-                required
-                value={formData.email}
-                onChange={(e) =>
-                  setFormData({ ...formData, email: e.target.value })
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
-                placeholder="Email address"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Capacity
-            </label>
-            <input
-              type="number"
               required
-              min="1"
-              value={formData.capacity}
-              onChange={(e) =>
-                setFormData({ ...formData, capacity: parseInt(e.target.value) })
-              }
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
-              placeholder="Maximum capacity"
             />
+            <input
+              type="text"
+              placeholder="City"
+              className="border p-2 rounded"
+              value={formData.city}
+              onChange={(e) =>
+                setFormData({ ...formData, city: e.target.value })
+              }
+              required
+            />
+            <input
+              type="text"
+              placeholder="State"
+              className="border p-2 rounded"
+              value={formData.state}
+              onChange={(e) =>
+                setFormData({ ...formData, state: e.target.value })
+              }
+              required
+            />
+            <input
+              type="text"
+              placeholder="Zip Code"
+              className="border p-2 rounded"
+              value={formData.zipCode}
+              onChange={(e) =>
+                setFormData({ ...formData, zipCode: e.target.value })
+              }
+              required
+            />
+            <label className="col-span-2 flex items-center gap-3">
+              Color:
+              <input
+                type="color"
+                value={formData.color}
+                onChange={(e) =>
+                  setFormData({ ...formData, color: e.target.value })
+                }
+                className="w-10 h-8 border rounded"
+              />
+            </label>
           </div>
-
-          <div className="flex items-center justify-end space-x-3 pt-4">
+          <div className="flex justify-end space-x-2">
             <button
               type="button"
               onClick={handleCloseModal}
-              className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors duration-200"
+              className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700 transition-colors duration-200"
+              className="px-4 py-2 bg-teal-600 text-white rounded hover:bg-teal-700"
             >
-              {isEditMode ? "Update Location" : "Create Location"}
+              {isEditMode ? "Update" : "Create"}
             </button>
           </div>
         </form>

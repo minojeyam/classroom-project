@@ -24,13 +24,6 @@ const LoginForm: React.FC<LoginFormProps> = ({ onToggleForm }) => {
     }
   };
 
-  const demoLogins = [
-    { email: "admin@school.com", password: "password", role: "Admin" },
-    { email: "teacher@school.com", password: "password", role: "Teacher" },
-    { email: "student@school.com", password: "password", role: "Student" },
-    { email: "parent@school.com", password: "password", role: "Parent" },
-  ];
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-teal-50 via-white to-emerald-50 flex items-center justify-center p-4">
       <div className="max-w-md w-full space-y-8">
@@ -40,12 +33,9 @@ const LoginForm: React.FC<LoginFormProps> = ({ onToggleForm }) => {
               <GraduationCap className="w-8 h-8 text-white" />
             </div>
           </div>
-          <h2 className="mt-6 text-3xl font-bold text-gray-900">
-            ClassroomPro
-          </h2>
           <h2 className="mt-6 text-3xl font-bold text-gray-900">IO Space</h2>
           <p className="mt-2 text-sm text-gray-600">
-            Multi-Location Classroom Management System
+            English Language Learning Center
           </p>
         </div>
 
@@ -135,29 +125,6 @@ const LoginForm: React.FC<LoginFormProps> = ({ onToggleForm }) => {
             </div>
           </div>
         </form>
-
-        {/* <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Demo Accounts</h3>
-          <p className="text-sm text-gray-600 mb-4">
-            Use these credentials to explore different user roles:
-          </p>
-          <div className="grid grid-cols-1 gap-3">
-            {demoLogins.map((demo) => (
-              <button
-                key={demo.email}
-                type="button"
-                onClick={() => {
-                  setEmail(demo.email);
-                  setPassword(demo.password);
-                }}
-                className="text-left p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors duration-200"
-              >
-                <div className="font-medium text-gray-900">{demo.role}</div>
-                <div className="text-sm text-gray-600">{demo.email}</div>
-              </button>
-            ))}
-          </div>
-        </div> */}
       </div>
     </div>
   );

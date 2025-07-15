@@ -14,6 +14,7 @@ const UsersPage: React.FC = () => {
 
     fetch("http://localhost:5000/api/users", {
       headers: { Authorization: `Bearer ${token}` },
+      credentials: "include",
     }).then(async (res) => {
       const data = await res.json();
       if (!res.ok) return;

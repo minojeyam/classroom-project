@@ -7,6 +7,7 @@ const getAuthHeader = () => {
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
+// Locations API
 export const locationsAPI = {
   getLocations: async () => {
     const res = await axios.get(`${API_BASE_URL}/locations`, {
@@ -43,9 +44,10 @@ export const locationsAPI = {
   },
 };
 
+// Classes API
 export const classesAPI = {
   getClasses: async (params = {}) => {
-    const res = await axios.get(API_BASE_URL, {
+    const res = await axios.get(`${API_BASE_URL}/classes`, {
       params,
       headers: getAuthHeader(),
     });
@@ -53,14 +55,14 @@ export const classesAPI = {
   },
 
   getClassById: async (id: string) => {
-    const res = await axios.get(`${API_BASE_URL}/${id}`, {
+    const res = await axios.get(`${API_BASE_URL}/classes/${id}`, {
       headers: getAuthHeader(),
     });
     return res.data;
   },
 
   createClass: async (data: any) => {
-    const res = await axios.post(API_BASE_URL, data, {
+    const res = await axios.post(`${API_BASE_URL}/classes`, data, {
       headers: {
         ...getAuthHeader(),
         "Content-Type": "application/json",
@@ -70,7 +72,7 @@ export const classesAPI = {
   },
 
   updateClass: async (id: string, data: any) => {
-    const res = await axios.put(`${API_BASE_URL}/${id}`, data, {
+    const res = await axios.put(`${API_BASE_URL}/classes/${id}`, data, {
       headers: {
         ...getAuthHeader(),
         "Content-Type": "application/json",
@@ -80,7 +82,7 @@ export const classesAPI = {
   },
 
   deleteClass: async (id: string) => {
-    const res = await axios.delete(`${API_BASE_URL}/${id}`, {
+    const res = await axios.delete(`${API_BASE_URL}/classes/${id}`, {
       headers: getAuthHeader(),
     });
     return res.data;
@@ -88,7 +90,7 @@ export const classesAPI = {
 
   enrollStudent: async (classId: string, studentId: string) => {
     const res = await axios.post(
-      `${API_BASE_URL}/${classId}/enroll`,
+      `${API_BASE_URL}/classes/${classId}/enroll`,
       { studentId },
       {
         headers: {
@@ -101,9 +103,10 @@ export const classesAPI = {
   },
 };
 
+// Users API
 export const usersAPI = {
   getUsers: async (params = {}) => {
-    const res = await axios.get(API_BASE_URL, {
+    const res = await axios.get(`${API_BASE_URL}/users`, {
       params,
       headers: getAuthHeader(),
     });
@@ -111,7 +114,7 @@ export const usersAPI = {
   },
 
   getUserById: async (id: string) => {
-    const res = await axios.get(`${API_BASE_URL}/${id}`, {
+    const res = await axios.get(`${API_BASE_URL}/users/${id}`, {
       headers: getAuthHeader(),
     });
     return res.data;
@@ -119,7 +122,7 @@ export const usersAPI = {
 
   approveUser: async (id: string) => {
     const res = await axios.put(
-      `${API_BASE_URL}/${id}/approve`,
+      `${API_BASE_URL}/users/${id}/approve`,
       {},
       {
         headers: getAuthHeader(),
@@ -130,7 +133,7 @@ export const usersAPI = {
 
   rejectUser: async (id: string) => {
     const res = await axios.put(
-      `${API_BASE_URL}/${id}/reject`,
+      `${API_BASE_URL}/users/${id}/reject`,
       {},
       {
         headers: getAuthHeader(),
@@ -140,7 +143,7 @@ export const usersAPI = {
   },
 
   updateUser: async (id: string, data: any) => {
-    const res = await axios.put(`${API_BASE_URL}/${id}`, data, {
+    const res = await axios.put(`${API_BASE_URL}/users/${id}`, data, {
       headers: {
         ...getAuthHeader(),
         "Content-Type": "application/json",
@@ -150,7 +153,7 @@ export const usersAPI = {
   },
 
   deleteUser: async (id: string) => {
-    const res = await axios.delete(`${API_BASE_URL}/${id}`, {
+    const res = await axios.delete(`${API_BASE_URL}/users/${id}`, {
       headers: getAuthHeader(),
     });
     return res.data;
