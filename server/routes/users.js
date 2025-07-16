@@ -8,20 +8,49 @@ const router = express.Router();
 // @route   GET /api/users
 // @desc    Get all users (admin only)
 // @access  Private (Admin)
-// router.get("/", auth, authorize(["admin"]), async (req, res) => {
+// router.get("/", auth, authorize(["admin", "teacher"]), async (req, res) => {
 //   try {
-//     const { page = 1, limit = 10, role, status, location, search } = req.query;
+//     const {
+//       page = 1,
+//       limit = 10,
+//       role,
+//       status,
+//       location,
+//       search,
+//       ids,
+//     } = req.query;
 
 //     const query = {};
+
 //     if (role) query.role = role;
 //     if (status) query.status = status;
 //     if (location) query.locationId = location;
+
 //     if (search) {
 //       query.$or = [
 //         { firstName: { $regex: search, $options: "i" } },
 //         { lastName: { $regex: search, $options: "i" } },
 //         { email: { $regex: search, $options: "i" } },
 //       ];
+//     }
+
+//     // Filter by list of ids
+//     if (ids) {
+//       try {
+//         const idsArray = Array.isArray(ids)
+//           ? ids
+//           : typeof ids === "string"
+//           ? JSON.parse(ids)
+//           : [];
+//         if (Array.isArray(idsArray) && idsArray.length > 0) {
+//           query._id = { $in: idsArray };
+//         }
+//       } catch (err) {
+//         return res.status(400).json({
+//           status: "error",
+//           message: "Invalid 'ids' query parameter format",
+//         });
+//       }
 //     }
 
 //     const skip = (parseInt(page) - 1) * parseInt(limit);
@@ -31,6 +60,7 @@ const router = express.Router();
 //       .sort({ createdAt: -1 })
 //       .skip(skip)
 //       .limit(parseInt(limit));
+
 //     const total = await User.countDocuments(query);
 
 //     res.json({
@@ -52,8 +82,8 @@ const router = express.Router();
 //   }
 // });
 // @route   GET /api/users
-// @desc    Get all users (admin only)
-// @access  Private (Admin)
+// @desc    Get all users (admin or teacher)
+// @access  Private
 router.get("/", auth, authorize(["admin", "teacher"]), async (req, res) => {
   try {
     const {
@@ -80,23 +110,10 @@ router.get("/", auth, authorize(["admin", "teacher"]), async (req, res) => {
       ];
     }
 
-    // Filter by list of ids
+    // ✅ Handle filtering by student IDs
     if (ids) {
-      try {
-        const idsArray = Array.isArray(ids)
-          ? ids
-          : typeof ids === "string"
-          ? JSON.parse(ids)
-          : [];
-        if (Array.isArray(idsArray) && idsArray.length > 0) {
-          query._id = { $in: idsArray };
-        }
-      } catch (err) {
-        return res.status(400).json({
-          status: "error",
-          message: "Invalid 'ids' query parameter format",
-        });
-      }
+      const idsArray = Array.isArray(ids) ? ids : [ids];
+      query._id = { $in: idsArray };
     }
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
