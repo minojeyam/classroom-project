@@ -11,6 +11,7 @@ import userRoutes from "./routes/users.js";
 import locationRoutes from "./routes/locations.js";
 import classRoutes from "./routes/classes.js";
 import attendanceRoutes from "./routes/attendance.js";
+import feeRoutes from "./routes/fees.js";
 
 // Import middleware
 import { errorHandler } from "./middleware/errorHandler.js";
@@ -28,7 +29,7 @@ app.use(helmet());
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+  max: 1000, // limit each IP to 1000 requests per windowMs
   message: "Too many requests from this IP, please try again later.",
   standardHeaders: true,
   legacyHeaders: false,
@@ -38,15 +39,21 @@ app.use(limiter);
 // CORS configuration
 app.use(
   cors({
-    origin:
-      process.env.NODE_ENV === "production"
-        ? ["https://your-frontend-domain.com"]
-        : ["http://localhost:3000", "http://localhost:5173"],
+    origin: (origin, callback) => {
+      const allowedOrigins = ["http://localhost:5173"];
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
+
+app.options("*", cors());
 
 // Body parsing middleware
 app.use(express.json({ limit: "10mb" }));
@@ -60,7 +67,7 @@ mongoose
     console.log(`Database: ${mongoose.connection.name}`);
   })
   .catch((error) => {
-    console.error("❌ MongoDB connection error:", error);
+    console.error("MongoDB connection error:", error);
     process.exit(1);
   });
 
@@ -80,6 +87,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/locations", locationRoutes);
 app.use("/api/classes", classRoutes);
 app.use("/api/attendance", attendanceRoutes);
+app.use("/api/fees", feeRoutes);
 
 // Root route handler
 app.get("/", (req, res) => {

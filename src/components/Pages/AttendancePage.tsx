@@ -198,60 +198,6 @@ const AttendancePage: React.FC = () => {
     }
   };
 
-  // const fetchAttendanceRecords = async () => {
-  //   if (!selectedClass) return;
-
-  //   try {
-  //     // Mock attendance data - replace with actual API call
-  //     const mockAttendance: AttendanceRecord[] = students.map((student) => ({
-  //       id: `${student.id}-${selectedDate}`,
-  //       studentId: student.id,
-  //       studentName: `${student.firstName} ${student.lastName}`,
-  //       classId: selectedClass._id,
-  //       date: selectedDate,
-  //       status:
-  //         Math.random() > 0.2
-  //           ? "present"
-  //           : Math.random() > 0.5
-  //           ? "absent"
-  //           : "late",
-  //       notes: "",
-  //       markedBy: user?.id || "",
-  //       markedAt: new Date().toISOString(),
-  //     }));
-
-  //     setAttendanceRecords(mockAttendance);
-  //   } catch (err: any) {
-  //     console.error("Error fetching attendance:", err);
-  //   }
-  // };
-
-  // const markAttendance = async (
-  //   studentId: string,
-  //   status: "present" | "absent" | "late" | "excused",
-  //   notes?: string
-  // ) => {
-  //   try {
-  //     // Update local state immediately for better UX
-  //     setAttendanceRecords((prev) =>
-  //       prev.map((record) =>
-  //         record.studentId === studentId
-  //           ? {
-  //               ...record,
-  //               status,
-  //               notes: notes || "",
-  //               markedAt: new Date().toISOString(),
-  //             }
-  //           : record
-  //       )
-  //     );
-
-  //     // Mock API call - replace with actual implementation
-  //     await new Promise((resolve) => setTimeout(resolve, 500));
-  //   } catch (err: any) {
-  //     setError("Failed to mark attendance");
-  //   }
-  // };
   const fetchAttendanceRecords = async () => {
     if (!selectedClass) return;
 
@@ -293,7 +239,7 @@ const AttendancePage: React.FC = () => {
     try {
       const token = localStorage.getItem("accessToken") ?? "";
 
-      await fetch(`http://localhost:5000/api/attendance`, {
+      const response = await fetch(`http://localhost:5000/api/attendance`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -308,20 +254,101 @@ const AttendancePage: React.FC = () => {
         }),
       });
 
-      setAttendanceRecords((prev) =>
-        prev.map((record) =>
-          record.studentId === studentId
-            ? {
-                ...record,
-                status,
+      const result = await response.json();
+
+      if (response.ok && result.status === "success") {
+        setAttendanceRecords((prev) => {
+          const exists = prev.find((r) => r.studentId === studentId);
+
+          if (exists) {
+            return prev.map((r) =>
+              r.studentId === studentId
+                ? {
+                    ...r,
+                    status: status as AttendanceRecord["status"],
+                    notes: notes || "",
+                    markedAt: new Date().toISOString(),
+                  }
+                : r
+            );
+          } else {
+            const student = students.find((s) => s.id === studentId);
+            if (!student) return prev;
+
+            return [
+              ...prev,
+              {
+                id: `${studentId}-${selectedDate}`,
+                studentId,
+                studentName: `${student.firstName} ${student.lastName}`,
+                classId: selectedClass?._id!,
+                date: selectedDate,
+                status: status as AttendanceRecord["status"],
                 notes: notes || "",
+                markedBy: user?.id || "",
                 markedAt: new Date().toISOString(),
-              }
-            : record
-        )
-      );
+              },
+            ];
+          }
+        });
+      } else {
+        setError(result.message || "Failed to mark attendance");
+      }
     } catch (err) {
+      console.error("Failed to mark attendance:", err);
       setError("Failed to mark attendance");
+    }
+  };
+
+  const markAllPresent = async () => {
+    try {
+      const token = localStorage.getItem("accessToken") ?? "";
+
+      await Promise.all(
+        students.map(async (student) => {
+          await fetch(`http://localhost:5000/api/attendance`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              studentId: student.id,
+              classId: selectedClass?._id,
+              date: selectedDate,
+              status: "present" as AttendanceRecord["status"],
+            }),
+          });
+        })
+      );
+
+      const updated: AttendanceRecord[] = students.map((student) => {
+        const existing = attendanceRecords.find(
+          (r) => r.studentId === student.id
+        );
+        return existing
+          ? {
+              ...existing,
+              status: "present" as AttendanceRecord["status"],
+              markedAt: new Date().toISOString(),
+            }
+          : {
+              id: `${student.id}-${selectedDate}`,
+              studentId: student.id,
+              studentName: `${student.firstName} ${student.lastName}`,
+              classId: selectedClass?._id!,
+              date: selectedDate,
+              status: "present" as AttendanceRecord["status"],
+              notes: "",
+              markedBy: user?.id || "",
+              markedAt: new Date().toISOString(),
+            };
+      });
+
+      setAttendanceRecords(updated);
+    } catch (err) {
+      console.error("❌ Failed to mark all present:", err);
+      setError("Failed to mark all students as present.");
     }
   };
 
@@ -682,9 +709,18 @@ const AttendancePage: React.FC = () => {
           {/* Attendance Marking */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200">
             <div className="p-6 border-b border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900">
-                Mark Attendance - {new Date(selectedDate).toLocaleDateString()}
-              </h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Mark Attendance -{" "}
+                  {new Date(selectedDate).toLocaleDateString()}
+                </h3>
+                <button
+                  onClick={markAllPresent}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200"
+                >
+                  Mark All Present
+                </button>
+              </div>
             </div>
             <div className="p-6">
               {students.length === 0 ? (

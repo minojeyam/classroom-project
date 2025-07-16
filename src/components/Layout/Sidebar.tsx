@@ -68,6 +68,12 @@ const sidebarItems: SidebarItem[] = [
     roles: ["admin", "teacher"],
   },
   {
+    icon: <UserCheck className="w-5 h-5" />,
+    label: "My Class Fees",
+    href: "/teacher-fees",
+    roles: ["teacher"],
+  },
+  {
     icon: <CreditCard className="w-5 h-5" />,
     label: "Fees",
     href: "/fees",

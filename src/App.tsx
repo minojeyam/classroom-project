@@ -38,6 +38,7 @@ const pages = {
   "/import": "Bulk Import",
   "/settings": "Settings",
   "/teacher-classes": "My Classes",
+  "/teacher-fees": "My Class Fees",
 };
 
 const AppContent: React.FC = () => {
@@ -85,13 +86,8 @@ const AppContent: React.FC = () => {
 
       case "/attendance":
         return <AttendancePage />;
-      case "/fees":
-        return (
-          <ComingSoonPage
-            feature="Fee Management"
-            description="Manage student fees, track payments, and generate invoices."
-          />
-        );
+      case "/teacher-fees":
+        return <FeesPage />;
       case "/materials":
         return (
           <ComingSoonPage
