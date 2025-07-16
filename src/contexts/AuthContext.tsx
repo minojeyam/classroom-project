@@ -5,7 +5,24 @@ import React, {
   useEffect,
   ReactNode,
 } from "react";
-import { User } from "../types";
+
+interface Tokens {
+  accessToken: string;
+  refreshToken: string;
+}
+
+interface User {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: string;
+  status: string;
+  phoneNumber?: string;
+  classIds?: string[];
+  lastLogin?: string;
+  tokens: Tokens;
+}
 
 interface AuthContextType {
   user: User | null;
@@ -59,12 +76,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       const { user, tokens } = data.data;
 
-      // Store tokens and user in localStorage
-      localStorage.setItem("accessToken", tokens.accessToken);
-      localStorage.setItem("refreshToken", tokens.refreshToken);
-      localStorage.setItem("user", JSON.stringify(user));
+      const fullUser: User = {
+        ...user,
+        tokens,
+      };
 
-      setUser(user);
+      localStorage.setItem("user", JSON.stringify(fullUser));
+      setUser(fullUser);
     } catch (error: any) {
       throw new Error(error.message || "Login failed");
     } finally {
@@ -74,8 +92,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const logout = () => {
     setUser(null);
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("refreshToken");
     localStorage.removeItem("user");
   };
 

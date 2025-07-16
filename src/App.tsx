@@ -103,12 +103,8 @@ const AppContent: React.FC = () => {
           />
         );
       case "/notices":
-        return (
-          <ComingSoonPage
-            feature="Notice Board"
-            description="Send notices, announcements, and messages to students and parents."
-          />
-        );
+        return <NoticeBoardPage />;
+
       case "/reports":
         return (
           <ComingSoonPage

@@ -15,6 +15,26 @@ import DataTable from "../Common/DataTable";
 import Modal from "../Common/Modal";
 import { useAuth } from "../../contexts/AuthContext";
 
+interface FormDataType {
+  name: string;
+  description: string;
+  amount: number;
+  currency: string;
+  frequency: "monthly" | "semester" | "annual" | "one-time";
+  category:
+    | "tuition"
+    | "lab"
+    | "library"
+    | "sports"
+    | "transport"
+    | "exam"
+    | "other";
+  applicableClasses: string[]; // ✅ properly typed
+  status: "active" | "inactive";
+  feeStructureId: string;
+  dueDate: string;
+}
+
 interface FeeStructure {
   id: string;
   name: string;
@@ -53,6 +73,8 @@ interface StudentFee {
 
 const FeesPage: React.FC = () => {
   const { user } = useAuth();
+  const [classList, setClassList] = useState<ClassItem[]>([]);
+
   const [activeTab, setActiveTab] = useState("overview");
   const [feeStructures, setFeeStructures] = useState<FeeStructure[]>([]);
   const [studentFees, setStudentFees] = useState<StudentFee[]>([]);
@@ -63,7 +85,7 @@ const FeesPage: React.FC = () => {
     "fee-structure" | "payment" | "bulk-assign"
   >("fee-structure");
   const [selectedItem, setSelectedItem] = useState<any>(null);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormDataType>({
     name: "",
     description: "",
     amount: 0,
@@ -72,113 +94,131 @@ const FeesPage: React.FC = () => {
     category: "tuition",
     applicableClasses: [],
     status: "active",
+    feeStructureId: "",
+    dueDate: "",
   });
 
   useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+
+        // ✅ Fetch classes
+        const classRes = await fetch(
+          "http://localhost:5000/api/classes?limit=100",
+          {
+            headers: {
+              Authorization: `Bearer ${user?.tokens?.accessToken}`,
+            },
+          }
+        );
+
+        const classJson = await classRes.json();
+
+        if (!classRes.ok || !classJson.data?.classes) {
+          throw new Error("Failed to fetch classes");
+        }
+
+        setClassList(
+          classJson.data.classes.map((cls: any) => ({
+            id: cls._id,
+            title: cls.title,
+            monthlyFee: cls.monthlyFee || { amount: 0, currency: "LKR" },
+          }))
+        );
+
+        // Fetch real fee structures
+        const feeRes = await fetch(
+          "http://localhost:5000/api/fees/structures",
+          {
+            headers: {
+              Authorization: `Bearer ${user?.tokens?.accessToken}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        const feeData = await feeRes.json();
+
+        if (!feeRes.ok || !feeData.data) {
+          throw new Error("Failed to fetch fee structures");
+        }
+
+        const mappedFees = feeData.data.map((fee: any) => ({
+          id: fee._id,
+          name: fee.name,
+          description: fee.description,
+          amount: fee.amount,
+          currency: fee.currency || "LKR",
+          frequency: fee.frequency,
+          category: fee.category,
+          applicableClasses: fee.applicableClasses || [],
+          status: fee.status,
+          createdAt: fee.createdAt,
+        }));
+
+        setFeeStructures(mappedFees);
+        console.log("Loaded fee structures:", mappedFees);
+      } catch (err: any) {
+        console.error("Error fetching data:", err);
+        setError(err.message || "Failed to fetch data");
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchData();
   }, []);
 
   const fetchData = async () => {
     try {
       setLoading(true);
-      // Mock data - replace with actual API calls
-      const mockFeeStructures: FeeStructure[] = [
-        {
-          id: "1",
-          name: "Monthly Tuition Fee",
-          description: "Regular monthly tuition fee for all students",
-          amount: 4500,
-          currency: "INR",
-          frequency: "monthly",
-          category: "tuition",
-          applicableClasses: ["1", "2", "3"],
-          status: "active",
-          createdAt: "2024-01-01T00:00:00.000Z",
-        },
-        {
-          id: "2",
-          name: "Laboratory Fee",
-          description: "Fee for laboratory equipment and materials",
-          amount: 750,
-          currency: "INR",
-          frequency: "semester",
-          category: "lab",
-          applicableClasses: ["2", "3"],
-          status: "active",
-          createdAt: "2024-01-01T00:00:00.000Z",
-        },
-        {
-          id: "3",
-          name: "Annual Sports Fee",
-          description: "Fee for sports activities and equipment",
-          amount: 1200,
-          currency: "INR",
-          frequency: "annual",
-          category: "sports",
-          applicableClasses: ["1", "2", "3"],
-          status: "active",
-          createdAt: "2024-01-01T00:00:00.000Z",
-        },
-      ];
 
-      const mockStudentFees: StudentFee[] = [
+      // fetch real fee structures from the backend
+      const response = await fetch(
+        "http://localhost:5000/api/fees/structures",
         {
-          id: "1",
-          studentId: "3",
-          studentName: "Alice Johnson",
-          className: "Advanced Mathematics",
-          feeStructureId: "1",
-          feeName: "Monthly Tuition Fee",
-          amount: 4500,
-          dueDate: "2024-04-01",
-          status: "paid",
-          paidAmount: 4500,
-          paidDate: "2024-03-28",
-          paymentMethod: "Card",
-        },
-        {
-          id: "2",
-          studentId: "4",
-          studentName: "Bob Smith",
-          className: "Physics Fundamentals",
-          feeStructureId: "1",
-          feeName: "Monthly Tuition Fee",
-          amount: 4500,
-          dueDate: "2024-04-01",
-          status: "pending",
-          paidAmount: 0,
-        },
-        {
-          id: "3",
-          studentId: "5",
-          studentName: "Carol Davis",
-          className: "Chemistry Lab",
-          feeStructureId: "2",
-          feeName: "Laboratory Fee",
-          amount: 750,
-          dueDate: "2024-03-15",
-          status: "overdue",
-          paidAmount: 0,
-        },
-        {
-          id: "4",
-          studentId: "6",
-          studentName: "David Wilson",
-          className: "Advanced Mathematics",
-          feeStructureId: "1",
-          feeName: "Monthly Tuition Fee",
-          amount: 4500,
-          dueDate: "2024-04-01",
-          status: "partial",
-          paidAmount: 2000,
-          paidDate: "2024-03-25",
-          paymentMethod: "Cash",
-        },
-      ];
+          headers: {
+            Authorization: `Bearer ${user?.tokens?.accessToken}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
-      setFeeStructures(mockFeeStructures);
-      setStudentFees(mockStudentFees);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to fetch fee structures");
+      }
+
+      // map fields if your backend uses _id instead of id
+      const mappedFees = data.data.map((fee: any) => ({
+        id: fee._id,
+        name: fee.name,
+        description: fee.description,
+        amount: fee.amount,
+        currency: fee.currency || "LKR",
+        frequency: fee.frequency,
+        category: fee.category,
+        applicableClasses: fee.applicableClasses || [],
+        status: fee.status,
+        createdAt: fee.createdAt,
+      }));
+
+      setFeeStructures(mappedFees);
+
+      console.log("Fetched fees from backend:", mappedFees); // ✅ Check category here
+
+      // 👇 Optional: fetch student fees too (replace this with your real endpoint if needed)
+      // const studentFeeRes = await fetch("http://localhost:5000/api/fees/student", {
+      //   headers: {
+      //     Authorization: `Bearer ${user?.tokens?.accessToken}`,
+      //   },
+      // });
+      // const studentFeeData = await studentFeeRes.json();
+      // setStudentFees(studentFeeData.data);
     } catch (err: any) {
+      console.error("Error fetching fee structures:", err);
       setError(err.message || "Failed to fetch data");
     } finally {
       setLoading(false);
@@ -204,12 +244,54 @@ const FeesPage: React.FC = () => {
       name: "",
       description: "",
       amount: 0,
-      currency: "USD",
+      currency: "LKR",
       frequency: "monthly",
       category: "tuition",
       applicableClasses: [],
       status: "active",
+      feeStructureId: "",
+      dueDate: "",
     });
+  };
+
+  const handleBulkAssign = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (
+      !formData.feeStructureId ||
+      formData.applicableClasses.length === 0 ||
+      !formData.dueDate
+    ) {
+      setError("Please fill all fields before assigning fees.");
+      return;
+    }
+
+    try {
+      const response = await fetch("http://localhost:5000/api/fees/assign", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${user?.tokens?.accessToken}`,
+        },
+        body: JSON.stringify({
+          feeStructureId: "tuition",
+          classIds: formData.applicableClasses,
+          dueDate: formData.dueDate,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.status === "success") {
+        await fetchData(); // refresh fee data
+        handleCloseModal(); // close modal
+      } else {
+        setError(data.message || "Bulk assignment failed.");
+      }
+    } catch (err: any) {
+      console.error("Bulk assign error:", err);
+      setError(err.message || "Something went wrong while assigning fees.");
+    }
   };
 
   const feeStructureColumns = [
@@ -647,7 +729,17 @@ const FeesPage: React.FC = () => {
                 <select
                   value={formData.category}
                   onChange={(e) =>
-                    setFormData({ ...formData, category: e.target.value })
+                    setFormData({
+                      ...formData,
+                      category: e.target.value as
+                        | "tuition"
+                        | "lab"
+                        | "library"
+                        | "sports"
+                        | "transport"
+                        | "exam"
+                        | "other",
+                    })
                   }
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
                 >
@@ -721,7 +813,14 @@ const FeesPage: React.FC = () => {
                 <select
                   value={formData.frequency}
                   onChange={(e) =>
-                    setFormData({ ...formData, frequency: e.target.value })
+                    setFormData({
+                      ...formData,
+                      frequency: e.target.value as
+                        | "monthly"
+                        | "semester"
+                        | "annual"
+                        | "one-time",
+                    })
                   }
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
                 >
@@ -785,10 +884,7 @@ const FeesPage: React.FC = () => {
                   </label>
                   <select className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500">
                     <option value="cash">Cash</option>
-                    <option value="card">Card</option>
                     <option value="bank_transfer">Bank Transfer</option>
-                    <option value="upi">UPI</option>
-                    <option value="check">Check</option>
                   </select>
                 </div>
               </div>
@@ -836,41 +932,63 @@ const FeesPage: React.FC = () => {
         )}
 
         {modalType === "bulk-assign" && (
-          <div className="space-y-4">
-            <div>
+          <form onSubmit={handleBulkAssign} className="space-y-4">
+            {/* Fee Structure Dropdown */}
+            {/* <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Select Fee Structure
               </label>
-              <select className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500">
+              <select
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
+                value={formData.feeStructureId}
+                onChange={(e) =>
+                  setFormData({ ...formData, feeStructureId: e.target.value })
+                }
+              >
                 <option value="">Choose fee structure</option>
                 {feeStructures.map((fee) => (
                   <option key={fee.id} value={fee.id}>
-                    {fee.name} - ₹{fee.amount}
+                    {fee.name} ({fee.category}) - Rs {fee.amount}
                   </option>
                 ))}
               </select>
-            </div>
+            </div> */}
 
+            {/* Class Checkboxes */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Select Classes
               </label>
               <div className="space-y-2 max-h-40 overflow-y-auto border border-gray-300 rounded-md p-3">
-                <label className="flex items-center">
-                  <input type="checkbox" className="mr-2" />
-                  <span className="text-sm">Advanced Mathematics</span>
-                </label>
-                <label className="flex items-center">
-                  <input type="checkbox" className="mr-2" />
-                  <span className="text-sm">Physics Fundamentals</span>
-                </label>
-                <label className="flex items-center">
-                  <input type="checkbox" className="mr-2" />
-                  <span className="text-sm">Chemistry Lab</span>
-                </label>
+                {classList.map((cls) => (
+                  <label key={cls.id} className="flex items-center">
+                    <input
+                      type="checkbox"
+                      className="mr-2"
+                      value={cls.id}
+                      onChange={(e) => {
+                        const id = e.target.value;
+                        setFormData((prev) => ({
+                          ...prev,
+                          applicableClasses: e.target.checked
+                            ? [...prev.applicableClasses, id]
+                            : prev.applicableClasses.filter(
+                                (cid) => cid !== id
+                              ),
+                        }));
+                      }}
+                      checked={formData.applicableClasses.includes(cls.id)}
+                    />
+                    <span className="text-sm">
+                      {cls.title} (Rs. {cls.monthlyFee?.amount || 0}{" "}
+                      {cls.monthlyFee?.currency || "LKR"})
+                    </span>
+                  </label>
+                ))}
               </div>
             </div>
 
+            {/* Due Date */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Due Date
@@ -878,10 +996,15 @@ const FeesPage: React.FC = () => {
               <input
                 type="date"
                 required
+                value={formData.dueDate}
+                onChange={(e) =>
+                  setFormData({ ...formData, dueDate: e.target.value })
+                }
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
               />
             </div>
 
+            {/* Action Buttons */}
             <div className="flex items-center justify-end space-x-3 pt-4">
               <button
                 type="button"
@@ -897,7 +1020,7 @@ const FeesPage: React.FC = () => {
                 Assign Fees
               </button>
             </div>
-          </div>
+          </form>
         )}
       </Modal>
     </div>

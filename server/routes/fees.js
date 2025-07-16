@@ -16,18 +16,25 @@ const router = express.Router();
 // @route   GET /api/fees/structures
 // @desc    Get all fee structures
 // @access  Private (Admin)
-router.get("/structures", auth, authorize(["admin"]), async (req, res) => {
-  try {
-    const structures = await FeeStructure.find().populate(
-      "applicableClasses",
-      "title"
-    );
-    res.json({ status: "success", data: structures });
-  } catch (error) {
-    console.error("Get fee structures error:", error);
-    res.status(500).json({ status: "error", message: "Internal server error" });
+router.get(
+  "/structures",
+  auth,
+  authorize(["admin", "teacher"]),
+  async (req, res) => {
+    try {
+      const structures = await FeeStructure.find().populate(
+        "applicableClasses",
+        "title"
+      );
+      res.json({ status: "success", data: structures });
+    } catch (error) {
+      console.error("Get fee structures error:", error);
+      res
+        .status(500)
+        .json({ status: "error", message: "Internal server error" });
+    }
   }
-});
+);
 
 // @route   POST /api/fees/structures
 // @desc    Create a new fee structure
@@ -77,18 +84,25 @@ router.post(
 // @route   GET /api/fees/student
 // @desc    Get all student fee records
 // @access  Private (Admin)
-router.get("/student", auth, authorize(["admin"]), async (req, res) => {
-  try {
-    const records = await StudentFee.find()
-      .populate("studentId", "firstName lastName")
-      .populate("classId", "title")
-      .populate("feeStructureId", "name");
-    res.json({ status: "success", data: records });
-  } catch (error) {
-    console.error("Get student fees error:", error);
-    res.status(500).json({ status: "error", message: "Internal server error" });
+router.get(
+  "/student",
+  auth,
+  authorize(["admin", "teacher"]),
+  async (req, res) => {
+    try {
+      const records = await StudentFee.find()
+        .populate("studentId", "firstName lastName")
+        .populate("classId", "title")
+        .populate("feeStructureId", "name");
+      res.json({ status: "success", data: records });
+    } catch (error) {
+      console.error("Get student fees error:", error);
+      res
+        .status(500)
+        .json({ status: "error", message: "Internal server error" });
+    }
   }
-});
+);
 
 // @route   PATCH /api/fees/student/:id/pay
 // @desc    Record a payment for a student
@@ -96,7 +110,7 @@ router.get("/student", auth, authorize(["admin"]), async (req, res) => {
 router.patch(
   "/student/:id/pay",
   auth,
-  authorize(["admin"]),
+  authorize(["admin", "teacher"]),
   async (req, res) => {
     const { paidAmount, paymentMethod, paidDate, notes } = req.body;
     try {
@@ -136,43 +150,115 @@ router.patch(
 // @route   POST /api/fees/assign
 // @desc    Assign a fee to all students in selected classes
 // @access  Private (Admin)
-router.post("/assign", auth, authorize(["admin"]), async (req, res) => {
-  const { feeStructureId, classIds, dueDate } = req.body;
-  try {
-    const fee = await FeeStructure.findById(feeStructureId);
-    if (!fee)
-      return res
-        .status(404)
-        .json({ status: "error", message: "Fee structure not found" });
+// router.post(
+//   "/assign",
+//   auth,
+//   authorize(["admin", "teacher"]),
+//   async (req, res) => {
+//     const { feeStructureId, classIds, dueDate } = req.body;
+//     try {
+//       const fee = await FeeStructure.findById(feeStructureId);
+//       if (!fee)
+//         return res
+//           .status(404)
+//           .json({ status: "error", message: "Fee structure not found" });
 
-    const classes = await Class.find({ _id: { $in: classIds } });
-    let createdFees = [];
+//       const classes = await Class.find({ _id: { $in: classIds } });
+//       let createdFees = [];
 
-    for (const classItem of classes) {
-      const students = await User.find({
-        _id: { $in: classItem.enrolledStudents.map((s) => s.studentId) },
-      });
+//       for (const classItem of classes) {
+//         const students = await User.find({
+//           _id: { $in: classItem.enrolledStudents.map((s) => s.studentId) },
+//         });
 
-      for (const student of students) {
-        const record = new StudentFee({
-          studentId: student._id,
-          classId: classItem._id,
-          feeStructureId: fee._id,
-          amount: fee.amount,
-          currency: fee.currency,
-          dueDate,
-          status: "pending",
+//         for (const student of students) {
+//           const record = new StudentFee({
+//             studentId: student._id,
+//             classId: classItem._id,
+//             feeStructureId: fee._id,
+//             // amount: fee.amount,
+//             amount:
+//               fee.category === "tuition" && classItem.monthlyFee
+//                 ? classItem.monthlyFee.amount
+//                 : fee.amount,
+//             currency: fee.currency,
+//             dueDate,
+//             status: "pending",
+//           });
+//           await record.save();
+//           createdFees.push(record);
+//         }
+//       }
+
+//       res.status(201).json({ status: "success", data: createdFees });
+//     } catch (error) {
+//       console.error("Bulk assign error:", error);
+//       res
+//         .status(500)
+//         .json({ status: "error", message: "Internal server error" });
+//     }
+//   }
+// );
+// @route   POST /api/fees/assign
+// @desc    Assign a fee to all students in selected classes
+// @access  Private (Admin, Teacher)
+router.post(
+  "/assign",
+  auth,
+  authorize(["admin", "teacher"]),
+  async (req, res) => {
+    const { feeStructureId, classIds, dueDate } = req.body;
+
+    try {
+      const fee = await FeeStructure.findById(feeStructureId);
+      if (!fee)
+        return res.status(404).json({
+          status: "error",
+          message: "Fee structure not found",
         });
-        await record.save();
-        createdFees.push(record);
-      }
-    }
 
-    res.status(201).json({ status: "success", data: createdFees });
-  } catch (error) {
-    console.error("Bulk assign error:", error);
-    res.status(500).json({ status: "error", message: "Internal server error" });
+      const classes = await Class.find({ _id: { $in: classIds } });
+      let createdFees = [];
+
+      for (const classItem of classes) {
+        const students = await User.find({
+          _id: { $in: classItem.enrolledStudents.map((s) => s.studentId) },
+        });
+
+        const classFeeAmount =
+          fee.category === "tuition" && classItem.monthlyFee
+            ? classItem.monthlyFee.amount
+            : fee.amount;
+
+        const currency =
+          fee.category === "tuition" && classItem.monthlyFee?.currency
+            ? classItem.monthlyFee.currency
+            : fee.currency;
+
+        for (const student of students) {
+          const record = new StudentFee({
+            studentId: student._id,
+            classId: classItem._id,
+            feeStructureId: fee._id,
+            amount: classFeeAmount,
+            currency,
+            dueDate,
+            status: "pending",
+          });
+
+          await record.save();
+          createdFees.push(record);
+        }
+      }
+
+      res.status(201).json({ status: "success", data: createdFees });
+    } catch (error) {
+      console.error("Bulk assign error:", error);
+      res
+        .status(500)
+        .json({ status: "error", message: "Internal server error" });
+    }
   }
-});
+);
 
 export default router;
