@@ -1,9 +1,19 @@
 import React, { useState, useEffect } from "react";
-import { Plus, Edit, Trash2, BookOpen } from "lucide-react";
+import {
+  Plus,
+  Edit,
+  Trash2,
+  BookOpen,
+  Users,
+  Eye,
+  UserPlus,
+  X,
+} from "lucide-react";
 import DataTable from "../Common/DataTable";
 import Modal from "../Common/Modal";
 import { classesAPI, locationsAPI, usersAPI } from "../../utils/api";
 import AssignStudentsModal from "../Classes/AssignStudentsModal";
+import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 export type Frequency = "monthly" | "semester" | "annual" | "one-time";
@@ -34,7 +44,7 @@ export interface Class {
   locationId: {
     _id: string;
     name: string;
-    address: any; // Consider defining a structured Address type later
+    address: any;
   };
 
   teacherId: {
@@ -45,10 +55,10 @@ export interface Class {
   };
 
   schedule: {
-    dayOfWeek: number; // 0 = Sunday, 6 = Saturday
-    startTime: string; // HH:MM
-    endTime: string; // HH:MM
-    duration: number; // in minutes
+    dayOfWeek: number;
+    startTime: string;
+    endTime: string;
+    duration: number;
   };
 
   capacity: number;
@@ -59,12 +69,13 @@ export interface Class {
     currency: string;
   };
 
-  fees?: Fee[]; // Optional; used only in UI for form inputs
+  fees?: Fee[];
+  enrolledStudents?: any[];
 
   status: "active" | "inactive" | "completed" | "cancelled";
 
-  startDate: string; // ISO string
-  endDate: string; // ISO string
+  startDate: string;
+  endDate: string;
 }
 
 const ClassesPage: React.FC = () => {
@@ -78,6 +89,18 @@ const ClassesPage: React.FC = () => {
   const [selectedClass, setSelectedClass] = useState<Class | null>(null);
   const [selectedLocation, setSelectedLocation] = useState("all");
   const [selectedGrade, setSelectedGrade] = useState("all");
+
+  // New state for student modals
+  const [showStudentsModal, setShowStudentsModal] = useState(false);
+  const [showStudentDetailsModal, setShowStudentDetailsModal] = useState(false);
+  const [selectedStudentForDetails, setSelectedStudentForDetails] =
+    useState<any>(null);
+  const [showAddStudentsModal, setShowAddStudentsModal] = useState(false);
+  const [unassignedStudents, setUnassignedStudents] = useState<any[]>([]);
+  const [selectedStudentsToAdd, setSelectedStudentsToAdd] = useState<string[]>(
+    []
+  );
+
   const [formData, setFormData] = useState({
     title: "",
     level: "",
@@ -91,7 +114,7 @@ const ClassesPage: React.FC = () => {
     capacity: 30,
     fees: [
       {
-        name: "Monthly tuition",
+        name: "Monthly Tuition",
         amount: 450,
         frequency: "monthly",
         category: "tuition",
@@ -149,6 +172,106 @@ const ClassesPage: React.FC = () => {
     setShowAssignModal(true);
   };
 
+  // New functions for student management
+  const handleViewStudents = (classItem: Class) => {
+    setSelectedClass(classItem);
+    setShowStudentsModal(true);
+  };
+
+  const handleViewStudentDetails = (student: any) => {
+    setSelectedStudentForDetails(student);
+    setShowStudentDetailsModal(true);
+  };
+
+  const handleCloseStudentsModal = () => {
+    setShowStudentsModal(false);
+    setSelectedClass(null);
+  };
+
+  const handleCloseStudentDetailsModal = () => {
+    setShowStudentDetailsModal(false);
+    setSelectedStudentForDetails(null);
+  };
+
+  const handleOpenAddStudentsModal = async () => {
+    if (!selectedClass) return;
+
+    try {
+      const token = localStorage.getItem("accessToken") ?? undefined;
+
+      // Get all active students
+      const allStudentsResponse = await usersAPI.getUsers(
+        { role: "student", status: "active" },
+        token
+      );
+      const allStudents = allStudentsResponse.data.users || [];
+
+      // Get all classes to find assigned students
+      const allClassesResponse = await classesAPI.getClasses({}, token);
+      const allClasses = allClassesResponse.data.classes || [];
+
+      // Create a set of all assigned student IDs
+      const assignedStudentIds = new Set();
+      allClasses.forEach((classItem: Class) => {
+        if (classItem.enrolledStudents) {
+          classItem.enrolledStudents.forEach((enrollment: any) => {
+            assignedStudentIds.add(enrollment.studentId || enrollment._id);
+          });
+        }
+      });
+
+      // Filter out assigned students
+      const unassigned = allStudents.filter(
+        (student: any) => !assignedStudentIds.has(student._id || student.id)
+      );
+
+      setUnassignedStudents(unassigned);
+      setShowAddStudentsModal(true);
+      setSelectedStudentsToAdd([]);
+    } catch (err: any) {
+      console.error("Failed to fetch unassigned students:", err);
+      toast.error("Failed to fetch unassigned students");
+    }
+  };
+
+  const handleCloseAddStudentsModal = () => {
+    setShowAddStudentsModal(false);
+    setSelectedStudentsToAdd([]);
+    setUnassignedStudents([]);
+  };
+
+  const handleStudentSelection = (studentId: string, isSelected: boolean) => {
+    if (isSelected) {
+      setSelectedStudentsToAdd((prev) => [...prev, studentId]);
+    } else {
+      setSelectedStudentsToAdd((prev) => prev.filter((id) => id !== studentId));
+    }
+  };
+
+  const handleAddSelectedStudents = async () => {
+    if (!selectedClass || selectedStudentsToAdd.length === 0) return;
+
+    try {
+      const token = localStorage.getItem("accessToken") ?? undefined;
+
+      // Add each selected student to the class
+      for (const studentId of selectedStudentsToAdd) {
+        await classesAPI.enrollStudent(selectedClass._id, studentId, token);
+      }
+
+      // Refresh data and close modal
+      await refreshClasses();
+      handleCloseAddStudentsModal();
+
+      toast.success(
+        `Successfully added ${selectedStudentsToAdd.length} student(s) to the class`
+      );
+    } catch (err: any) {
+      console.error("Failed to add students to class:", err);
+      toast.error("Failed to add students to class");
+    }
+  };
+
   // Refreshes the class list by refetching from the server
   const refreshClasses = async () => {
     try {
@@ -190,7 +313,7 @@ const ClassesPage: React.FC = () => {
       capacity: 30,
       fees: [
         {
-          name: "Monthly tuition",
+          name: "Monthly Tuition",
           amount: 450,
           frequency: "monthly",
           category: "tuition",
@@ -271,7 +394,7 @@ const ClassesPage: React.FC = () => {
       capacity: classItem.capacity,
       fees: classItem.fees || [
         {
-          name: "Monthly tuition",
+          name: "Monthly Tuition",
           amount: 450,
           frequency: "monthly",
           category: "tuition",
@@ -313,8 +436,10 @@ const ClassesPage: React.FC = () => {
         const token = localStorage.getItem("accessToken") ?? undefined;
         await classesAPI.deleteClass(id, token);
         await fetchData();
+        toast.success("Class deleted successfully");
       } catch (err: any) {
         setError(err.message || "Failed to delete class");
+        toast.error("Failed to delete class");
       }
     }
   };
@@ -437,7 +562,7 @@ const ClassesPage: React.FC = () => {
               {row.fees.slice(0, 2).map((fee, index) => (
                 <div key={index} className="text-sm">
                   <span className="font-medium text-gray-900">
-                    ₹{fee.amount}
+                    Rs {fee.amount}
                   </span>
                   <span className="text-gray-500 ml-1">({fee.frequency})</span>
                 </div>
@@ -479,6 +604,13 @@ const ClassesPage: React.FC = () => {
       label: "Actions",
       render: (value: any, row: Class) => (
         <div className="flex items-center space-x-2">
+          <button
+            onClick={() => handleViewStudents(row)}
+            className="text-purple-600 hover:text-purple-800 transition-colors duration-200"
+            title="View Students"
+          >
+            <Users className="w-4 h-4" />
+          </button>
           <button
             onClick={() => handleEdit(row)}
             className="text-blue-600 hover:text-blue-800 transition-colors duration-200"
@@ -630,6 +762,475 @@ const ClassesPage: React.FC = () => {
           )}
         </>
       )}
+
+      {/* View Students Modal */}
+      <Modal
+        isOpen={showStudentsModal}
+        onClose={handleCloseStudentsModal}
+        title={`Students in ${selectedClass?.title || "Class"}`}
+        size="lg"
+      >
+        {selectedClass && (
+          <div className="space-y-4">
+            {/* Class Info Header */}
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="font-semibold text-gray-900">
+                    {selectedClass.title}
+                  </h4>
+                  <p className="text-sm text-gray-600">
+                    {selectedClass.subject} • {selectedClass.level}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-medium text-gray-900">
+                    {selectedClass.currentEnrollment} / {selectedClass.capacity}{" "}
+                    Students
+                  </p>
+                  <div className="w-24 bg-gray-200 rounded-full h-2 mt-1">
+                    <div
+                      className="bg-blue-500 h-2 rounded-full"
+                      style={{
+                        width: `${
+                          (selectedClass.currentEnrollment /
+                            selectedClass.capacity) *
+                          100
+                        }%`,
+                      }}
+                    ></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Students List */}
+            {selectedClass.enrolledStudents &&
+            selectedClass.enrolledStudents.length > 0 ? (
+              <div className="space-y-3">
+                <h5 className="font-medium text-gray-900">Enrolled Students</h5>
+                <div className="max-h-96 overflow-y-auto">
+                  {selectedClass.enrolledStudents.map((enrollment, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg hover:bg-gray-50"
+                    >
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
+                          <span className="text-white font-medium text-sm">
+                            {enrollment.firstName?.charAt(0) || "S"}
+                            {enrollment.lastName?.charAt(0) || ""}
+                          </span>
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-900">
+                            {enrollment.firstName && enrollment.lastName
+                              ? `${enrollment.firstName} ${enrollment.lastName}`
+                              : enrollment.studentName || "Student Name"}
+                          </p>
+                          <p className="text-sm text-gray-500">
+                            Enrolled:{" "}
+                            {enrollment.enrollmentDate
+                              ? new Date(
+                                  enrollment.enrollmentDate
+                                ).toLocaleDateString()
+                              : "N/A"}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <span
+                          className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            enrollment.status === "active"
+                              ? "bg-green-100 text-green-800"
+                              : enrollment.status === "inactive"
+                              ? "bg-gray-100 text-gray-800"
+                              : enrollment.status === "completed"
+                              ? "bg-blue-100 text-blue-800"
+                              : "bg-red-100 text-red-800"
+                          }`}
+                        >
+                          {enrollment.status?.charAt(0).toUpperCase() +
+                            enrollment.status?.slice(1) || "Active"}
+                        </span>
+                        <button
+                          onClick={() => handleViewStudentDetails(enrollment)}
+                          className="p-1 text-blue-600 hover:text-blue-800 transition-colors duration-200"
+                          title="View Student Details"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <Users className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                <h4 className="text-lg font-medium text-gray-900">
+                  No Students Enrolled
+                </h4>
+                <p className="text-gray-500 mt-1">
+                  This class doesn't have any enrolled students yet.
+                </p>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex items-center justify-end space-x-3 pt-4 border-t border-gray-200">
+              <button
+                onClick={handleCloseStudentsModal}
+                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors duration-200"
+              >
+                Close
+              </button>
+              <button
+                onClick={handleOpenAddStudentsModal}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors duration-200 flex items-center space-x-2"
+              >
+                <UserPlus className="w-4 h-4" />
+                <span>Add Students</span>
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Student Details Modal */}
+      <Modal
+        isOpen={showStudentDetailsModal}
+        onClose={handleCloseStudentDetailsModal}
+        title="Student Details"
+        size="md"
+      >
+        {selectedStudentForDetails && (
+          <div className="space-y-6">
+            {/* Student Header */}
+            <div className="flex items-center space-x-4">
+              <div className="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center">
+                <span className="text-white text-xl font-medium">
+                  {selectedStudentForDetails.firstName?.charAt(0) || "S"}
+                  {selectedStudentForDetails.lastName?.charAt(0) || ""}
+                </span>
+              </div>
+              <div>
+                <h3 className="text-xl font-semibold text-gray-900">
+                  {selectedStudentForDetails.firstName &&
+                  selectedStudentForDetails.lastName
+                    ? `${selectedStudentForDetails.firstName} ${selectedStudentForDetails.lastName}`
+                    : selectedStudentForDetails.studentName || "Student Name"}
+                </h3>
+                <p className="text-gray-600">
+                  {selectedStudentForDetails.email || "student@example.com"}
+                </p>
+              </div>
+            </div>
+
+            {/* Student Information */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Student ID
+                </label>
+                <p className="text-sm text-gray-900">
+                  {selectedStudentForDetails._id ||
+                    selectedStudentForDetails.studentId ||
+                    "STU-001"}
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Enrollment Status
+                </label>
+                <span
+                  className={`px-2 py-1 rounded-full text-xs font-medium ${
+                    selectedStudentForDetails.status === "active"
+                      ? "bg-green-100 text-green-800"
+                      : selectedStudentForDetails.status === "inactive"
+                      ? "bg-gray-100 text-gray-800"
+                      : selectedStudentForDetails.status === "completed"
+                      ? "bg-blue-100 text-blue-800"
+                      : "bg-red-100 text-red-800"
+                  }`}
+                >
+                  {selectedStudentForDetails.status?.charAt(0).toUpperCase() +
+                    selectedStudentForDetails.status?.slice(1) || "Active"}
+                </span>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Enrollment Date
+                </label>
+                <p className="text-sm text-gray-900">
+                  {selectedStudentForDetails.enrollmentDate
+                    ? new Date(
+                        selectedStudentForDetails.enrollmentDate
+                      ).toLocaleDateString()
+                    : "N/A"}
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Phone Number
+                </label>
+                <p className="text-sm text-gray-900">
+                  {selectedStudentForDetails.phoneNumber || "+94 77 123 4567"}
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Parent Email
+                </label>
+                <p className="text-sm text-gray-900">
+                  {selectedStudentForDetails.parentEmail ||
+                    "parent@example.com"}
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Location
+                </label>
+                <p className="text-sm text-gray-900">
+                  {selectedStudentForDetails.locationName ||
+                    selectedClass?.locationId?.name ||
+                    "N/A"}
+                </p>
+              </div>
+            </div>
+
+            {/* Academic Information */}
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <h4 className="font-medium text-gray-900 mb-3">
+                Academic Information
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Current Grade
+                  </label>
+                  <p className="text-sm text-gray-900">
+                    {selectedClass?.level || "N/A"}
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Subject
+                  </label>
+                  <p className="text-sm text-gray-900">
+                    {selectedClass?.subject || "N/A"}
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Attendance Rate
+                  </label>
+                  <p className="text-sm text-gray-900">96.5%</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Last Grade
+                  </label>
+                  <p className="text-sm text-gray-900">A-</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Notes */}
+            {selectedStudentForDetails.notes && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Notes
+                </label>
+                <p className="text-sm text-gray-900 bg-gray-50 p-3 rounded-lg">
+                  {selectedStudentForDetails.notes}
+                </p>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex items-center justify-end space-x-3 pt-4 border-t border-gray-200">
+              <button
+                onClick={handleCloseStudentDetailsModal}
+                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors duration-200"
+              >
+                Close
+              </button>
+              <button
+                onClick={() => {
+                  toast.info(
+                    "Edit student functionality would be implemented here"
+                  );
+                }}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors duration-200"
+              >
+                Edit Student
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Add Students Modal */}
+      <Modal
+        isOpen={showAddStudentsModal}
+        onClose={handleCloseAddStudentsModal}
+        title={`Add Students to ${selectedClass?.title || "Class"}`}
+        size="lg"
+      >
+        {selectedClass && (
+          <div className="space-y-4">
+            {/* Class Info Header */}
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="font-semibold text-gray-900">
+                    {selectedClass.title}
+                  </h4>
+                  <p className="text-sm text-gray-600">
+                    {selectedClass.subject} • {selectedClass.level}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-medium text-gray-900">
+                    Available Spots:{" "}
+                    {selectedClass.capacity - selectedClass.currentEnrollment}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    Current: {selectedClass.currentEnrollment} /{" "}
+                    {selectedClass.capacity}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Selection Summary */}
+            {selectedStudentsToAdd.length > 0 && (
+              <div className="bg-blue-50 p-3 rounded-lg">
+                <p className="text-sm font-medium text-blue-900">
+                  {selectedStudentsToAdd.length} student(s) selected for
+                  enrollment
+                </p>
+              </div>
+            )}
+
+            {/* Unassigned Students List */}
+            {unassignedStudents.length > 0 ? (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h5 className="font-medium text-gray-900">
+                    Available Students
+                  </h5>
+                  <p className="text-sm text-gray-500">
+                    {unassignedStudents.length} students available
+                  </p>
+                </div>
+                <div className="max-h-96 overflow-y-auto space-y-2">
+                  {unassignedStudents.map((student) => {
+                    const isSelected = selectedStudentsToAdd.includes(
+                      student._id || student.id
+                    );
+                    return (
+                      <div
+                        key={student._id || student.id}
+                        className={`flex items-center justify-between p-3 border rounded-lg cursor-pointer transition-colors duration-200 ${
+                          isSelected
+                            ? "border-blue-500 bg-blue-50"
+                            : "border-gray-200 bg-white hover:bg-gray-50"
+                        }`}
+                        onClick={() =>
+                          handleStudentSelection(
+                            student._id || student.id,
+                            !isSelected
+                          )
+                        }
+                      >
+                        <div className="flex items-center space-x-3">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={(e) =>
+                              handleStudentSelection(
+                                student._id || student.id,
+                                e.target.checked
+                              )
+                            }
+                            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                          <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
+                            <span className="text-white font-medium text-sm">
+                              {student.firstName?.charAt(0) || "S"}
+                              {student.lastName?.charAt(0) || ""}
+                            </span>
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900">
+                              {student.firstName && student.lastName
+                                ? `${student.firstName} ${student.lastName}`
+                                : "Student Name"}
+                            </p>
+                            <p className="text-sm text-gray-500">
+                              {student.email}
+                            </p>
+                            {student.phoneNumber && (
+                              <p className="text-xs text-gray-500">
+                                {student.phoneNumber}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
+                            Available
+                          </span>
+                          {student.locationName && (
+                            <p className="text-xs text-gray-500 mt-1">
+                              {student.locationName}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <Users className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                <h4 className="text-lg font-medium text-gray-900">
+                  No Available Students
+                </h4>
+                <p className="text-gray-500 mt-1">
+                  All students are already assigned to classes.
+                </p>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex items-center justify-end space-x-3 pt-4 border-t border-gray-200">
+              <button
+                onClick={handleCloseAddStudentsModal}
+                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors duration-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddSelectedStudents}
+                disabled={selectedStudentsToAdd.length === 0}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Add{" "}
+                {selectedStudentsToAdd.length > 0
+                  ? `${selectedStudentsToAdd.length} `
+                  : ""}
+                Student{selectedStudentsToAdd.length !== 1 ? "s" : ""}
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
       <Modal
         isOpen={isModalOpen}
         onClose={handleCloseModal}
@@ -882,7 +1483,7 @@ const ClassesPage: React.FC = () => {
                   <div>
                     <div className="relative">
                       <span className="absolute left-2 top-1 text-sm text-gray-500">
-                        LKR
+                        Rs
                       </span>
                       <input
                         type="number"
@@ -896,7 +1497,7 @@ const ClassesPage: React.FC = () => {
                             parseFloat(e.target.value) || 0;
                           setFormData({ ...formData, fees: newFees });
                         }}
-                        className="w-full pl-6 pr-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        className="w-full pl-8 pr-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                       />
                     </div>
                   </div>

@@ -52,7 +52,14 @@ const sidebarItems: SidebarItem[] = [
     icon: <BookOpen className="w-5 h-5" />,
     label: "Classes",
     href: "/classes",
-    roles: ["admin", "teacher"],
+    roles: ["admin"],
+    // roles: ["admin", "teacher"],
+  },
+  {
+    icon: <BookOpen className="w-5 h-5" />,
+    label: "My Classes",
+    href: "/teacher-classes",
+    roles: ["teacher"],
   },
   {
     icon: <UserCheck className="w-5 h-5" />,

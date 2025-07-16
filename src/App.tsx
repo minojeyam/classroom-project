@@ -13,6 +13,7 @@ import PendingApprovalsPage from "./components/Pages/PendingApprovalsPage";
 import ComingSoonPage from "./components/Pages/ComingSoonPage";
 import LocationsPage from "./components/Pages/LocationsPage";
 import ClassesPage from "./components/Pages/ClassesPage";
+import TeacherClassesPage from "./components/Pages/TeacherClassesPage";
 
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -32,6 +33,7 @@ const pages = {
   "/reports": "Reports",
   "/import": "Bulk Import",
   "/settings": "Settings",
+  "/teacher-classes": "My Classes",
 };
 
 const AppContent: React.FC = () => {
@@ -74,6 +76,8 @@ const AppContent: React.FC = () => {
         return <LocationsPage />;
       case "/classes":
         return <ClassesPage />;
+      case "/teacher-classes":
+        return <TeacherClassesPage />;
 
       case "/attendance":
         return (
@@ -101,13 +105,6 @@ const AppContent: React.FC = () => {
           <ComingSoonPage
             feature="Schedule Management"
             description="View and manage class schedules, timetables, and events."
-          />
-        );
-      case "/exams":
-        return (
-          <ComingSoonPage
-            feature="Exam Management"
-            description="Create exams, record marks, and generate report cards."
           />
         );
       case "/notices":

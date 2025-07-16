@@ -1,6 +1,6 @@
 # IO Space - Multi-Location Classroom Management System
 
-A comprehensive classroom management system for multi-location educational institutions built with React, Node.js, Express, and MongoDB.
+A comprehensive classroom management system for multi-location educational instituitions built with React, Node.js, Express, and MongoDB.
 
 ## Prerequisites
 
@@ -15,6 +15,7 @@ Before running this project locally, make sure you have the following installed:
 ### Option 1: Install MongoDB Locally (Recommended)
 
 #### For Windows:
+
 1. Download MongoDB Community Server from [MongoDB Download Center](https://www.mongodb.com/try/download/community)
 2. Run the installer and follow the setup wizard
 3. Choose "Complete" installation
@@ -22,6 +23,7 @@ Before running this project locally, make sure you have the following installed:
 5. MongoDB will start automatically
 
 #### For macOS:
+
 ```bash
 # Using Homebrew (recommended)
 brew tap mongodb/brew
@@ -32,6 +34,7 @@ brew services start mongodb/brew/mongodb-community
 ```
 
 #### For Linux (Ubuntu/Debian):
+
 ```bash
 # Import MongoDB public GPG key
 wget -qO - https://www.mongodb.org/static/pgp/server-6.0.asc | sudo apt-key add -
@@ -63,17 +66,20 @@ If you prefer using MongoDB Atlas (cloud database):
 ## Project Setup
 
 ### 1. Clone the Repository
+
 ```bash
 git clone <your-repo-url>
 cd io-space
 ```
 
 ### 2. Install Frontend Dependencies
+
 ```bash
 npm install
 ```
 
 ### 3. Install Backend Dependencies
+
 ```bash
 cd server
 npm install
@@ -103,6 +109,7 @@ BCRYPT_SALT_ROUNDS=12
 ```
 
 **Important**: In production, make sure to:
+
 - Use strong, unique JWT secrets
 - Use environment-specific database URLs
 - Enable authentication on your MongoDB instance
@@ -112,19 +119,24 @@ BCRYPT_SALT_ROUNDS=12
 #### Option 1: Start Both Servers Separately
 
 **Terminal 1 - Start Backend Server:**
+
 ```bash
 cd server
 npm run dev
 ```
+
 The backend will run on `http://localhost:5000`
 
 **Terminal 2 - Start Frontend Server:**
+
 ```bash
 npm run dev
 ```
+
 The frontend will run on `http://localhost:5173`
 
 #### Option 2: Start Both Servers Concurrently
+
 ```bash
 # Install concurrently globally (if not already installed)
 npm install -g concurrently
@@ -136,14 +148,17 @@ npm run dev:all
 ## Verification
 
 ### 1. Check MongoDB Connection
+
 - Open MongoDB Compass (if installed) and connect to `mongodb://localhost:27017`
 - Or use the MongoDB shell: `mongosh`
 
 ### 2. Check Backend API
+
 - Visit `http://localhost:5000/api/health`
 - You should see a JSON response indicating the server is running
 
 ### 3. Check Frontend
+
 - Visit `http://localhost:5173`
 - You should see the IO Space login page
 
@@ -161,11 +176,11 @@ use io-space
 // Update a user to be an admin
 db.users.updateOne(
   { email: "your-email@example.com" },
-  { 
-    $set: { 
-      role: "admin", 
-      status: "active" 
-    } 
+  {
+    $set: {
+      role: "admin",
+      status: "active"
+    }
   }
 )
 ```
@@ -175,11 +190,11 @@ db.users.updateOne(
 The application includes demo accounts for testing:
 
 - **Admin**: admin@school.com / password
-- **Teacher**: teacher@school.com / password  
+- **Teacher**: teacher@school.com / password
 - **Student**: student@school.com / password
 - **Parent**: parent@school.com / password
 
-*Note: These are mock accounts for frontend demonstration. For full functionality, register new accounts through the registration form.*
+_Note: These are mock accounts for frontend demonstration. For full functionality, register new accounts through the registration form._
 
 ## Features
 
@@ -196,6 +211,7 @@ The application includes demo accounts for testing:
 ## API Endpoints
 
 ### Authentication
+
 - `POST /api/auth/register` - Register new user
 - `POST /api/auth/login` - User login
 - `GET /api/auth/pending` - Get pending approvals (Admin only)
@@ -203,26 +219,31 @@ The application includes demo accounts for testing:
 - `POST /api/auth/logout` - Logout user
 
 ### Users
+
 - `GET /api/users` - Get all users (Admin only)
 - `PUT /api/users/:id/approve` - Approve user (Admin only)
 - `PUT /api/users/:id/reject` - Reject user (Admin only)
 
 ### Locations
+
 - `GET /api/locations` - Get all locations
 - `POST /api/locations` - Create location (Admin only)
 
 ### Classes
+
 - `GET /api/classes` - Get classes
 - `POST /api/classes` - Create class (Admin only)
 
 ## Troubleshooting
 
 ### MongoDB Connection Issues
+
 1. **Check if MongoDB is running:**
+
    ```bash
    # Windows
    net start MongoDB
-   
+
    # macOS/Linux
    brew services list | grep mongodb
    # or
@@ -230,6 +251,7 @@ The application includes demo accounts for testing:
    ```
 
 2. **Check MongoDB logs:**
+
    ```bash
    # Default log location
    tail -f /var/log/mongodb/mongod.log
@@ -241,7 +263,9 @@ The application includes demo accounts for testing:
    ```
 
 ### Backend Issues
+
 1. **Check if port 5000 is available:**
+
    ```bash
    netstat -an | grep 5000
    ```
@@ -251,6 +275,7 @@ The application includes demo accounts for testing:
 3. **Verify environment variables are loaded**
 
 ### Frontend Issues
+
 1. **Clear browser cache and cookies**
 2. **Check browser console for errors**
 3. **Verify API endpoints are accessible**
@@ -258,6 +283,7 @@ The application includes demo accounts for testing:
 ## Development
 
 ### Project Structure
+
 ```
 io-space/
 ├── src/                    # Frontend React application
@@ -274,6 +300,7 @@ io-space/
 ```
 
 ### Adding New Features
+
 1. Create new components in `src/components/`
 2. Add new API routes in `server/routes/`
 3. Update types in `src/types/index.ts`
