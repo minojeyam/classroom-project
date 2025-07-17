@@ -143,29 +143,35 @@ const FeesPage: React.FC = () => {
     logout(); // Triggers redirect to login page
   };
 
-  const handleFeeStructureSubmit = async (e: React.FormEvent) => {
+  const API_BASE_URL = "http://localhost:5000";
+
+  const handleFeeStructureSubmit = async (
+    e: React.FormEvent<HTMLFormElement>
+  ) => {
     e.preventDefault();
+
     if (!accessToken) {
       setError("Please log in to perform this action.");
       return;
     }
 
-    console.log("Access Token:", accessToken);
-    console.log("Form Data:", formData);
-
     try {
       setError("");
       setSuccess("");
+
       const url = formData.id
-        ? `/api/fees/structures/${formData.id}`
-        : "/api/fees/structures";
-      const method = formData.id ? "put" : "post";
+        ? `${API_BASE_URL}/api/fees/structures/${formData.id}`
+        : `${API_BASE_URL}/api/fees/structures`;
+
+      const method: "post" | "put" = formData.id ? "put" : "post";
+
       await axios({
         method,
         url,
         data: formData,
         headers: { Authorization: `Bearer ${accessToken}` },
       });
+
       setSuccess(
         `Fee structure ${formData.id ? "updated" : "created"} successfully`
       );
@@ -182,7 +188,12 @@ const FeesPage: React.FC = () => {
     }
   };
 
-  const handleDeleteFeeStructure = async (id: string) => {
+  const handleDeleteFeeStructure = async (id: string | undefined) => {
+    if (!id) {
+      console.error("❌ Cannot delete fee structure — ID is undefined");
+      return;
+    }
+
     if (!accessToken) {
       setError("Please log in to perform this action.");
       return;
@@ -192,7 +203,7 @@ const FeesPage: React.FC = () => {
       try {
         setError("");
         setSuccess("");
-        await axios.delete(`/api/fees/structures/${id}`, {
+        await axios.delete(`http://localhost:5000/api/fees/structures/${id}`, {
           headers: { Authorization: `Bearer ${accessToken}` },
         });
         setSuccess("Fee structure deleted successfully");
