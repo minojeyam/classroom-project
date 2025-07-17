@@ -94,6 +94,10 @@ const FeesPage: React.FC = () => {
     classIds: [] as string[],
     dueDate: "",
   });
+  const [filters, setFilters] = useState({
+    classId: "",
+    status: "",
+  });
 
   useEffect(() => {
     fetchData();
@@ -122,9 +126,7 @@ const FeesPage: React.FC = () => {
       ]);
       setFeeStructures(feeStructuresRes.data.data);
       setStudentFees(studentFeesRes.data.data);
-      console.log("ClassesRes:", classesRes.data.data);
-
-      setClasses(classesRes.data.data.classes);
+      setClasses(classesRes.data.data.classes || classesRes.data.data); // Adjust based on API response
     } catch (err: any) {
       if (err.response?.status === 401) {
         setError("Session expired. Please log in again.");
@@ -148,6 +150,9 @@ const FeesPage: React.FC = () => {
       return;
     }
 
+    console.log("Access Token:", accessToken);
+    console.log("Form Data:", formData);
+
     try {
       setError("");
       setSuccess("");
@@ -167,7 +172,13 @@ const FeesPage: React.FC = () => {
       await fetchData();
       handleCloseModal();
     } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to save fee structure");
+      console.error("Error Response:", err.response?.data || err.message);
+      setError(
+        err.response?.data?.message ||
+          `Failed to ${formData.id ? "update" : "create"} fee structure: ${
+            err.message
+          }`
+      );
     }
   };
 
@@ -226,17 +237,40 @@ const FeesPage: React.FC = () => {
       return;
     }
 
+    console.log("User Role:", user?.role);
+    console.log("Access Token:", accessToken);
+    console.log("Bulk Assign Data:", bulkAssignData);
+
+    if (
+      !bulkAssignData.feeStructureId ||
+      bulkAssignData.classIds.length === 0 ||
+      !bulkAssignData.dueDate
+    ) {
+      setError(
+        "Please fill all required fields (Fee Structure, Classes, and Due Date)."
+      );
+      return;
+    }
+
     try {
       setError("");
       setSuccess("");
-      await axios.post("/api/fees/assign", bulkAssignData, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
+      await axios.post(
+        "http://localhost:5000/api/fees/assign",
+        bulkAssignData,
+        {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        }
+      );
       setSuccess("Fees assigned successfully");
       await fetchData();
       handleCloseModal();
     } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to assign fees");
+      console.error("Full Error Response:", err.response?.data || err.message);
+      setError(
+        err.response?.data?.message ||
+          "Failed to assign fees: An internal server error occurred"
+      );
     }
   };
 
@@ -513,6 +547,13 @@ const FeesPage: React.FC = () => {
     );
   }
 
+  // Filter logic for Student Payments
+  const filteredStudentFees = studentFees.filter((fee) => {
+    const classMatch = !filters.classId || fee.className === filters.classId;
+    const statusMatch = !filters.status || fee.status === filters.status;
+    return classMatch && statusMatch;
+  });
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -721,14 +762,51 @@ const FeesPage: React.FC = () => {
           )}
 
           {activeTab === "payments" && (
-            <DataTable
-              columns={studentFeeColumns}
-              data={studentFees}
-              title="Student Payments"
-              searchable={true}
-              filterable={true}
-              exportable={true}
-            />
+            <div>
+              <div className="mb-4 flex space-x-4">
+                <select
+                  value={filters.classId}
+                  onChange={(e) =>
+                    setFilters({ ...filters, classId: e.target.value })
+                  }
+                  className="w-1/3 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
+                >
+                  <option value="">All Classes</option>
+                  {classes.map((classItem) => (
+                    <option key={classItem.id} value={classItem.title}>
+                      {classItem.title}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={filters.status}
+                  onChange={(e) =>
+                    setFilters({ ...filters, status: e.target.value })
+                  }
+                  className="w-1/3 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
+                >
+                  <option value="">All Statuses</option>
+                  <option value="paid">Paid</option>
+                  <option value="pending">Pending</option>
+                  <option value="overdue">Overdue</option>
+                  <option value="partial">Partial</option>
+                </select>
+                <button
+                  onClick={() => setFilters({ classId: "", status: "" })}
+                  className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
+                >
+                  Clear Filter
+                </button>
+              </div>
+              <DataTable
+                columns={studentFeeColumns}
+                data={filteredStudentFees}
+                title="Student Payments"
+                searchable={true}
+                filterable={true}
+                exportable={true}
+              />
+            </div>
           )}
         </div>
       </div>
@@ -834,8 +912,6 @@ const FeesPage: React.FC = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
                 >
                   <option value="LKR">LKR (Sri Lankan Rupee)</option>
-                  <option value="USD">USD</option>
-                  <option value="EUR">EUR</option>
                 </select>
               </div>
               <div>
@@ -975,10 +1051,7 @@ const FeesPage: React.FC = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
                 >
                   <option value="cash">Cash</option>
-                  <option value="card">Card</option>
                   <option value="bank_transfer">Bank Transfer</option>
-                  <option value="upi">UPI</option>
-                  <option value="check">Check</option>
                 </select>
               </div>
             </div>
@@ -1056,7 +1129,7 @@ const FeesPage: React.FC = () => {
               >
                 <option value="">Choose fee structure</option>
                 {feeStructures.map((fee) => (
-                  <option key={fee.id} value={fee.id}>
+                  <option key={fee._id || fee.id} value={fee._id || fee.id}>
                     {fee.name} - {fee.currency} {fee.amount}
                   </option>
                 ))}

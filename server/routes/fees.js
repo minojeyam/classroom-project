@@ -42,7 +42,7 @@ router.get(
 router.post(
   "/structures",
   auth,
-  authorize(["admin"]),
+  authorize(["admin", "teacher"]),
   [
     body("name")
       .notEmpty()
@@ -175,59 +175,6 @@ router.patch(
 // =======================
 // Bulk Assign Fees
 // =======================
-
-// @route   POST /api/fees/assign
-// @desc    Assign a fee to all students in selected classes
-// @access  Private (Admin)
-// router.post(
-//   "/assign",
-//   auth,
-//   authorize(["admin", "teacher"]),
-//   async (req, res) => {
-//     const { feeStructureId, classIds, dueDate } = req.body;
-//     try {
-//       const fee = await FeeStructure.findById(feeStructureId);
-//       if (!fee)
-//         return res
-//           .status(404)
-//           .json({ status: "error", message: "Fee structure not found" });
-
-//       const classes = await Class.find({ _id: { $in: classIds } });
-//       let createdFees = [];
-
-//       for (const classItem of classes) {
-//         const students = await User.find({
-//           _id: { $in: classItem.enrolledStudents.map((s) => s.studentId) },
-//         });
-
-//         for (const student of students) {
-//           const record = new StudentFee({
-//             studentId: student._id,
-//             classId: classItem._id,
-//             feeStructureId: fee._id,
-//             // amount: fee.amount,
-//             amount:
-//               fee.category === "tuition" && classItem.monthlyFee
-//                 ? classItem.monthlyFee.amount
-//                 : fee.amount,
-//             currency: fee.currency,
-//             dueDate,
-//             status: "pending",
-//           });
-//           await record.save();
-//           createdFees.push(record);
-//         }
-//       }
-
-//       res.status(201).json({ status: "success", data: createdFees });
-//     } catch (error) {
-//       console.error("Bulk assign error:", error);
-//       res
-//         .status(500)
-//         .json({ status: "error", message: "Internal server error" });
-//     }
-//   }
-// );
 // @route   POST /api/fees/assign
 // @desc    Assign a fee to all students in selected classes
 // @access  Private (Admin, Teacher)
