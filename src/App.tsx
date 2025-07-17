@@ -18,6 +18,7 @@ import FeesPage from "./components/Pages/FeesPage";
 import NoticeBoardPage from "./components/Pages/NoticeBoardPage";
 import ReportsPage from "./components/Pages/ReportsPage";
 import AttendancePage from "./components/Pages/AttendancePage";
+import BalancePage from "./components/Pages/BalancePage";
 
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -39,6 +40,7 @@ const pages = {
   "/settings": "Settings",
   "/teacher-classes": "My Classes",
   "/teacher-fees": "My Class Fees",
+  "/balance": "Fees Summary",
 };
 
 const AppContent: React.FC = () => {
@@ -83,11 +85,12 @@ const AppContent: React.FC = () => {
         return <ClassesPage />;
       case "/teacher-classes":
         return <TeacherClassesPage />;
-
       case "/attendance":
         return <AttendancePage />;
       case "/teacher-fees":
         return <FeesPage />;
+      case "/balance":
+        return <BalancePage />;
       case "/materials":
         return (
           <ComingSoonPage

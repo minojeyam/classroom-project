@@ -77,7 +77,7 @@ const sidebarItems: SidebarItem[] = [
     icon: <CreditCard className="w-5 h-5" />,
     label: "Fees",
     href: "/fees",
-    roles: ["admin", "teacher"],
+    roles: ["admin"],
   },
   {
     icon: <DollarSign className="w-5 h-5" />,

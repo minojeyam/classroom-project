@@ -121,3 +121,13 @@ export const noticesAPI = {
     return res.data;
   },
 };
+
+// FEES
+export const feesAPI = {
+  getStudentFees: async () => {
+    const res = await API.get("/fees/student", {
+      headers: getAuthHeader(),
+    });
+    return res.data.data;
+  },
+};

@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import Modal from "../Common/Modal";
 import DataTable from "../Common/DataTable";
-import axiosInstance from "../../utils/axios"; // Adjust path if needed
+import axiosInstance from "../../utils/axios";
 import { useAuth } from "../../contexts/AuthContext";
 
 interface AttendanceRecord {
