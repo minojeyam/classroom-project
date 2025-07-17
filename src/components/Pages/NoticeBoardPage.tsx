@@ -8,17 +8,12 @@ import {
   AlertCircle,
   Calendar,
   Users,
-  MapPin,
-  BookOpen,
   Send,
-  Filter,
-  Search,
 } from "lucide-react";
 import DataTable from "../Common/DataTable";
 import Modal from "../Common/Modal";
+import axiosInstance from "../../utils/axios"; // Adjust path if needed
 import { useAuth } from "../../contexts/AuthContext";
-
-import API from "../../utils/axios"; // Adjust path if needed
 
 interface Notice {
   id: string;
@@ -51,7 +46,6 @@ const NoticeBoardPage: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [selectedNotice, setSelectedNotice] = useState<Notice | null>(null);
-  const [activeTab, setActiveTab] = useState("all");
   const [formData, setFormData] = useState({
     title: "",
     content: "",
@@ -65,128 +59,17 @@ const NoticeBoardPage: React.FC = () => {
     expiresAt: "",
     status: "published",
   });
+  const [activeTab, setActiveTab] = useState("all"); // Added proper useState destructuring
 
   useEffect(() => {
     fetchNotices();
   }, []);
 
-  // const fetchNotices = async () => {
-  //   try {
-  //     setLoading(true);
-  //     // Mock data
-  //     const mockNotices: Notice[] = [
-  //       {
-  //         id: "1",
-  //         title: "Parent-Teacher Meeting Scheduled",
-  //         content:
-  //           "Dear Parents and Teachers, we are pleased to announce that the quarterly parent-teacher meeting has been scheduled for March 20th, 2024. Please mark your calendars and prepare for productive discussions about student progress.",
-  //         type: "event",
-  //         priority: "high",
-  //         targetAudience: "all",
-  //         locationId: "1",
-  //         locationName: "Nelliyadi Campus",
-  //         isGlobal: false,
-  //         requiresAcknowledgment: true,
-  //         createdBy: "1",
-  //         createdByName: "Admin User",
-  //         createdAt: "2024-03-10T10:00:00.000Z",
-  //         expiresAt: "2024-03-25T23:59:59.000Z",
-  //         status: "published",
-  //         viewCount: 145,
-  //         acknowledgmentCount: 89,
-  //         totalTargetUsers: 150,
-  //       },
-  //       {
-  //         id: "2",
-  //         title: "Mid-term Examination Schedule",
-  //         content:
-  //           "The mid-term examinations will commence from March 25th, 2024. Students are advised to prepare thoroughly and arrive 30 minutes before the scheduled time. Detailed timetables will be shared with individual classes.",
-  //         type: "academic",
-  //         priority: "high",
-  //         targetAudience: "students",
-  //         isGlobal: true,
-  //         requiresAcknowledgment: true,
-  //         createdBy: "2",
-  //         createdByName: "Teacher User",
-  //         createdAt: "2024-03-08T14:30:00.000Z",
-  //         expiresAt: "2024-04-05T23:59:59.000Z",
-  //         status: "published",
-  //         viewCount: 234,
-  //         acknowledgmentCount: 198,
-  //         totalTargetUsers: 250,
-  //       },
-  //       {
-  //         id: "3",
-  //         title: "Library Hours Extended",
-  //         content:
-  //           "We are happy to announce that library hours have been extended. The library will now be open from 8:00 AM to 8:00 PM on weekdays and 9:00 AM to 5:00 PM on weekends.",
-  //         type: "general",
-  //         priority: "medium",
-  //         targetAudience: "all",
-  //         isGlobal: true,
-  //         requiresAcknowledgment: false,
-  //         createdBy: "1",
-  //         createdByName: "Admin User",
-  //         createdAt: "2024-03-05T09:15:00.000Z",
-  //         status: "published",
-  //         viewCount: 89,
-  //         acknowledgmentCount: 0,
-  //         totalTargetUsers: 400,
-  //       },
-  //       {
-  //         id: "4",
-  //         title: "Science Fair Registration Open",
-  //         content:
-  //           "Registration for the annual science fair is now open! Students interested in participating should submit their project proposals by March 30th. This is a great opportunity to showcase your scientific talents.",
-  //         type: "event",
-  //         priority: "medium",
-  //         targetAudience: "students",
-  //         classId: "1",
-  //         className: "Advanced Mathematics",
-  //         isGlobal: false,
-  //         requiresAcknowledgment: false,
-  //         createdBy: "2",
-  //         createdByName: "Teacher User",
-  //         createdAt: "2024-03-03T11:45:00.000Z",
-  //         expiresAt: "2024-03-30T23:59:59.000Z",
-  //         status: "published",
-  //         viewCount: 67,
-  //         acknowledgmentCount: 0,
-  //         totalTargetUsers: 30,
-  //       },
-  //       {
-  //         id: "5",
-  //         title: "Emergency Contact Update Required",
-  //         content:
-  //           "All parents are requested to update their emergency contact information in the student portal. This is crucial for maintaining effective communication during emergencies.",
-  //         type: "urgent",
-  //         priority: "high",
-  //         targetAudience: "parents",
-  //         isGlobal: true,
-  //         requiresAcknowledgment: true,
-  //         createdBy: "1",
-  //         createdByName: "Admin User",
-  //         createdAt: "2024-03-01T16:20:00.000Z",
-  //         status: "published",
-  //         viewCount: 178,
-  //         acknowledgmentCount: 134,
-  //         totalTargetUsers: 200,
-  //       },
-  //     ];
-
-  //     setNotices(mockNotices);
-  //   } catch (err: any) {
-  //     setError(err.message || "Failed to fetch notices");
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
-
   const fetchNotices = async () => {
     try {
       setLoading(true);
-      const res = await API.get("/notices");
-      setNotices(res.data.data.notices);
+      const res = await axiosInstance.get("/notices");
+      setNotices(res.data.data.notices || []);
     } catch (err: any) {
       setError(err.response?.data?.message || "Failed to fetch notices");
     } finally {
@@ -194,32 +77,28 @@ const NoticeBoardPage: React.FC = () => {
     }
   };
 
-  // const handleSubmit = async (e: React.FormEvent) => {
-  //   e.preventDefault();
-  //   try {
-  //     // Mock API call
-  //     await new Promise((resolve) => setTimeout(resolve, 1000));
-  //     await fetchNotices();
-  //     handleCloseModal();
-  //   } catch (err: any) {
-  //     setError(err.message || "Failed to save notice");
-  //   }
-  // };
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("Submitting payload:", formData); // Log payload for debugging
     try {
-      const payload = { ...formData };
-
+      const payload = {
+        ...formData,
+        locationId: formData.locationId || undefined,
+        classId: formData.classId || undefined,
+        expiresAt: formData.expiresAt
+          ? new Date(formData.expiresAt).toISOString()
+          : undefined,
+      };
       if (isEditMode && selectedNotice) {
-        await API.put(`/notices/${selectedNotice.id}`, payload);
+        await axiosInstance.put(`/notices/${selectedNotice.id}`, payload);
       } else {
-        await API.post("/notices", payload);
+        await axiosInstance.post("/notices", payload);
       }
-
       fetchNotices();
       handleCloseModal();
     } catch (err: any) {
       setError(err.response?.data?.message || "Failed to save notice");
+      console.error("Error details:", err.response); // Log error for debugging
     }
   };
 
@@ -242,27 +121,25 @@ const NoticeBoardPage: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  // const handleDelete = async (id: string) => {
-  //   if (window.confirm("Are you sure you want to delete this notice?")) {
-  //     try {
-  //       // Mock API call
-  //       await new Promise((resolve) => setTimeout(resolve, 500));
-  //       await fetchNotices();
-  //     } catch (err: any) {
-  //       setError(err.message || "Failed to delete notice");
-  //     }
-  //   }
-  // };
   const handleDelete = async (id: string) => {
     if (!window.confirm("Are you sure you want to delete this notice?")) return;
-
     try {
-      await API.delete(`/notices/${id}`);
+      await axiosInstance.delete(`/notices/${id}`);
       fetchNotices();
     } catch (err: any) {
       setError(err.response?.data?.message || "Failed to delete notice");
     }
   };
+
+  const handleAcknowledge = async (noticeId: string) => {
+    try {
+      await axiosInstance.post(`/notices/${noticeId}/acknowledge`);
+      fetchNotices(); // Refresh to update acknowledgment count
+    } catch (err: any) {
+      setError(err.response?.data?.message || "Failed to acknowledge notice");
+    }
+  };
+
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setIsEditMode(false);
@@ -325,7 +202,7 @@ const NoticeBoardPage: React.FC = () => {
       key: "title",
       label: "Notice",
       sortable: true,
-      render: (value: string, row: Notice) => (
+      render: (_: string, row: Notice) => (
         <div className="flex items-start space-x-3">
           <div
             className={`w-10 h-10 rounded-lg flex items-center justify-center ${
@@ -347,7 +224,7 @@ const NoticeBoardPage: React.FC = () => {
             )}
           </div>
           <div className="flex-1">
-            <p className="font-medium text-gray-900">{value}</p>
+            <p className="font-medium text-gray-900">{row.title}</p>
             <p className="text-sm text-gray-500 line-clamp-2">{row.content}</p>
             <div className="flex items-center space-x-2 mt-1">
               <span
@@ -373,10 +250,10 @@ const NoticeBoardPage: React.FC = () => {
       key: "targetAudience",
       label: "Audience",
       sortable: true,
-      render: (value: string, row: Notice) => (
+      render: (_: string, row: Notice) => (
         <div>
           <p className="text-sm font-medium text-gray-900 capitalize">
-            {value}
+            {row.targetAudience}
           </p>
           {row.locationName && (
             <p className="text-xs text-gray-500">{row.locationName}</p>
@@ -390,7 +267,7 @@ const NoticeBoardPage: React.FC = () => {
     {
       key: "engagement",
       label: "Engagement",
-      render: (value: any, row: Notice) => (
+      render: (_: any, row: Notice) => (
         <div className="text-sm">
           <div className="flex items-center space-x-2 mb-1">
             <Eye className="w-4 h-4 text-gray-400" />
@@ -402,6 +279,13 @@ const NoticeBoardPage: React.FC = () => {
               <span className="text-gray-900">
                 {row.acknowledgmentCount}/{row.totalTargetUsers} ack.
               </span>
+              <button
+                onClick={() => handleAcknowledge(row.id)}
+                className="text-blue-600 hover:text-blue-800 ml-2"
+                disabled={row.acknowledgmentCount >= row.totalTargetUsers}
+              >
+                <Send className="w-4 h-4" />
+              </button>
             </div>
           )}
         </div>
@@ -446,7 +330,7 @@ const NoticeBoardPage: React.FC = () => {
     {
       key: "actions",
       label: "Actions",
-      render: (value: any, row: Notice) => (
+      render: (_: any, row: Notice) => (
         <div className="flex items-center space-x-2">
           <button
             onClick={() => handleEdit(row)}

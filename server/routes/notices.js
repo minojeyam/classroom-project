@@ -2,7 +2,6 @@ import express from "express";
 import { body, validationResult } from "express-validator";
 import Notice from "../models/Notice.js";
 import { auth, authorize } from "../middleware/auth.js";
-
 import User from "../models/User.js";
 
 const router = express.Router();
@@ -20,7 +19,6 @@ router.get("/", auth, async (req, res) => {
   }
 });
 
-// POST create new notice
 // POST create new notice
 router.post(
   "/",
@@ -93,28 +91,28 @@ router.post(
         className,
         isGlobal,
         requiresAcknowledgment,
-        expiresAt,
+        expiresAt: expiresAt ? new Date(expiresAt) : undefined,
         status,
         createdBy: req.user.id,
         createdByName: `${req.user.firstName} ${req.user.lastName}`,
         totalTargetUsers: users.length,
         recipients: requiresAcknowledgment
-          ? users.map((u) => ({ userId: u._id }))
+          ? users.map((u) => ({ userId: u._id, acknowledged: false }))
           : [],
       });
 
       await newNotice.save();
-
       res.status(201).json({
         status: "success",
         message: "Notice created successfully",
         data: { notice: newNotice },
       });
     } catch (error) {
-      console.error("Create notice error:", error);
+      console.error("Create notice error:", error); // Ensure this is visible in logs
       res.status(500).json({
         status: "error",
         message: "Failed to create notice",
+        details: error.message, // Add error details for debugging
       });
     }
   }
