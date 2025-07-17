@@ -124,7 +124,12 @@ const FeesPage: React.FC = () => {
           headers: { Authorization: `Bearer ${accessToken}` },
         }),
       ]);
-      setFeeStructures(feeStructuresRes.data.data);
+      setFeeStructures(
+        feeStructuresRes.data.data.map((f: any) => ({
+          ...f,
+          id: f._id,
+        }))
+      );
       setStudentFees(studentFeesRes.data.data);
       setClasses(classesRes.data.data.classes || classesRes.data.data); // Adjust based on API response
     } catch (err: any) {
@@ -405,7 +410,13 @@ const FeesPage: React.FC = () => {
             <Edit className="w-4 h-4" />
           </button>
           <button
-            onClick={() => handleDeleteFeeStructure(row.id)}
+            onClick={() => {
+              if (!row.id) {
+                console.warn("Row ID is undefined", row);
+                return;
+              }
+              handleDeleteFeeStructure(row.id);
+            }}
             className="text-red-600 hover:text-red-800 transition-colors duration-200"
           >
             <Trash2 className="w-4 h-4" />

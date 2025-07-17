@@ -237,4 +237,65 @@ router.post(
   }
 );
 
+// @route   PUT /api/fees/structures/:id
+// @desc    Update an existing fee structure
+// @access  Private (Admin, Teacher)
+router.put(
+  "/structures/:id",
+  auth,
+  authorize(["admin", "teacher"]),
+  async (req, res) => {
+    try {
+      const updated = await FeeStructure.findByIdAndUpdate(
+        req.params.id,
+        req.body,
+        { new: true, runValidators: true }
+      );
+
+      if (!updated) {
+        return res
+          .status(404)
+          .json({ status: "error", message: "Fee structure not found" });
+      }
+
+      res.json({ status: "success", data: updated });
+    } catch (error) {
+      console.error("Update fee structure error:", error);
+      res
+        .status(500)
+        .json({ status: "error", message: "Internal server error" });
+    }
+  }
+);
+
+// @route   DELETE /api/fees/structures/:id
+// @desc    Delete a fee structure
+// @access  Private (Admin, Teacher)
+router.delete(
+  "/structures/:id",
+  auth,
+  authorize(["admin", "teacher"]),
+  async (req, res) => {
+    try {
+      const deleted = await FeeStructure.findByIdAndDelete(req.params.id);
+
+      if (!deleted) {
+        return res
+          .status(404)
+          .json({ status: "error", message: "Fee structure not found" });
+      }
+
+      res.json({
+        status: "success",
+        message: "Fee structure deleted successfully",
+      });
+    } catch (error) {
+      console.error("Delete fee structure error:", error);
+      res
+        .status(500)
+        .json({ status: "error", message: "Internal server error" });
+    }
+  }
+);
+
 export default router;
