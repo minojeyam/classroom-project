@@ -16,7 +16,8 @@ import axiosInstance from "../../utils/axios"; // Adjust path if needed
 import { useAuth } from "../../contexts/AuthContext";
 
 interface Notice {
-  id: string;
+  id?: string; // Make id optional to handle potential _id mismatch
+  _id?: string; // Add _id as a potential field
   title: string;
   content: string;
   type: "general" | "urgent" | "event" | "academic" | "administrative";
@@ -59,7 +60,7 @@ const NoticeBoardPage: React.FC = () => {
     expiresAt: "",
     status: "published",
   });
-  const [activeTab, setActiveTab] = useState("all"); // Added proper useState destructuring
+  const [activeTab, setActiveTab] = useState("all");
 
   useEffect(() => {
     fetchNotices();
@@ -69,7 +70,12 @@ const NoticeBoardPage: React.FC = () => {
     try {
       setLoading(true);
       const res = await axiosInstance.get("/notices");
-      setNotices(res.data.data.notices || []);
+      // Map _id to id if necessary
+      const mappedNotices = res.data.data.notices.map((notice: Notice) => ({
+        ...notice,
+        id: notice.id || notice._id, // Ensure id is set
+      }));
+      setNotices(mappedNotices);
     } catch (err: any) {
       setError(err.response?.data?.message || "Failed to fetch notices");
     } finally {
@@ -89,8 +95,15 @@ const NoticeBoardPage: React.FC = () => {
           ? new Date(formData.expiresAt).toISOString()
           : undefined,
       };
-      if (isEditMode && selectedNotice) {
-        await axiosInstance.put(`/notices/${selectedNotice.id}`, payload);
+      if (
+        isEditMode &&
+        selectedNotice &&
+        (selectedNotice.id || selectedNotice._id)
+      ) {
+        await axiosInstance.put(
+          `/notices/${selectedNotice.id || selectedNotice._id}`,
+          payload
+        );
       } else {
         await axiosInstance.post("/notices", payload);
       }
@@ -98,11 +111,17 @@ const NoticeBoardPage: React.FC = () => {
       handleCloseModal();
     } catch (err: any) {
       setError(err.response?.data?.message || "Failed to save notice");
-      console.error("Error details:", err.response); // Log error for debugging
+      console.error("Error details:", err.response?.data); // Log detailed error response
     }
   };
 
   const handleEdit = (notice: Notice) => {
+    console.log("Selected notice:", notice); // Debug log
+    const noticeId = notice.id || notice._id;
+    if (!noticeId) {
+      setError("Invalid notice selected for editing");
+      return;
+    }
     setSelectedNotice(notice);
     setFormData({
       title: notice.title,
@@ -189,8 +208,9 @@ const NoticeBoardPage: React.FC = () => {
 
   const filteredNotices = notices.filter((notice) => {
     if (activeTab === "all") return true;
-    if (activeTab === "my-notices" && user?.role === "admin")
+    if (activeTab === "my-notices" && user?.id) {
       return notice.createdBy === user.id;
+    }
     if (activeTab === "urgent")
       return notice.type === "urgent" || notice.priority === "high";
     if (activeTab === "events") return notice.type === "event";
@@ -280,7 +300,7 @@ const NoticeBoardPage: React.FC = () => {
                 {row.acknowledgmentCount}/{row.totalTargetUsers} ack.
               </span>
               <button
-                onClick={() => handleAcknowledge(row.id)}
+                onClick={() => handleAcknowledge(row.id || row._id || "")}
                 className="text-blue-600 hover:text-blue-800 ml-2"
                 disabled={row.acknowledgmentCount >= row.totalTargetUsers}
               >
@@ -333,14 +353,17 @@ const NoticeBoardPage: React.FC = () => {
       render: (_: any, row: Notice) => (
         <div className="flex items-center space-x-2">
           <button
-            onClick={() => handleEdit(row)}
+            onClick={() => handleAcknowledge(row.id || row._id || "")}
             className="text-blue-600 hover:text-blue-800 transition-colors duration-200"
+            disabled={row.acknowledgmentCount >= row.totalTargetUsers}
+            title="Mark as Seen"
           >
-            <Edit className="w-4 h-4" />
+            <Eye className="w-4 h-4" />
           </button>
           <button
-            onClick={() => handleDelete(row.id)}
+            onClick={() => handleDelete(row.id || row._id || "")}
             className="text-red-600 hover:text-red-800 transition-colors duration-200"
+            title="Delete"
           >
             <Trash2 className="w-4 h-4" />
           </button>
@@ -444,13 +467,16 @@ const NoticeBoardPage: React.FC = () => {
                 Avg. Engagement
               </p>
               <p className="text-2xl font-bold text-gray-900 mt-2">
-                {Math.round(
-                  notices.reduce(
-                    (acc, n) => acc + (n.viewCount / n.totalTargetUsers) * 100,
-                    0
-                  ) / notices.length
-                )}
-                %
+                {notices.length === 0
+                  ? "0%"
+                  : Math.round(
+                      notices.reduce((acc, n) => {
+                        const engagement = n.totalTargetUsers
+                          ? (n.viewCount / n.totalTargetUsers) * 100
+                          : 0; // Avoid division by zero or undefined
+                        return acc + engagement;
+                      }, 0) / notices.length
+                    ) + "%"}
               </p>
             </div>
             <div className="w-12 h-12 bg-purple-500 rounded-lg flex items-center justify-center">

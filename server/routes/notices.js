@@ -71,7 +71,6 @@ router.post(
         status,
       } = req.body;
 
-      // Determine recipients
       const filter =
         targetAudience === "all"
           ? { status: "active" }
@@ -108,40 +107,113 @@ router.post(
         data: { notice: newNotice },
       });
     } catch (error) {
-      console.error("Create notice error:", error); // Ensure this is visible in logs
+      console.error("Create notice error:", error);
       res.status(500).json({
         status: "error",
         message: "Failed to create notice",
-        details: error.message, // Add error details for debugging
+        details: error.message,
       });
     }
   }
 );
 
 // PUT update notice
-router.put("/:id", auth, authorize(["admin", "teacher"]), async (req, res) => {
-  try {
-    const notice = await Notice.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-      runValidators: true,
-    });
-    if (!notice) {
-      return res
-        .status(404)
-        .json({ status: "error", message: "Notice not found" });
+router.put(
+  "/:id",
+  auth,
+  authorize(["admin", "teacher"]),
+  [
+    body("title").optional().notEmpty().isLength({ max: 150 }),
+    body("content").optional().notEmpty(),
+    body("type")
+      .optional()
+      .isIn(["general", "urgent", "event", "academic", "administrative"]),
+    body("priority").optional().isIn(["low", "medium", "high"]),
+    body("targetAudience")
+      .optional()
+      .isIn(["all", "students", "teachers", "parents", "staff"]),
+    body("status").optional().isIn(["draft", "published"]),
+    body("expiresAt").optional().isISO8601().toDate(),
+    body("isGlobal").optional().isBoolean(),
+    body("requiresAcknowledgment").optional().isBoolean(),
+  ],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        status: "error",
+        message: "Validation failed",
+        errors: errors.array(),
+      });
     }
-    res.json({
-      status: "success",
-      message: "Notice updated",
-      data: { notice },
-    });
-  } catch (error) {
-    console.error("Update notice error:", error);
-    res
-      .status(500)
-      .json({ status: "error", message: "Failed to update notice" });
+
+    if (!req.params.id) {
+      return res.status(400).json({
+        status: "error",
+        message: "Notice ID is required",
+      });
+    }
+
+    try {
+      const notice = await Notice.findById(req.params.id);
+      if (!notice) {
+        return res
+          .status(404)
+          .json({ status: "error", message: "Notice not found" });
+      }
+
+      const allowedUpdates = [
+        "title",
+        "content",
+        "type",
+        "priority",
+        "targetAudience",
+        "expiresAt",
+        "isGlobal",
+        "requiresAcknowledgment",
+      ];
+      const updates = Object.keys(req.body).filter((key) =>
+        allowedUpdates.includes(key)
+      );
+
+      if (updates.length === 0) {
+        return res
+          .status(400)
+          .json({ status: "error", message: "No updatable fields provided" });
+      }
+
+      if (
+        notice.status === "published" &&
+        req.body.status &&
+        req.body.status !== "published"
+      ) {
+        return res.status(400).json({
+          status: "error",
+          message: "Cannot change status of a published notice",
+        });
+      }
+
+      const updatedNotice = await Notice.findByIdAndUpdate(
+        req.params.id,
+        { $set: req.body },
+        { new: true, runValidators: true }
+      );
+
+      res.json({
+        status: "success",
+        message: "Notice updated",
+        data: { notice: updatedNotice },
+      });
+    } catch (error) {
+      console.error("Update notice error:", error);
+      res.status(500).json({
+        status: "error",
+        message: "Failed to update notice",
+        details: error.message,
+      });
+    }
   }
-});
+);
 
 // DELETE a notice
 router.delete(
@@ -202,7 +274,6 @@ router.post("/:id/acknowledge", auth, async (req, res) => {
       });
     }
 
-    // Mark acknowledged
     recipient.acknowledged = true;
     recipient.acknowledgedAt = new Date();
     notice.acknowledgmentCount += 1;
@@ -214,7 +285,7 @@ router.post("/:id/acknowledge", auth, async (req, res) => {
     });
   } catch (error) {
     console.error("Acknowledge notice error:", error);
-    res.status(500).json({
+    res.status(400).json({
       status: "error",
       message: "Failed to acknowledge notice",
     });
