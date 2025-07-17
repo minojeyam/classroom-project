@@ -18,6 +18,8 @@ import DataTable from "../Common/DataTable";
 import Modal from "../Common/Modal";
 import { useAuth } from "../../contexts/AuthContext";
 
+import API from "../../utils/axios"; // Adjust path if needed
+
 interface Notice {
   id: string;
   title: string;
@@ -68,127 +70,156 @@ const NoticeBoardPage: React.FC = () => {
     fetchNotices();
   }, []);
 
+  // const fetchNotices = async () => {
+  //   try {
+  //     setLoading(true);
+  //     // Mock data
+  //     const mockNotices: Notice[] = [
+  //       {
+  //         id: "1",
+  //         title: "Parent-Teacher Meeting Scheduled",
+  //         content:
+  //           "Dear Parents and Teachers, we are pleased to announce that the quarterly parent-teacher meeting has been scheduled for March 20th, 2024. Please mark your calendars and prepare for productive discussions about student progress.",
+  //         type: "event",
+  //         priority: "high",
+  //         targetAudience: "all",
+  //         locationId: "1",
+  //         locationName: "Nelliyadi Campus",
+  //         isGlobal: false,
+  //         requiresAcknowledgment: true,
+  //         createdBy: "1",
+  //         createdByName: "Admin User",
+  //         createdAt: "2024-03-10T10:00:00.000Z",
+  //         expiresAt: "2024-03-25T23:59:59.000Z",
+  //         status: "published",
+  //         viewCount: 145,
+  //         acknowledgmentCount: 89,
+  //         totalTargetUsers: 150,
+  //       },
+  //       {
+  //         id: "2",
+  //         title: "Mid-term Examination Schedule",
+  //         content:
+  //           "The mid-term examinations will commence from March 25th, 2024. Students are advised to prepare thoroughly and arrive 30 minutes before the scheduled time. Detailed timetables will be shared with individual classes.",
+  //         type: "academic",
+  //         priority: "high",
+  //         targetAudience: "students",
+  //         isGlobal: true,
+  //         requiresAcknowledgment: true,
+  //         createdBy: "2",
+  //         createdByName: "Teacher User",
+  //         createdAt: "2024-03-08T14:30:00.000Z",
+  //         expiresAt: "2024-04-05T23:59:59.000Z",
+  //         status: "published",
+  //         viewCount: 234,
+  //         acknowledgmentCount: 198,
+  //         totalTargetUsers: 250,
+  //       },
+  //       {
+  //         id: "3",
+  //         title: "Library Hours Extended",
+  //         content:
+  //           "We are happy to announce that library hours have been extended. The library will now be open from 8:00 AM to 8:00 PM on weekdays and 9:00 AM to 5:00 PM on weekends.",
+  //         type: "general",
+  //         priority: "medium",
+  //         targetAudience: "all",
+  //         isGlobal: true,
+  //         requiresAcknowledgment: false,
+  //         createdBy: "1",
+  //         createdByName: "Admin User",
+  //         createdAt: "2024-03-05T09:15:00.000Z",
+  //         status: "published",
+  //         viewCount: 89,
+  //         acknowledgmentCount: 0,
+  //         totalTargetUsers: 400,
+  //       },
+  //       {
+  //         id: "4",
+  //         title: "Science Fair Registration Open",
+  //         content:
+  //           "Registration for the annual science fair is now open! Students interested in participating should submit their project proposals by March 30th. This is a great opportunity to showcase your scientific talents.",
+  //         type: "event",
+  //         priority: "medium",
+  //         targetAudience: "students",
+  //         classId: "1",
+  //         className: "Advanced Mathematics",
+  //         isGlobal: false,
+  //         requiresAcknowledgment: false,
+  //         createdBy: "2",
+  //         createdByName: "Teacher User",
+  //         createdAt: "2024-03-03T11:45:00.000Z",
+  //         expiresAt: "2024-03-30T23:59:59.000Z",
+  //         status: "published",
+  //         viewCount: 67,
+  //         acknowledgmentCount: 0,
+  //         totalTargetUsers: 30,
+  //       },
+  //       {
+  //         id: "5",
+  //         title: "Emergency Contact Update Required",
+  //         content:
+  //           "All parents are requested to update their emergency contact information in the student portal. This is crucial for maintaining effective communication during emergencies.",
+  //         type: "urgent",
+  //         priority: "high",
+  //         targetAudience: "parents",
+  //         isGlobal: true,
+  //         requiresAcknowledgment: true,
+  //         createdBy: "1",
+  //         createdByName: "Admin User",
+  //         createdAt: "2024-03-01T16:20:00.000Z",
+  //         status: "published",
+  //         viewCount: 178,
+  //         acknowledgmentCount: 134,
+  //         totalTargetUsers: 200,
+  //       },
+  //     ];
+
+  //     setNotices(mockNotices);
+  //   } catch (err: any) {
+  //     setError(err.message || "Failed to fetch notices");
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+
   const fetchNotices = async () => {
     try {
       setLoading(true);
-      // Mock data
-      const mockNotices: Notice[] = [
-        {
-          id: "1",
-          title: "Parent-Teacher Meeting Scheduled",
-          content:
-            "Dear Parents and Teachers, we are pleased to announce that the quarterly parent-teacher meeting has been scheduled for March 20th, 2024. Please mark your calendars and prepare for productive discussions about student progress.",
-          type: "event",
-          priority: "high",
-          targetAudience: "all",
-          locationId: "1",
-          locationName: "Nelliyadi Campus",
-          isGlobal: false,
-          requiresAcknowledgment: true,
-          createdBy: "1",
-          createdByName: "Admin User",
-          createdAt: "2024-03-10T10:00:00.000Z",
-          expiresAt: "2024-03-25T23:59:59.000Z",
-          status: "published",
-          viewCount: 145,
-          acknowledgmentCount: 89,
-          totalTargetUsers: 150,
-        },
-        {
-          id: "2",
-          title: "Mid-term Examination Schedule",
-          content:
-            "The mid-term examinations will commence from March 25th, 2024. Students are advised to prepare thoroughly and arrive 30 minutes before the scheduled time. Detailed timetables will be shared with individual classes.",
-          type: "academic",
-          priority: "high",
-          targetAudience: "students",
-          isGlobal: true,
-          requiresAcknowledgment: true,
-          createdBy: "2",
-          createdByName: "Teacher User",
-          createdAt: "2024-03-08T14:30:00.000Z",
-          expiresAt: "2024-04-05T23:59:59.000Z",
-          status: "published",
-          viewCount: 234,
-          acknowledgmentCount: 198,
-          totalTargetUsers: 250,
-        },
-        {
-          id: "3",
-          title: "Library Hours Extended",
-          content:
-            "We are happy to announce that library hours have been extended. The library will now be open from 8:00 AM to 8:00 PM on weekdays and 9:00 AM to 5:00 PM on weekends.",
-          type: "general",
-          priority: "medium",
-          targetAudience: "all",
-          isGlobal: true,
-          requiresAcknowledgment: false,
-          createdBy: "1",
-          createdByName: "Admin User",
-          createdAt: "2024-03-05T09:15:00.000Z",
-          status: "published",
-          viewCount: 89,
-          acknowledgmentCount: 0,
-          totalTargetUsers: 400,
-        },
-        {
-          id: "4",
-          title: "Science Fair Registration Open",
-          content:
-            "Registration for the annual science fair is now open! Students interested in participating should submit their project proposals by March 30th. This is a great opportunity to showcase your scientific talents.",
-          type: "event",
-          priority: "medium",
-          targetAudience: "students",
-          classId: "1",
-          className: "Advanced Mathematics",
-          isGlobal: false,
-          requiresAcknowledgment: false,
-          createdBy: "2",
-          createdByName: "Teacher User",
-          createdAt: "2024-03-03T11:45:00.000Z",
-          expiresAt: "2024-03-30T23:59:59.000Z",
-          status: "published",
-          viewCount: 67,
-          acknowledgmentCount: 0,
-          totalTargetUsers: 30,
-        },
-        {
-          id: "5",
-          title: "Emergency Contact Update Required",
-          content:
-            "All parents are requested to update their emergency contact information in the student portal. This is crucial for maintaining effective communication during emergencies.",
-          type: "urgent",
-          priority: "high",
-          targetAudience: "parents",
-          isGlobal: true,
-          requiresAcknowledgment: true,
-          createdBy: "1",
-          createdByName: "Admin User",
-          createdAt: "2024-03-01T16:20:00.000Z",
-          status: "published",
-          viewCount: 178,
-          acknowledgmentCount: 134,
-          totalTargetUsers: 200,
-        },
-      ];
-
-      setNotices(mockNotices);
+      const res = await API.get("/notices");
+      setNotices(res.data.data.notices);
     } catch (err: any) {
-      setError(err.message || "Failed to fetch notices");
+      setError(err.response?.data?.message || "Failed to fetch notices");
     } finally {
       setLoading(false);
     }
   };
 
+  // const handleSubmit = async (e: React.FormEvent) => {
+  //   e.preventDefault();
+  //   try {
+  //     // Mock API call
+  //     await new Promise((resolve) => setTimeout(resolve, 1000));
+  //     await fetchNotices();
+  //     handleCloseModal();
+  //   } catch (err: any) {
+  //     setError(err.message || "Failed to save notice");
+  //   }
+  // };
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      // Mock API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      await fetchNotices();
+      const payload = { ...formData };
+
+      if (isEditMode && selectedNotice) {
+        await API.put(`/notices/${selectedNotice.id}`, payload);
+      } else {
+        await API.post("/notices", payload);
+      }
+
+      fetchNotices();
       handleCloseModal();
     } catch (err: any) {
-      setError(err.message || "Failed to save notice");
+      setError(err.response?.data?.message || "Failed to save notice");
     }
   };
 
@@ -211,18 +242,27 @@ const NoticeBoardPage: React.FC = () => {
     setIsModalOpen(true);
   };
 
+  // const handleDelete = async (id: string) => {
+  //   if (window.confirm("Are you sure you want to delete this notice?")) {
+  //     try {
+  //       // Mock API call
+  //       await new Promise((resolve) => setTimeout(resolve, 500));
+  //       await fetchNotices();
+  //     } catch (err: any) {
+  //       setError(err.message || "Failed to delete notice");
+  //     }
+  //   }
+  // };
   const handleDelete = async (id: string) => {
-    if (window.confirm("Are you sure you want to delete this notice?")) {
-      try {
-        // Mock API call
-        await new Promise((resolve) => setTimeout(resolve, 500));
-        await fetchNotices();
-      } catch (err: any) {
-        setError(err.message || "Failed to delete notice");
-      }
+    if (!window.confirm("Are you sure you want to delete this notice?")) return;
+
+    try {
+      await API.delete(`/notices/${id}`);
+      fetchNotices();
+    } catch (err: any) {
+      setError(err.response?.data?.message || "Failed to delete notice");
     }
   };
-
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setIsEditMode(false);

@@ -1,167 +1,123 @@
-import axios from "axios";
+import API from "./axios";
 
-const API_BASE_URL = "http://localhost:5000/api";
-
-export const getAuthHeader = (token?: string) => {
-  const jwt = token || localStorage.getItem("token");
+export const getAuthHeader = () => {
+  const tokens = localStorage.getItem("tokens");
+  const jwt = tokens ? JSON.parse(tokens).accessToken : null;
   return jwt ? { Authorization: `Bearer ${jwt}` } : {};
 };
-
-// Locations API
+// LOCATIONS
 export const locationsAPI = {
-  getLocations: async (token?: string) => {
-    const res = await axios.get(`${API_BASE_URL}/locations`, {
-      headers: getAuthHeader(token),
-    });
+  getLocations: async () => {
+    const res = await API.get("/locations");
     return res.data;
   },
 
   createLocation: async (data: any) => {
-    const res = await axios.post(`${API_BASE_URL}/locations`, data, {
-      headers: {
-        ...getAuthHeader(),
-        "Content-Type": "application/json",
-      },
-    });
+    const res = await API.post("/locations", data);
     return res.data;
   },
 
   updateLocation: async (id: string, data: any) => {
-    const res = await axios.put(`${API_BASE_URL}/locations/${id}`, data, {
-      headers: {
-        ...getAuthHeader(),
-        "Content-Type": "application/json",
-      },
-    });
+    const res = await API.put(`/locations/${id}`, data);
     return res.data;
   },
 
   deleteLocation: async (id: string) => {
-    const res = await axios.delete(`${API_BASE_URL}/locations/${id}`, {
-      headers: getAuthHeader(),
-    });
+    const res = await API.delete(`/locations/${id}`);
     return res.data;
   },
 };
 
-// Classes API
+// CLASSES
 export const classesAPI = {
-  getClasses: async (params = {}, token?: string) => {
-    const res = await axios.get(`${API_BASE_URL}/classes`, {
-      params,
-      headers: {
-        ...getAuthHeader(token),
-      },
-    });
+  getClasses: async (params = {}) => {
+    const res = await API.get("/classes", { params });
     return res.data;
   },
 
-  getClassById: async (id: string, token?: string) => {
-    const res = await axios.get(`${API_BASE_URL}/classes/${id}`, {
-      headers: {
-        ...getAuthHeader(token),
-      },
-    });
+  getClassById: async (id: string) => {
+    const res = await API.get(`/classes/${id}`);
     return res.data;
   },
 
-  createClass: async (data: any, token?: string) => {
-    const res = await axios.post(`${API_BASE_URL}/classes`, data, {
-      headers: {
-        ...getAuthHeader(token),
-        "Content-Type": "application/json",
-      },
-    });
+  createClass: async (data: any) => {
+    const res = await API.post("/classes", data);
     return res.data;
   },
 
-  updateClass: async (id: string, data: any, token?: string) => {
-    const res = await axios.put(`${API_BASE_URL}/classes/${id}`, data, {
-      headers: {
-        ...getAuthHeader(token),
-        "Content-Type": "application/json",
-      },
-    });
+  updateClass: async (id: string, data: any) => {
+    const res = await API.put(`/classes/${id}`, data);
     return res.data;
   },
 
-  deleteClass: async (id: string, token?: string) => {
-    const res = await axios.delete(`${API_BASE_URL}/classes/${id}`, {
-      headers: {
-        ...getAuthHeader(token),
-      },
-    });
+  deleteClass: async (id: string) => {
+    const res = await API.delete(`/classes/${id}`);
     return res.data;
   },
 
-  enrollStudent: async (classId: string, studentId: string, token?: string) => {
-    const res = await axios.post(
-      `${API_BASE_URL}/classes/${classId}/enroll`,
-      { studentId },
-      {
-        headers: {
-          ...getAuthHeader(token),
-          "Content-Type": "application/json",
-        },
-      }
-    );
+  enrollStudent: async (classId: string, studentId: string) => {
+    const res = await API.post(`/classes/${classId}/enroll`, { studentId });
     return res.data;
   },
 };
 
-// Users API
+// USERS
 export const usersAPI = {
-  getUsers: async (params = {}, token?: string) => {
-    const res = await axios.get(`${API_BASE_URL}/users`, {
-      params,
-      headers: getAuthHeader(token),
-    });
+  getUsers: async (params = {}) => {
+    const res = await API.get("/users", { params });
     return res.data;
   },
 
   getUserById: async (id: string) => {
-    const res = await axios.get(`${API_BASE_URL}/users/${id}`, {
-      headers: getAuthHeader(),
-    });
+    const res = await API.get(`/users/${id}`);
     return res.data;
   },
 
   approveUser: async (id: string) => {
-    const res = await axios.put(
-      `${API_BASE_URL}/users/${id}/approve`,
-      {},
-      {
-        headers: getAuthHeader(),
-      }
-    );
+    const res = await API.put(`/users/${id}/approve`, {});
     return res.data;
   },
 
   rejectUser: async (id: string) => {
-    const res = await axios.put(
-      `${API_BASE_URL}/users/${id}/reject`,
-      {},
-      {
-        headers: getAuthHeader(),
-      }
-    );
+    const res = await API.put(`/users/${id}/reject`, {});
     return res.data;
   },
 
   updateUser: async (id: string, data: any) => {
-    const res = await axios.put(`${API_BASE_URL}/users/${id}`, data, {
-      headers: {
-        ...getAuthHeader(),
-        "Content-Type": "application/json",
-      },
-    });
+    const res = await API.put(`/users/${id}`, data);
     return res.data;
   },
 
   deleteUser: async (id: string) => {
-    const res = await axios.delete(`${API_BASE_URL}/users/${id}`, {
-      headers: getAuthHeader(),
-    });
+    const res = await API.delete(`/users/${id}`);
+    return res.data;
+  },
+};
+
+// NOTICES
+export const noticesAPI = {
+  getNotices: async () => {
+    const res = await API.get("/notices");
+    return res.data;
+  },
+
+  createNotice: async (data: any) => {
+    const res = await API.post("/notices", data);
+    return res.data;
+  },
+
+  updateNotice: async (id: string, data: any) => {
+    const res = await API.put(`/notices/${id}`, data);
+    return res.data;
+  },
+
+  deleteNotice: async (id: string) => {
+    const res = await API.delete(`/notices/${id}`);
+    return res.data;
+  },
+
+  acknowledgeNotice: async (id: string) => {
+    const res = await API.post(`/notices/${id}/acknowledge`);
     return res.data;
   },
 };

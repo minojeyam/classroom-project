@@ -108,14 +108,10 @@ const TeacherClassesPage: React.FC = () => {
   const fetchTeacherClasses = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem("accessToken") ?? undefined;
+      // const token = localStorage.getItem("accessToken") ?? undefined;
 
       // Fetch classes for the current teacher
-      const response = await classesAPI.getClasses(
-        { teacher: user?.id },
-        token
-      );
-
+      const response = await classesAPI.getClasses();
       if (response.status === "success") {
         setClasses(response.data.classes || []);
       } else {
@@ -134,7 +130,7 @@ const TeacherClassesPage: React.FC = () => {
       const token = localStorage.getItem("accessToken") ?? undefined;
 
       // Get class details with enrolled students
-      const classResponse = await classesAPI.getClassById(classId, token);
+      const classResponse = await classesAPI.getClassById(classId);
 
       if (classResponse.status === "success" && classResponse.data.class) {
         const classData = classResponse.data.class;
@@ -149,10 +145,10 @@ const TeacherClassesPage: React.FC = () => {
           );
 
           // Fetch student details
-          const studentsResponse = await usersAPI.getUsers(
-            { role: "student", ids: studentIds },
-            token
-          );
+          const studentsResponse = await usersAPI.getUsers({
+            role: "student",
+            ids: studentIds,
+          });
 
           if (studentsResponse.status === "success") {
             // Merge enrollment data with student details

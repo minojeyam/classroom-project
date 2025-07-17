@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import Modal from "../Common/Modal";
 import DataTable from "../Common/DataTable";
-import { classesAPI, usersAPI } from "../../utils/api";
+import axiosInstance from "../../utils/axios"; // Adjust path if needed
 import { useAuth } from "../../contexts/AuthContext";
 
 interface AttendanceRecord {
@@ -129,21 +129,16 @@ const AttendancePage: React.FC = () => {
   const fetchTeacherClasses = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem("accessToken") ?? undefined;
-      const response = await classesAPI.getClasses(
-        { teacher: user?.id },
-        token
-      );
-
-      if (response.status === "success") {
-        const teacherClasses = response.data.classes || [];
+      const response = await axiosInstance.get("/classes");
+      if (response.data.status === "success") {
+        const teacherClasses = response.data.data.classes || [];
         setClasses(teacherClasses);
         if (teacherClasses.length > 0) {
           setSelectedClass(teacherClasses[0]);
         }
       }
     } catch (err: any) {
-      setError(err.message || "Failed to fetch classes");
+      setError(err.response?.data?.message || "Failed to fetch classes");
     } finally {
       setLoading(false);
     }
@@ -153,21 +148,19 @@ const AttendancePage: React.FC = () => {
     if (!selectedClass) return;
 
     try {
-      const token = localStorage.getItem("accessToken") ?? undefined;
-
-      const classResponse = await classesAPI.getClassById(
-        selectedClass._id,
-        token
+      const classResponse = await axiosInstance.get(
+        `/classes/${selectedClass._id}`
       );
-
-      if (classResponse.status === "success" && classResponse.data.class) {
-        const classData = classResponse.data.class;
+      if (
+        classResponse.data.status === "success" &&
+        classResponse.data.data.class
+      ) {
+        const classData = classResponse.data.data.class;
 
         if (
           classData.enrolledStudents &&
           classData.enrolledStudents.length > 0
         ) {
-          // ✅ Extract only string IDs
           const studentIds: string[] = classData.enrolledStudents.map(
             (es: any) =>
               typeof es.studentId === "object" ? es.studentId._id : es.studentId
@@ -175,18 +168,14 @@ const AttendancePage: React.FC = () => {
 
           console.log("Fetching student details for IDs:", studentIds);
 
-          const studentsResponse = await usersAPI.getUsers(
-            {
-              role: "student",
-              ids: studentIds,
-            },
-            token
-          );
+          const studentsResponse = await axiosInstance.get("/users", {
+            params: { role: "student", ids: studentIds },
+          });
 
-          if (studentsResponse.status === "success") {
-            setStudents(studentsResponse.data.users || []);
+          if (studentsResponse.data.status === "success") {
+            setStudents(studentsResponse.data.data.users || []);
           } else {
-            console.error("Failed to fetch students:", studentsResponse);
+            console.error("Failed to fetch students:", studentsResponse.data);
           }
         } else {
           setStudents([]);
@@ -202,18 +191,11 @@ const AttendancePage: React.FC = () => {
     if (!selectedClass) return;
 
     try {
-      const token = localStorage.getItem("accessToken") ?? "";
-
-      const res = await fetch(
-        `http://localhost:5000/api/attendance?classId=${selectedClass._id}&date=${selectedDate}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
+      const res = await axiosInstance.get(
+        `/attendance?classId=${selectedClass._id}&date=${selectedDate}`
       );
-
-      const result = await res.json();
-      if (result.status === "success") {
-        const mapped = result.data.records.map((r: any) => ({
+      if (res.data.status === "success") {
+        const mapped = res.data.data.records.map((r: any) => ({
           id: r._id,
           studentId: r.studentId._id,
           studentName: `${r.studentId.firstName} ${r.studentId.lastName}`,
@@ -226,8 +208,9 @@ const AttendancePage: React.FC = () => {
         }));
         setAttendanceRecords(mapped);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error fetching attendance:", err);
+      setError(err.response?.data?.message || "Failed to fetch attendance");
     }
   };
 
@@ -237,26 +220,15 @@ const AttendancePage: React.FC = () => {
     notes?: string
   ) => {
     try {
-      const token = localStorage.getItem("accessToken") ?? "";
-
-      const response = await fetch(`http://localhost:5000/api/attendance`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          studentId,
-          classId: selectedClass?._id,
-          date: selectedDate,
-          status,
-          notes: notes || "",
-        }),
+      const response = await axiosInstance.post(`/attendance`, {
+        studentId,
+        classId: selectedClass?._id,
+        date: selectedDate,
+        status,
+        notes: notes || "",
       });
 
-      const result = await response.json();
-
-      if (response.ok && result.status === "success") {
+      if (response.data.status === "success") {
         setAttendanceRecords((prev) => {
           const exists = prev.find((r) => r.studentId === studentId);
 
@@ -292,9 +264,9 @@ const AttendancePage: React.FC = () => {
           }
         });
       } else {
-        setError(result.message || "Failed to mark attendance");
+        setError(response.data.message || "Failed to mark attendance");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to mark attendance:", err);
       setError("Failed to mark attendance");
     }
@@ -302,22 +274,13 @@ const AttendancePage: React.FC = () => {
 
   const markAllPresent = async () => {
     try {
-      const token = localStorage.getItem("accessToken") ?? "";
-
       await Promise.all(
         students.map(async (student) => {
-          await fetch(`http://localhost:5000/api/attendance`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({
-              studentId: student.id,
-              classId: selectedClass?._id,
-              date: selectedDate,
-              status: "present" as AttendanceRecord["status"],
-            }),
+          await axiosInstance.post(`/attendance`, {
+            studentId: student.id,
+            classId: selectedClass?._id,
+            date: selectedDate,
+            status: "present" as AttendanceRecord["status"],
           });
         })
       );
@@ -358,7 +321,6 @@ const AttendancePage: React.FC = () => {
     try {
       setLoading(true);
 
-      // Mock monthly report data - replace with actual API call
       const mockReport: MonthlyReport[] = students.map((student) => {
         const totalDays = 22; // Working days in month
         const presentDays = Math.floor(Math.random() * 5) + 18; // 18-22 days
@@ -812,7 +774,6 @@ const AttendancePage: React.FC = () => {
             </div>
             <button
               onClick={() => {
-                // Export functionality
                 const csvContent = monthlyReport
                   .map(
                     (row) =>
