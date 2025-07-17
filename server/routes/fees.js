@@ -298,4 +298,69 @@ router.delete(
   }
 );
 
+// @route   GET /api/fees/class-overview
+// @desc    Get fee overview for all classes
+// @access  Private (Admin, Teacher)
+router.get(
+  "/class-overview",
+  auth,
+  authorize(["admin", "teacher"]),
+  async (req, res) => {
+    try {
+      const classes = await Class.find().select(
+        "title enrolledStudents monthlyFee"
+      );
+      const feeRecords = await StudentFee.find()
+        .populate("classId", "title")
+        .populate("feeStructureId", "category");
+
+      // Aggregate data by class
+      const overview = classes.map((classItem) => {
+        const classFeeRecords = feeRecords.filter(
+          (record) =>
+            record.classId?._id.toString() === classItem._id.toString()
+        );
+
+        const totalStudents = classItem.enrolledStudents.length;
+        const totalExpectedRevenue = classFeeRecords.reduce(
+          (sum, record) => sum + record.amount,
+          0
+        );
+        const collectedAmount = classFeeRecords.reduce(
+          (sum, record) => sum + (record.paidAmount || 0),
+          0
+        );
+
+        const paidCount = classFeeRecords.filter(
+          (record) => record.status === "paid"
+        ).length;
+        const partialCount = classFeeRecords.filter(
+          (record) => record.status === "partial"
+        ).length;
+        const pendingCount = classFeeRecords.filter(
+          (record) => record.status === "pending"
+        ).length;
+
+        return {
+          classId: classItem._id,
+          className: classItem.title,
+          totalStudents,
+          totalExpectedRevenue,
+          collectedAmount,
+          paidCount,
+          partialCount,
+          pendingCount,
+          currency: classItem.monthlyFee?.currency || "LKR", // Default to LKR if no currency
+        };
+      });
+
+      res.json({ status: "success", data: overview });
+    } catch (error) {
+      console.error("Get class fee overview error:", error);
+      res
+        .status(500)
+        .json({ status: "error", message: "Internal server error" });
+    }
+  }
+);
 export default router;

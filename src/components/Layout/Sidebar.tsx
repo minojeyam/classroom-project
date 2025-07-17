@@ -83,7 +83,7 @@ const sidebarItems: SidebarItem[] = [
     icon: <DollarSign className="w-5 h-5" />,
     label: "Balance & Payments",
     href: "/balance",
-    roles: ["admin", "teacher", "student", "parent"],
+    roles: ["admin", "student"],
   },
   {
     icon: <MessageSquare className="w-5 h-5" />,
