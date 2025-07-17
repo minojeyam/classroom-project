@@ -14,26 +14,7 @@ import {
 import DataTable from "../Common/DataTable";
 import Modal from "../Common/Modal";
 import { useAuth } from "../../contexts/AuthContext";
-
-interface FormDataType {
-  name: string;
-  description: string;
-  amount: number;
-  currency: string;
-  frequency: "monthly" | "semester" | "annual" | "one-time";
-  category:
-    | "tuition"
-    | "lab"
-    | "library"
-    | "sports"
-    | "transport"
-    | "exam"
-    | "other";
-  applicableClasses: string[]; // ✅ properly typed
-  status: "active" | "inactive";
-  feeStructureId: string;
-  dueDate: string;
-}
+import axios from "axios";
 
 interface FeeStructure {
   id: string;
@@ -69,171 +50,193 @@ interface StudentFee {
   paidDate?: string;
   paymentMethod?: string;
   notes?: string;
+  currency: string;
+}
+
+interface Class {
+  id: string;
+  title: string;
 }
 
 const FeesPage: React.FC = () => {
-  const { user } = useAuth();
-  const [classList, setClassList] = useState<ClassItem[]>([]);
-
+  const { user, accessToken, logout, login } = useAuth();
   const [activeTab, setActiveTab] = useState("overview");
   const [feeStructures, setFeeStructures] = useState<FeeStructure[]>([]);
   const [studentFees, setStudentFees] = useState<StudentFee[]>([]);
+  const [classes, setClasses] = useState<Class[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalType, setModalType] = useState<
     "fee-structure" | "payment" | "bulk-assign"
   >("fee-structure");
   const [selectedItem, setSelectedItem] = useState<any>(null);
-  const [formData, setFormData] = useState<FormDataType>({
+  const [formData, setFormData] = useState({
+    id: "",
     name: "",
     description: "",
     amount: 0,
     currency: "LKR",
     frequency: "monthly",
     category: "tuition",
-    applicableClasses: [],
+    applicableClasses: [] as string[],
     status: "active",
+  });
+  const [paymentFormData, setPaymentFormData] = useState({
+    paidAmount: 0,
+    paymentMethod: "cash",
+    paidDate: new Date().toISOString().split("T")[0],
+    notes: "",
+  });
+  const [bulkAssignData, setBulkAssignData] = useState({
     feeStructureId: "",
+    classIds: [] as string[],
     dueDate: "",
   });
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-
-        // ✅ Fetch classes
-        const classRes = await fetch(
-          "http://localhost:5000/api/classes?limit=100",
-          {
-            headers: {
-              Authorization: `Bearer ${user?.tokens?.accessToken}`,
-            },
-          }
-        );
-
-        const classJson = await classRes.json();
-
-        if (!classRes.ok || !classJson.data?.classes) {
-          throw new Error("Failed to fetch classes");
-        }
-
-        setClassList(
-          classJson.data.classes.map((cls: any) => ({
-            id: cls._id,
-            title: cls.title,
-            monthlyFee: cls.monthlyFee || { amount: 0, currency: "LKR" },
-          }))
-        );
-
-        // Fetch real fee structures
-        const feeRes = await fetch(
-          "http://localhost:5000/api/fees/structures",
-          {
-            headers: {
-              Authorization: `Bearer ${user?.tokens?.accessToken}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
-
-        const feeData = await feeRes.json();
-
-        if (!feeRes.ok || !feeData.data) {
-          throw new Error("Failed to fetch fee structures");
-        }
-
-        const mappedFees = feeData.data.map((fee: any) => ({
-          id: fee._id,
-          name: fee.name,
-          description: fee.description,
-          amount: fee.amount,
-          currency: fee.currency || "LKR",
-          frequency: fee.frequency,
-          category: fee.category,
-          applicableClasses: fee.applicableClasses || [],
-          status: fee.status,
-          createdAt: fee.createdAt,
-        }));
-
-        setFeeStructures(mappedFees);
-        console.log("Loaded fee structures:", mappedFees);
-      } catch (err: any) {
-        console.error("Error fetching data:", err);
-        setError(err.message || "Failed to fetch data");
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchData();
   }, []);
 
   const fetchData = async () => {
+    if (!accessToken) {
+      setError("Please log in to access this page. Click below to log in.");
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
+      setError("");
+      const [feeStructuresRes, studentFeesRes, classesRes] = await Promise.all([
+        axios.get("/api/fees/structures", {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        }),
+        axios.get("/api/fees/student", {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        }),
+        axios.get("/api/classes", {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        }),
+      ]);
+      setFeeStructures(feeStructuresRes.data.data);
+      setStudentFees(studentFeesRes.data.data);
+      console.log("ClassesRes:", classesRes.data.data);
 
-      // fetch real fee structures from the backend
-      const response = await fetch(
-        "http://localhost:5000/api/fees/structures",
-        {
-          headers: {
-            Authorization: `Bearer ${user?.tokens?.accessToken}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Failed to fetch fee structures");
-      }
-
-      // map fields if your backend uses _id instead of id
-      const mappedFees = data.data.map((fee: any) => ({
-        id: fee._id,
-        name: fee.name,
-        description: fee.description,
-        amount: fee.amount,
-        currency: fee.currency || "LKR",
-        frequency: fee.frequency,
-        category: fee.category,
-        applicableClasses: fee.applicableClasses || [],
-        status: fee.status,
-        createdAt: fee.createdAt,
-      }));
-
-      setFeeStructures(mappedFees);
-
-      console.log("Fetched fees from backend:", mappedFees); // ✅ Check category here
-
-      // 👇 Optional: fetch student fees too (replace this with your real endpoint if needed)
-      // const studentFeeRes = await fetch("http://localhost:5000/api/fees/student", {
-      //   headers: {
-      //     Authorization: `Bearer ${user?.tokens?.accessToken}`,
-      //   },
-      // });
-      // const studentFeeData = await studentFeeRes.json();
-      // setStudentFees(studentFeeData.data);
+      setClasses(classesRes.data.data.classes);
     } catch (err: any) {
-      console.error("Error fetching fee structures:", err);
-      setError(err.message || "Failed to fetch data");
+      if (err.response?.status === 401) {
+        setError("Session expired. Please log in again.");
+        logout(); // Redirect to login
+      } else {
+        setError(err.response?.data?.message || "Failed to fetch data");
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleLoginRedirect = () => {
+    logout(); // Triggers redirect to login page
+  };
+
+  const handleFeeStructureSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!accessToken) {
+      setError("Please log in to perform this action.");
+      return;
+    }
+
     try {
-      // Mock API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      setError("");
+      setSuccess("");
+      const url = formData.id
+        ? `/api/fees/structures/${formData.id}`
+        : "/api/fees/structures";
+      const method = formData.id ? "put" : "post";
+      await axios({
+        method,
+        url,
+        data: formData,
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      setSuccess(
+        `Fee structure ${formData.id ? "updated" : "created"} successfully`
+      );
       await fetchData();
       handleCloseModal();
     } catch (err: any) {
-      setError(err.message || "Failed to save fee structure");
+      setError(err.response?.data?.message || "Failed to save fee structure");
+    }
+  };
+
+  const handleDeleteFeeStructure = async (id: string) => {
+    if (!accessToken) {
+      setError("Please log in to perform this action.");
+      return;
+    }
+
+    if (window.confirm("Are you sure you want to delete this fee structure?")) {
+      try {
+        setError("");
+        setSuccess("");
+        await axios.delete(`/api/fees/structures/${id}`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        setSuccess("Fee structure deleted successfully");
+        await fetchData();
+      } catch (err: any) {
+        setError(
+          err.response?.data?.message || "Failed to delete fee structure"
+        );
+      }
+    }
+  };
+
+  const handlePaymentSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!accessToken) {
+      setError("Please log in to perform this action.");
+      return;
+    }
+
+    try {
+      setError("");
+      setSuccess("");
+      await axios.patch(
+        `/api/fees/student/${selectedItem.id}/pay`,
+        paymentFormData,
+        {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        }
+      );
+      setSuccess("Payment recorded successfully");
+      await fetchData();
+      handleCloseModal();
+    } catch (err: any) {
+      setError(err.response?.data?.message || "Failed to record payment");
+    }
+  };
+
+  const handleBulkAssignSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!accessToken) {
+      setError("Please log in to perform this action.");
+      return;
+    }
+
+    try {
+      setError("");
+      setSuccess("");
+      await axios.post("/api/fees/assign", bulkAssignData, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      setSuccess("Fees assigned successfully");
+      await fetchData();
+      handleCloseModal();
+    } catch (err: any) {
+      setError(err.response?.data?.message || "Failed to assign fees");
     }
   };
 
@@ -241,6 +244,7 @@ const FeesPage: React.FC = () => {
     setIsModalOpen(false);
     setSelectedItem(null);
     setFormData({
+      id: "",
       name: "",
       description: "",
       amount: 0,
@@ -249,49 +253,18 @@ const FeesPage: React.FC = () => {
       category: "tuition",
       applicableClasses: [],
       status: "active",
+    });
+    setPaymentFormData({
+      paidAmount: 0,
+      paymentMethod: "cash",
+      paidDate: new Date().toISOString().split("T")[0],
+      notes: "",
+    });
+    setBulkAssignData({
       feeStructureId: "",
+      classIds: [],
       dueDate: "",
     });
-  };
-
-  const handleBulkAssign = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (
-      !formData.feeStructureId ||
-      formData.applicableClasses.length === 0 ||
-      !formData.dueDate
-    ) {
-      setError("Please fill all fields before assigning fees.");
-      return;
-    }
-
-    try {
-      const response = await fetch("http://localhost:5000/api/fees/assign", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${user?.tokens?.accessToken}`,
-        },
-        body: JSON.stringify({
-          feeStructureId: "tuition",
-          classIds: formData.applicableClasses,
-          dueDate: formData.dueDate,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (data.status === "success") {
-        await fetchData(); // refresh fee data
-        handleCloseModal(); // close modal
-      } else {
-        setError(data.message || "Bulk assignment failed.");
-      }
-    } catch (err: any) {
-      console.error("Bulk assign error:", err);
-      setError(err.message || "Something went wrong while assigning fees.");
-    }
   };
 
   const feeStructureColumns = [
@@ -311,7 +284,9 @@ const FeesPage: React.FC = () => {
       label: "Amount",
       sortable: true,
       render: (value: number, row: FeeStructure) => (
-        <span className="font-medium text-gray-900">₹{value}</span>
+        <span className="font-medium text-gray-900">
+          {row.currency} {value}
+        </span>
       ),
     },
     {
@@ -361,12 +336,33 @@ const FeesPage: React.FC = () => {
     {
       key: "actions",
       label: "Actions",
-      render: (value: any, row: FeeStructure) => (
+      render: (_: any, row: FeeStructure) => (
         <div className="flex items-center space-x-2">
-          <button className="text-blue-600 hover:text-blue-800 transition-colors duration-200">
+          <button
+            onClick={() => {
+              setSelectedItem(row);
+              setFormData({
+                id: row.id,
+                name: row.name,
+                description: row.description,
+                amount: row.amount,
+                currency: row.currency,
+                frequency: row.frequency,
+                category: row.category,
+                applicableClasses: row.applicableClasses,
+                status: row.status,
+              });
+              setModalType("fee-structure");
+              setIsModalOpen(true);
+            }}
+            className="text-blue-600 hover:text-blue-800 transition-colors duration-200"
+          >
             <Edit className="w-4 h-4" />
           </button>
-          <button className="text-red-600 hover:text-red-800 transition-colors duration-200">
+          <button
+            onClick={() => handleDeleteFeeStructure(row.id)}
+            className="text-red-600 hover:text-red-800 transition-colors duration-200"
+          >
             <Trash2 className="w-4 h-4" />
           </button>
         </div>
@@ -397,9 +393,13 @@ const FeesPage: React.FC = () => {
       sortable: true,
       render: (value: number, row: StudentFee) => (
         <div>
-          <p className="font-medium text-gray-900">₹{value}</p>
+          <p className="font-medium text-gray-900">
+            {row.currency} {value}
+          </p>
           {row.paidAmount > 0 && (
-            <p className="text-sm text-green-600">Paid: ₹{row.paidAmount}</p>
+            <p className="text-sm text-green-600">
+              Paid: {row.currency} {row.paidAmount}
+            </p>
           )}
         </div>
       ),
@@ -433,11 +433,17 @@ const FeesPage: React.FC = () => {
     {
       key: "actions",
       label: "Actions",
-      render: (value: any, row: StudentFee) => (
+      render: (_: any, row: StudentFee) => (
         <div className="flex items-center space-x-2">
           <button
             onClick={() => {
               setSelectedItem(row);
+              setPaymentFormData({
+                paidAmount: row.amount - row.paidAmount,
+                paymentMethod: "cash",
+                paidDate: new Date().toISOString().split("T")[0],
+                notes: "",
+              });
               setModalType("payment");
               setIsModalOpen(true);
             }}
@@ -456,28 +462,43 @@ const FeesPage: React.FC = () => {
   const stats = [
     {
       title: "Total Revenue",
-      value: "₹4,56,000",
+      value: `${studentFees.reduce(
+        (sum, fee) => sum + (fee.paidAmount || 0),
+        0
+      )} ${user?.currency || "LKR"}`,
       subtitle: "This month",
       icon: DollarSign,
       color: "green",
     },
     {
       title: "Pending Payments",
-      value: "₹84,500",
-      subtitle: "18 students",
+      value: `${studentFees
+        .filter((fee) => fee.status === "pending")
+        .reduce((sum, fee) => sum + fee.amount, 0)} ${user?.currency || "LKR"}`,
+      subtitle: `${
+        studentFees.filter((fee) => fee.status === "pending").length
+      } students`,
       icon: Clock,
       color: "orange",
     },
     {
       title: "Overdue Payments",
-      value: "₹28,500",
-      subtitle: "7 students",
+      value: `${studentFees
+        .filter((fee) => fee.status === "overdue")
+        .reduce((sum, fee) => sum + fee.amount, 0)} ${user?.currency || "LKR"}`,
+      subtitle: `${
+        studentFees.filter((fee) => fee.status === "overdue").length
+      } students`,
       icon: AlertCircle,
       color: "red",
     },
     {
       title: "Collection Rate",
-      value: "94.2%",
+      value: `${(
+        (studentFees.reduce((sum, fee) => sum + (fee.paidAmount || 0), 0) /
+          studentFees.reduce((sum, fee) => sum + fee.amount, 0)) *
+          100 || 0
+      ).toFixed(1)}%`,
       subtitle: "This month",
       icon: CheckCircle,
       color: "blue",
@@ -528,6 +549,27 @@ const FeesPage: React.FC = () => {
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-md p-4">
           <p className="text-sm text-red-600">{error}</p>
+          {error.includes("Please log in") && (
+            <button
+              onClick={handleLoginRedirect}
+              className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            >
+              Go to Login
+            </button>
+          )}
+          {error.includes("Session expired") && (
+            <button
+              onClick={handleLoginRedirect}
+              className="mt-2 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+            >
+              Log In Again
+            </button>
+          )}
+        </div>
+      )}
+      {success && (
+        <div className="bg-green-50 border border-green-200 rounded-md p-4">
+          <p className="text-sm text-green-600">{success}</p>
         </div>
       )}
 
@@ -629,7 +671,7 @@ const FeesPage: React.FC = () => {
                             </p>
                           </div>
                           <span className="text-sm font-medium text-green-600">
-                            ₹{fee.paidAmount}
+                            {fee.currency} {fee.paidAmount}
                           </span>
                         </div>
                       ))}
@@ -657,7 +699,7 @@ const FeesPage: React.FC = () => {
                             </p>
                           </div>
                           <span className="text-sm font-medium text-red-600">
-                            ₹{fee.amount}
+                            {fee.currency} {fee.amount}
                           </span>
                         </div>
                       ))}
@@ -697,7 +739,7 @@ const FeesPage: React.FC = () => {
         onClose={handleCloseModal}
         title={
           modalType === "fee-structure"
-            ? "Add Fee Structure"
+            ? (selectedItem ? "Edit" : "Add") + " Fee Structure"
             : modalType === "payment"
             ? "Record Payment"
             : "Bulk Assign Fees"
@@ -705,7 +747,7 @@ const FeesPage: React.FC = () => {
         size="lg"
       >
         {modalType === "fee-structure" && (
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleFeeStructureSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -729,17 +771,7 @@ const FeesPage: React.FC = () => {
                 <select
                   value={formData.category}
                   onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      category: e.target.value as
-                        | "tuition"
-                        | "lab"
-                        | "library"
-                        | "sports"
-                        | "transport"
-                        | "exam"
-                        | "other",
-                    })
+                    setFormData({ ...formData, category: e.target.value })
                   }
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
                 >
@@ -813,14 +845,7 @@ const FeesPage: React.FC = () => {
                 <select
                   value={formData.frequency}
                   onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      frequency: e.target.value as
-                        | "monthly"
-                        | "semester"
-                        | "annual"
-                        | "one-time",
-                    })
+                    setFormData({ ...formData, frequency: e.target.value })
                   }
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
                 >
@@ -830,6 +855,53 @@ const FeesPage: React.FC = () => {
                   <option value="one-time">One-time</option>
                 </select>
               </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Applicable Classes
+              </label>
+              <div className="space-y-2 max-h-40 overflow-y-auto border border-gray-300 rounded-md p-3">
+                {classes.map((classItem) => (
+                  <label key={classItem.id} className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={formData.applicableClasses.includes(
+                        classItem.id
+                      )}
+                      onChange={(e) => {
+                        const updatedClasses = e.target.checked
+                          ? [...formData.applicableClasses, classItem.id]
+                          : formData.applicableClasses.filter(
+                              (id) => id !== classItem.id
+                            );
+                        setFormData({
+                          ...formData,
+                          applicableClasses: updatedClasses,
+                        });
+                      }}
+                      className="mr-2"
+                    />
+                    <span className="text-sm">{classItem.title}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Status
+              </label>
+              <select
+                value={formData.status}
+                onChange={(e) =>
+                  setFormData({ ...formData, status: e.target.value })
+                }
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
+              >
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
             </div>
 
             <div className="flex items-center justify-end space-x-3 pt-4">
@@ -844,151 +916,182 @@ const FeesPage: React.FC = () => {
                 type="submit"
                 className="px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700 transition-colors duration-200"
               >
-                Create Fee Structure
+                {selectedItem ? "Update" : "Create"} Fee Structure
               </button>
             </div>
           </form>
         )}
 
         {modalType === "payment" && selectedItem && (
-          <div className="space-y-4">
+          <form onSubmit={handlePaymentSubmit} className="space-y-4">
             <div className="bg-gray-50 p-4 rounded-lg">
               <h4 className="font-medium text-gray-900">
                 {selectedItem.studentName}
               </h4>
               <p className="text-sm text-gray-600">{selectedItem.feeName}</p>
               <p className="text-lg font-bold text-gray-900 mt-2">
-                ₹{selectedItem.amount}
+                {selectedItem.currency} {selectedItem.amount}
+              </p>
+              <p className="text-sm text-gray-600">
+                Remaining: {selectedItem.currency}{" "}
+                {selectedItem.amount - selectedItem.paidAmount}
               </p>
             </div>
 
-            <form className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Payment Amount
-                  </label>
-                  <input
-                    type="number"
-                    required
-                    min="0"
-                    max={selectedItem.amount - selectedItem.paidAmount}
-                    step="0.01"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
-                    placeholder="Amount in Rs"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Payment Method
-                  </label>
-                  <select className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500">
-                    <option value="cash">Cash</option>
-                    <option value="bank_transfer">Bank Transfer</option>
-                  </select>
-                </div>
-              </div>
-
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Payment Date
+                  Payment Amount
                 </label>
                 <input
-                  type="date"
+                  type="number"
                   required
-                  defaultValue={new Date().toISOString().split("T")[0]}
+                  min="0"
+                  max={selectedItem.amount - selectedItem.paidAmount}
+                  step="0.01"
+                  value={paymentFormData.paidAmount}
+                  onChange={(e) =>
+                    setPaymentFormData({
+                      ...paymentFormData,
+                      paidAmount: parseFloat(e.target.value),
+                    })
+                  }
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  placeholder="Amount"
                 />
               </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Notes
+                  Payment Method
                 </label>
-                <textarea
-                  rows={3}
+                <select
+                  value={paymentFormData.paymentMethod}
+                  onChange={(e) =>
+                    setPaymentFormData({
+                      ...paymentFormData,
+                      paymentMethod: e.target.value,
+                    })
+                  }
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
-                  placeholder="Additional notes (optional)"
-                />
+                >
+                  <option value="cash">Cash</option>
+                  <option value="card">Card</option>
+                  <option value="bank_transfer">Bank Transfer</option>
+                  <option value="upi">UPI</option>
+                  <option value="check">Check</option>
+                </select>
               </div>
+            </div>
 
-              <div className="flex items-center justify-end space-x-3 pt-4">
-                <button
-                  type="button"
-                  onClick={handleCloseModal}
-                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors duration-200"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700 transition-colors duration-200"
-                >
-                  Record Payment
-                </button>
-              </div>
-            </form>
-          </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Payment Date
+              </label>
+              <input
+                type="date"
+                required
+                value={paymentFormData.paidDate}
+                onChange={(e) =>
+                  setPaymentFormData({
+                    ...paymentFormData,
+                    paidDate: e.target.value,
+                  })
+                }
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Notes
+              </label>
+              <textarea
+                value={paymentFormData.notes}
+                onChange={(e) =>
+                  setPaymentFormData({
+                    ...paymentFormData,
+                    notes: e.target.value,
+                  })
+                }
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
+                placeholder="Additional notes (optional)"
+              />
+            </div>
+
+            <div className="flex items-center justify-end space-x-3 pt-4">
+              <button
+                type="button"
+                onClick={handleCloseModal}
+                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors duration-200"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700 transition-colors duration-200"
+              >
+                Record Payment
+              </button>
+            </div>
+          </form>
         )}
 
         {modalType === "bulk-assign" && (
-          <form onSubmit={handleBulkAssign} className="space-y-4">
-            {/* Fee Structure Dropdown */}
-            {/* <div>
+          <form onSubmit={handleBulkAssignSubmit} className="space-y-4">
+            <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Select Fee Structure
               </label>
               <select
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
-                value={formData.feeStructureId}
+                value={bulkAssignData.feeStructureId}
                 onChange={(e) =>
-                  setFormData({ ...formData, feeStructureId: e.target.value })
+                  setBulkAssignData({
+                    ...bulkAssignData,
+                    feeStructureId: e.target.value,
+                  })
                 }
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
+                required
               >
                 <option value="">Choose fee structure</option>
                 {feeStructures.map((fee) => (
                   <option key={fee.id} value={fee.id}>
-                    {fee.name} ({fee.category}) - Rs {fee.amount}
+                    {fee.name} - {fee.currency} {fee.amount}
                   </option>
                 ))}
               </select>
-            </div> */}
+            </div>
 
-            {/* Class Checkboxes */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Select Classes
               </label>
               <div className="space-y-2 max-h-40 overflow-y-auto border border-gray-300 rounded-md p-3">
-                {classList.map((cls) => (
-                  <label key={cls.id} className="flex items-center">
+                {classes.map((classItem) => (
+                  <label key={classItem.id} className="flex items-center">
                     <input
                       type="checkbox"
-                      className="mr-2"
-                      value={cls.id}
+                      checked={bulkAssignData.classIds.includes(classItem.id)}
                       onChange={(e) => {
-                        const id = e.target.value;
-                        setFormData((prev) => ({
-                          ...prev,
-                          applicableClasses: e.target.checked
-                            ? [...prev.applicableClasses, id]
-                            : prev.applicableClasses.filter(
-                                (cid) => cid !== id
-                              ),
-                        }));
+                        const updatedClasses = e.target.checked
+                          ? [...bulkAssignData.classIds, classItem.id]
+                          : bulkAssignData.classIds.filter(
+                              (id) => id !== classItem.id
+                            );
+                        setBulkAssignData({
+                          ...bulkAssignData,
+                          classIds: updatedClasses,
+                        });
                       }}
-                      checked={formData.applicableClasses.includes(cls.id)}
+                      className="mr-2"
                     />
-                    <span className="text-sm">
-                      {cls.title} (Rs. {cls.monthlyFee?.amount || 0}{" "}
-                      {cls.monthlyFee?.currency || "LKR"})
-                    </span>
+                    <span className="text-sm">{classItem.title}</span>
                   </label>
                 ))}
               </div>
             </div>
 
-            {/* Due Date */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Due Date
@@ -996,15 +1099,17 @@ const FeesPage: React.FC = () => {
               <input
                 type="date"
                 required
-                value={formData.dueDate}
+                value={bulkAssignData.dueDate}
                 onChange={(e) =>
-                  setFormData({ ...formData, dueDate: e.target.value })
+                  setBulkAssignData({
+                    ...bulkAssignData,
+                    dueDate: e.target.value,
+                  })
                 }
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
               />
             </div>
 
-            {/* Action Buttons */}
             <div className="flex items-center justify-end space-x-3 pt-4">
               <button
                 type="button"

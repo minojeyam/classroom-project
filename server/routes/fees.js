@@ -44,7 +44,16 @@ router.post(
   auth,
   authorize(["admin"]),
   [
-    body("name").notEmpty().withMessage("Name is required"),
+    body("name")
+      .notEmpty()
+      .withMessage("Name is required")
+      .custom(async (value) => {
+        const existingFee = await FeeStructure.findOne({ name: value });
+        if (existingFee) {
+          throw new Error("Fee structure with this name already exists");
+        }
+        return true;
+      }),
     body("amount").isFloat({ min: 0 }).withMessage("Amount must be positive"),
     body("currency").isIn(["LKR", "USD", "EUR"]),
     body("frequency").isIn(["monthly", "semester", "annual", "one-time"]),
@@ -94,7 +103,27 @@ router.get(
         .populate("studentId", "firstName lastName")
         .populate("classId", "title")
         .populate("feeStructureId", "name");
-      res.json({ status: "success", data: records });
+      res.json({
+        status: "success",
+        data: records.map((r) => ({
+          id: r._id,
+          studentId: r.studentId?._id,
+          studentName: `${r.studentId?.firstName || ""} ${
+            r.studentId?.lastName || ""
+          }`,
+          className: r.classId?.title || "",
+          feeStructureId: r.feeStructureId?._id,
+          feeName: r.feeStructureId?.name || "",
+          amount: r.amount,
+          dueDate: r.dueDate,
+          status: r.status,
+          paidAmount: r.paidAmount,
+          paidDate: r.paidDate,
+          paymentMethod: r.paymentMethod,
+          notes: r.notes,
+          currency: r.currency,
+        })),
+      });
     } catch (error) {
       console.error("Get student fees error:", error);
       res
