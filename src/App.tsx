@@ -19,6 +19,7 @@ import NoticeBoardPage from "./components/Pages/NoticeBoardPage";
 import ReportsPage from "./components/Pages/ReportsPage";
 import AttendancePage from "./components/Pages/AttendancePage";
 import BalancePage from "./components/Pages/BalancePage";
+import MaterialsPage from "./components/Pages/MaterialsPage";
 
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -92,12 +93,7 @@ const AppContent: React.FC = () => {
       case "/balance":
         return <BalancePage />;
       case "/materials":
-        return (
-          <ComingSoonPage
-            feature="Teaching Materials"
-            description="Upload and manage teaching materials, assignments, and resources."
-          />
-        );
+        return <MaterialsPage />;
       case "/schedule":
         return (
           <ComingSoonPage

@@ -62,6 +62,12 @@ const sidebarItems: SidebarItem[] = [
     roles: ["teacher"],
   },
   {
+    icon: <BookOpen className="w-5 h-5" />,
+    label: "Class Materials",
+    href: "/materials",
+    roles: ["teacher", "student"],
+  },
+  {
     icon: <UserCheck className="w-5 h-5" />,
     label: "Attendance",
     href: "/attendance",
