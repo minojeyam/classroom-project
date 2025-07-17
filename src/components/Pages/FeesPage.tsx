@@ -1,3 +1,4 @@
+// FeesPage.tsx
 import React, { useState, useEffect } from "react";
 import {
   Plus,
@@ -14,14 +15,16 @@ import {
 import DataTable from "../Common/DataTable";
 import Modal from "../Common/Modal";
 import { useAuth } from "../../contexts/AuthContext";
-import axios from "axios";
+import axios, { AxiosError } from "axios";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
+// TypeScript interfaces aligned with backend (fees.js)
 interface FeeStructure {
-  id: string;
+  _id: string;
   name: string;
-  description: string;
   amount: number;
-  currency: string;
+  currency: "LKR" | "USD" | "EUR";
   frequency: "monthly" | "semester" | "annual" | "one-time";
   category:
     | "tuition"
@@ -31,9 +34,7 @@ interface FeeStructure {
     | "transport"
     | "exam"
     | "other";
-  applicableClasses: string[];
-  status: "active" | "inactive";
-  createdAt: string;
+  applicableClasses: { _id: string; title: string }[];
 }
 
 interface StudentFee {
@@ -45,7 +46,7 @@ interface StudentFee {
   feeName: string;
   amount: number;
   dueDate: string;
-  status: "pending" | "paid" | "overdue" | "partial";
+  status: "pending" | "paid" | "partial";
   paidAmount: number;
   paidDate?: string;
   paymentMethod?: string;
@@ -58,30 +59,92 @@ interface Class {
   title: string;
 }
 
+interface ClassFeeOverview {
+  classId: string;
+  className: string;
+  totalStudents: number;
+  totalExpectedRevenue: number;
+  collectedAmount: number;
+  paidCount: number;
+  partialCount: number;
+  pendingCount: number;
+  currency: string;
+}
+
+// API base URL
+const API_BASE_URL = "http://localhost:5000";
+
+// Axios instance with auth header
+const axiosInstance = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
+
+// Class fee overview columns
+const classColumns = [
+  { key: "className", label: "Class Name" },
+  { key: "totalStudents", label: "Total Students" },
+  {
+    key: "totalExpectedRevenue",
+    label: "Expected Revenue",
+    render: (value: number, classItem: ClassFeeOverview) =>
+      `${classItem.currency} ${value.toFixed(2)}`,
+  },
+  {
+    key: "collectedAmount",
+    label: "Collected Amount",
+    render: (value: number, classItem: ClassFeeOverview) =>
+      `${classItem.currency} ${value.toFixed(2)}`,
+  },
+  {
+    key: "paymentStatus",
+    label: "Payment Status",
+    render: (_: any, classItem: ClassFeeOverview) => (
+      <div>
+        <span className="text-green-600">{classItem.paidCount} Paid</span> |{" "}
+        <span className="text-yellow-600">
+          {classItem.partialCount} Partial
+        </span>{" "}
+        | <span className="text-red-600">{classItem.pendingCount} Pending</span>
+      </div>
+    ),
+  },
+];
+
 const FeesPage: React.FC = () => {
-  const { user, accessToken, logout, login } = useAuth();
-  const [activeTab, setActiveTab] = useState("overview");
+  const { user, accessToken, logout } = useAuth();
+  const [activeTab, setActiveTab] = useState<
+    "overview" | "structures" | "payments"
+  >("overview");
   const [feeStructures, setFeeStructures] = useState<FeeStructure[]>([]);
   const [studentFees, setStudentFees] = useState<StudentFee[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
+  const [classOverview, setClassOverview] = useState<ClassFeeOverview[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalType, setModalType] = useState<
-    "fee-structure" | "payment" | "bulk-assign"
+    "fee-structure" | "payment" | "bulk-assign" | "view"
   >("fee-structure");
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [formData, setFormData] = useState({
     id: "",
     name: "",
-    description: "",
     amount: 0,
-    currency: "LKR",
-    frequency: "monthly",
-    category: "tuition",
+    currency: "LKR" as "LKR" | "USD" | "EUR",
+    frequency: "monthly" as "monthly" | "semester" | "annual" | "one-time",
+    category: "tuition" as
+      | "tuition"
+      | "lab"
+      | "library"
+      | "sports"
+      | "transport"
+      | "exam"
+      | "other",
     applicableClasses: [] as string[],
-    status: "active",
   });
   const [paymentFormData, setPaymentFormData] = useState({
     paidAmount: 0,
@@ -101,11 +164,11 @@ const FeesPage: React.FC = () => {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [accessToken]);
 
   const fetchData = async () => {
     if (!accessToken) {
-      setError("Please log in to access this page. Click below to log in.");
+      setError("Please log in to access this page.");
       setLoading(false);
       return;
     }
@@ -113,64 +176,66 @@ const FeesPage: React.FC = () => {
     try {
       setLoading(true);
       setError("");
-      const [feeStructuresRes, studentFeesRes, classesRes] = await Promise.all([
-        axios.get("/api/fees/structures", {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        }),
-        axios.get("/api/fees/student", {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        }),
-        axios.get("/api/classes", {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        }),
-      ]);
+      const [feeStructuresRes, studentFeesRes, classesRes, overviewRes] =
+        await Promise.all([
+          axiosInstance.get("/api/fees/structures", {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          }),
+          axiosInstance.get("/api/fees/student", {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          }),
+          axiosInstance.get("/api/classes", {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          }),
+          axiosInstance.get("/api/fees/class-overview", {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          }),
+        ]);
       setFeeStructures(
-        feeStructuresRes.data.data.map((f: any) => ({
-          ...f,
-          id: f._id,
-        }))
+        feeStructuresRes.data.data.map((f: any) => ({ ...f, id: f._id }))
       );
       setStudentFees(studentFeesRes.data.data);
-      setClasses(classesRes.data.data.classes || classesRes.data.data); // Adjust based on API response
+      setClasses(classesRes.data.data.classes || classesRes.data.data);
+      setClassOverview(overviewRes.data.data);
     } catch (err: any) {
-      if (err.response?.status === 401) {
+      const error = err as AxiosError;
+      if (error.response?.status === 401) {
         setError("Session expired. Please log in again.");
-        logout(); // Redirect to login
+        logout();
       } else {
-        setError(err.response?.data?.message || "Failed to fetch data");
+        setError(error.response?.data?.message || "Failed to fetch data");
+        toast.error(error.response?.data?.message || "Failed to fetch data");
       }
     } finally {
       setLoading(false);
     }
   };
 
-  const handleLoginRedirect = () => {
-    logout(); // Triggers redirect to login page
-  };
-
-  const API_BASE_URL = "http://localhost:5000";
-
   const handleFeeStructureSubmit = async (
     e: React.FormEvent<HTMLFormElement>
   ) => {
     e.preventDefault();
-
     if (!accessToken) {
       setError("Please log in to perform this action.");
+      toast.error("Please log in to perform this action.");
+      return;
+    }
+
+    if (formData.amount <= 0) {
+      setError("Amount must be positive.");
+      toast.error("Amount must be positive.");
       return;
     }
 
     try {
       setError("");
       setSuccess("");
-
       const url = formData.id
-        ? `${API_BASE_URL}/api/fees/structures/${formData.id}`
-        : `${API_BASE_URL}/api/fees/structures`;
-
+        ? `/api/fees/structures/${formData.id}`
+        : `/api/fees/structures`;
       const method: "post" | "put" = formData.id ? "put" : "post";
 
-      await axios({
+      await axiosInstance({
         method,
         url,
         data: formData,
@@ -180,27 +245,28 @@ const FeesPage: React.FC = () => {
       setSuccess(
         `Fee structure ${formData.id ? "updated" : "created"} successfully`
       );
+      toast.success(
+        `Fee structure ${formData.id ? "updated" : "created"} successfully`
+      );
       await fetchData();
       handleCloseModal();
     } catch (err: any) {
-      console.error("Error Response:", err.response?.data || err.message);
+      const error = err as AxiosError;
       setError(
-        err.response?.data?.message ||
-          `Failed to ${formData.id ? "update" : "create"} fee structure: ${
-            err.message
-          }`
+        error.response?.data?.message ||
+          `Failed to ${formData.id ? "update" : "create"} fee structure`
+      );
+      toast.error(
+        error.response?.data?.message ||
+          `Failed to ${formData.id ? "update" : "create"} fee structure`
       );
     }
   };
 
-  const handleDeleteFeeStructure = async (id: string | undefined) => {
-    if (!id) {
-      console.error("❌ Cannot delete fee structure — ID is undefined");
-      return;
-    }
-
+  const handleDeleteFeeStructure = async (id: string) => {
     if (!accessToken) {
       setError("Please log in to perform this action.");
+      toast.error("Please log in to perform this action.");
       return;
     }
 
@@ -208,14 +274,19 @@ const FeesPage: React.FC = () => {
       try {
         setError("");
         setSuccess("");
-        await axios.delete(`http://localhost:5000/api/fees/structures/${id}`, {
+        await axiosInstance.delete(`/api/fees/structures/${id}`, {
           headers: { Authorization: `Bearer ${accessToken}` },
         });
         setSuccess("Fee structure deleted successfully");
+        toast.success("Fee structure deleted successfully");
         await fetchData();
       } catch (err: any) {
+        const error = err as AxiosError;
         setError(
-          err.response?.data?.message || "Failed to delete fee structure"
+          error.response?.data?.message || "Failed to delete fee structure"
+        );
+        toast.error(
+          error.response?.data?.message || "Failed to delete fee structure"
         );
       }
     }
@@ -225,13 +296,20 @@ const FeesPage: React.FC = () => {
     e.preventDefault();
     if (!accessToken) {
       setError("Please log in to perform this action.");
+      toast.error("Please log in to perform this action.");
+      return;
+    }
+
+    if (paymentFormData.paidAmount <= 0) {
+      setError("Payment amount must be positive.");
+      toast.error("Payment amount must be positive.");
       return;
     }
 
     try {
       setError("");
       setSuccess("");
-      await axios.patch(
+      await axiosInstance.patch(
         `/api/fees/student/${selectedItem.id}/pay`,
         paymentFormData,
         {
@@ -239,10 +317,13 @@ const FeesPage: React.FC = () => {
         }
       );
       setSuccess("Payment recorded successfully");
+      toast.success("Payment recorded successfully");
       await fetchData();
       handleCloseModal();
     } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to record payment");
+      const error = err as AxiosError;
+      setError(error.response?.data?.message || "Failed to record payment");
+      toast.error(error.response?.data?.message || "Failed to record payment");
     }
   };
 
@@ -250,12 +331,9 @@ const FeesPage: React.FC = () => {
     e.preventDefault();
     if (!accessToken) {
       setError("Please log in to perform this action.");
+      toast.error("Please log in to perform this action.");
       return;
     }
-
-    console.log("User Role:", user?.role);
-    console.log("Access Token:", accessToken);
-    console.log("Bulk Assign Data:", bulkAssignData);
 
     if (
       !bulkAssignData.feeStructureId ||
@@ -265,28 +343,24 @@ const FeesPage: React.FC = () => {
       setError(
         "Please fill all required fields (Fee Structure, Classes, and Due Date)."
       );
+      toast.error("Please fill all required fields.");
       return;
     }
 
     try {
       setError("");
       setSuccess("");
-      await axios.post(
-        "http://localhost:5000/api/fees/assign",
-        bulkAssignData,
-        {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        }
-      );
+      await axiosInstance.post("/api/fees/assign", bulkAssignData, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
       setSuccess("Fees assigned successfully");
+      toast.success("Fees assigned successfully");
       await fetchData();
       handleCloseModal();
     } catch (err: any) {
-      console.error("Full Error Response:", err.response?.data || err.message);
-      setError(
-        err.response?.data?.message ||
-          "Failed to assign fees: An internal server error occurred"
-      );
+      const error = err as AxiosError;
+      setError(error.response?.data?.message || "Failed to assign fees");
+      toast.error(error.response?.data?.message || "Failed to assign fees");
     }
   };
 
@@ -296,13 +370,11 @@ const FeesPage: React.FC = () => {
     setFormData({
       id: "",
       name: "",
-      description: "",
       amount: 0,
       currency: "LKR",
       frequency: "monthly",
       category: "tuition",
       applicableClasses: [],
-      status: "active",
     });
     setPaymentFormData({
       paidAmount: 0,
@@ -317,17 +389,12 @@ const FeesPage: React.FC = () => {
     });
   };
 
+  // Fee structure columns
   const feeStructureColumns = [
     {
       key: "name",
       label: "Fee Name",
       sortable: true,
-      render: (value: string, row: FeeStructure) => (
-        <div>
-          <p className="font-medium text-gray-900">{value}</p>
-          <p className="text-sm text-gray-500">{row.description}</p>
-        </div>
-      ),
     },
     {
       key: "amount",
@@ -335,7 +402,7 @@ const FeesPage: React.FC = () => {
       sortable: true,
       render: (value: number, row: FeeStructure) => (
         <span className="font-medium text-gray-900">
-          {row.currency} {value}
+          {row.currency} {value.toFixed(2)}
         </span>
       ),
     },
@@ -368,19 +435,10 @@ const FeesPage: React.FC = () => {
       ),
     },
     {
-      key: "status",
-      label: "Status",
-      sortable: true,
-      render: (value: string) => (
-        <span
-          className={`px-2 py-1 rounded-full text-xs font-medium ${
-            value === "active"
-              ? "bg-green-100 text-green-800"
-              : "bg-gray-100 text-gray-800"
-          }`}
-        >
-          {value.charAt(0).toUpperCase() + value.slice(1)}
-        </span>
+      key: "applicableClasses",
+      label: "Classes",
+      render: (value: { _id: string; title: string }[]) => (
+        <span>{value.map((c) => c.title).join(", ")}</span>
       ),
     },
     {
@@ -392,15 +450,13 @@ const FeesPage: React.FC = () => {
             onClick={() => {
               setSelectedItem(row);
               setFormData({
-                id: row.id,
+                id: row._id,
                 name: row.name,
-                description: row.description,
                 amount: row.amount,
                 currency: row.currency,
                 frequency: row.frequency,
                 category: row.category,
-                applicableClasses: row.applicableClasses,
-                status: row.status,
+                applicableClasses: row.applicableClasses.map((c) => c._id),
               });
               setModalType("fee-structure");
               setIsModalOpen(true);
@@ -410,13 +466,7 @@ const FeesPage: React.FC = () => {
             <Edit className="w-4 h-4" />
           </button>
           <button
-            onClick={() => {
-              if (!row.id) {
-                console.warn("Row ID is undefined", row);
-                return;
-              }
-              handleDeleteFeeStructure(row.id);
-            }}
+            onClick={() => handleDeleteFeeStructure(row._id)}
             className="text-red-600 hover:text-red-800 transition-colors duration-200"
           >
             <Trash2 className="w-4 h-4" />
@@ -426,6 +476,7 @@ const FeesPage: React.FC = () => {
     },
   ];
 
+  // Student fee columns
   const studentFeeColumns = [
     {
       key: "studentName",
@@ -450,11 +501,11 @@ const FeesPage: React.FC = () => {
       render: (value: number, row: StudentFee) => (
         <div>
           <p className="font-medium text-gray-900">
-            {row.currency} {value}
+            {row.currency} {value.toFixed(2)}
           </p>
           {row.paidAmount > 0 && (
             <p className="text-sm text-green-600">
-              Paid: {row.currency} {row.paidAmount}
+              Paid: {row.currency} {row.paidAmount.toFixed(2)}
             </p>
           )}
         </div>
@@ -477,8 +528,6 @@ const FeesPage: React.FC = () => {
               ? "bg-green-100 text-green-800"
               : value === "pending"
               ? "bg-yellow-100 text-yellow-800"
-              : value === "overdue"
-              ? "bg-red-100 text-red-800"
               : "bg-orange-100 text-orange-800"
           }`}
         >
@@ -507,7 +556,14 @@ const FeesPage: React.FC = () => {
           >
             Record Payment
           </button>
-          <button className="text-blue-600 hover:text-blue-800 transition-colors duration-200">
+          <button
+            onClick={() => {
+              setSelectedItem(row);
+              setModalType("view");
+              setIsModalOpen(true);
+            }}
+            className="text-blue-600 hover:text-blue-800 transition-colors duration-200"
+          >
             <Eye className="w-4 h-4" />
           </button>
         </div>
@@ -515,13 +571,13 @@ const FeesPage: React.FC = () => {
     },
   ];
 
+  // Stats for overview
   const stats = [
     {
       title: "Total Revenue",
-      value: `${studentFees.reduce(
-        (sum, fee) => sum + (fee.paidAmount || 0),
-        0
-      )} ${user?.currency || "LKR"}`,
+      value: `${studentFees
+        .reduce((sum, fee) => sum + (fee.paidAmount || 0), 0)
+        .toFixed(2)} ${user?.currency || "LKR"}`,
       subtitle: "This month",
       icon: DollarSign,
       color: "green",
@@ -530,7 +586,8 @@ const FeesPage: React.FC = () => {
       title: "Pending Payments",
       value: `${studentFees
         .filter((fee) => fee.status === "pending")
-        .reduce((sum, fee) => sum + fee.amount, 0)} ${user?.currency || "LKR"}`,
+        .reduce((sum, fee) => sum + fee.amount, 0)
+        .toFixed(2)} ${user?.currency || "LKR"}`,
       subtitle: `${
         studentFees.filter((fee) => fee.status === "pending").length
       } students`,
@@ -538,12 +595,13 @@ const FeesPage: React.FC = () => {
       color: "orange",
     },
     {
-      title: "Overdue Payments",
+      title: "Partial Payments",
       value: `${studentFees
-        .filter((fee) => fee.status === "overdue")
-        .reduce((sum, fee) => sum + fee.amount, 0)} ${user?.currency || "LKR"}`,
+        .filter((fee) => fee.status === "partial")
+        .reduce((sum, fee) => sum + (fee.amount - fee.paidAmount), 0)
+        .toFixed(2)} ${user?.currency || "LKR"}`,
       subtitle: `${
-        studentFees.filter((fee) => fee.status === "overdue").length
+        studentFees.filter((fee) => fee.status === "partial").length
       } students`,
       icon: AlertCircle,
       color: "red",
@@ -561,6 +619,13 @@ const FeesPage: React.FC = () => {
     },
   ];
 
+  // Filter logic for student payments
+  const filteredStudentFees = studentFees.filter((fee) => {
+    const classMatch = !filters.classId || fee.className === filters.classId;
+    const statusMatch = !filters.status || fee.status === filters.status;
+    return classMatch && statusMatch;
+  });
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -569,15 +634,8 @@ const FeesPage: React.FC = () => {
     );
   }
 
-  // Filter logic for Student Payments
-  const filteredStudentFees = studentFees.filter((fee) => {
-    const classMatch = !filters.classId || fee.className === filters.classId;
-    const statusMatch = !filters.status || fee.status === filters.status;
-    return classMatch && statusMatch;
-  });
-
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -614,18 +672,10 @@ const FeesPage: React.FC = () => {
           <p className="text-sm text-red-600">{error}</p>
           {error.includes("Please log in") && (
             <button
-              onClick={handleLoginRedirect}
+              onClick={logout}
               className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
             >
               Go to Login
-            </button>
-          )}
-          {error.includes("Session expired") && (
-            <button
-              onClick={handleLoginRedirect}
-              className="mt-2 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
-            >
-              Log In Again
             </button>
           )}
         </div>
@@ -734,20 +784,19 @@ const FeesPage: React.FC = () => {
                             </p>
                           </div>
                           <span className="text-sm font-medium text-green-600">
-                            {fee.currency} {fee.paidAmount}
+                            {fee.currency} {fee.paidAmount.toFixed(2)}
                           </span>
                         </div>
                       ))}
                   </div>
                 </div>
-
                 <div className="bg-gray-50 p-6 rounded-lg">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                    Overdue Payments
+                    Pending Payments
                   </h3>
                   <div className="space-y-3">
                     {studentFees
-                      .filter((fee) => fee.status === "overdue")
+                      .filter((fee) => fee.status === "pending")
                       .map((fee) => (
                         <div
                           key={fee.id}
@@ -762,12 +811,30 @@ const FeesPage: React.FC = () => {
                             </p>
                           </div>
                           <span className="text-sm font-medium text-red-600">
-                            {fee.currency} {fee.amount}
+                            {fee.currency} {fee.amount.toFixed(2)}
                           </span>
                         </div>
                       ))}
                   </div>
                 </div>
+              </div>
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+                <div className="p-6 border-b border-gray-200">
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    My Classes - Fee Overview
+                  </h3>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Revenue and payment status for each class
+                  </p>
+                </div>
+                <DataTable
+                  columns={classColumns}
+                  data={classOverview}
+                  title=""
+                  searchable={true}
+                  filterable={true}
+                  exportable={true}
+                />
               </div>
             </div>
           )}
@@ -810,7 +877,6 @@ const FeesPage: React.FC = () => {
                   <option value="">All Statuses</option>
                   <option value="paid">Paid</option>
                   <option value="pending">Pending</option>
-                  <option value="overdue">Overdue</option>
                   <option value="partial">Partial</option>
                 </select>
                 <button
@@ -842,6 +908,8 @@ const FeesPage: React.FC = () => {
             ? (selectedItem ? "Edit" : "Add") + " Fee Structure"
             : modalType === "payment"
             ? "Record Payment"
+            : modalType === "view"
+            ? "Payment Details"
             : "Bulk Assign Fees"
         }
         size="lg"
@@ -871,7 +939,17 @@ const FeesPage: React.FC = () => {
                 <select
                   value={formData.category}
                   onChange={(e) =>
-                    setFormData({ ...formData, category: e.target.value })
+                    setFormData({
+                      ...formData,
+                      category: e.target.value as
+                        | "tuition"
+                        | "lab"
+                        | "library"
+                        | "sports"
+                        | "transport"
+                        | "exam"
+                        | "other",
+                    })
                   }
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
                 >
@@ -885,22 +963,6 @@ const FeesPage: React.FC = () => {
                 </select>
               </div>
             </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Description
-              </label>
-              <textarea
-                value={formData.description}
-                onChange={(e) =>
-                  setFormData({ ...formData, description: e.target.value })
-                }
-                rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
-                placeholder="Enter fee description"
-              />
-            </div>
-
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -915,7 +977,7 @@ const FeesPage: React.FC = () => {
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      amount: parseFloat(e.target.value),
+                      amount: parseFloat(e.target.value) || 0,
                     })
                   }
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
@@ -929,11 +991,16 @@ const FeesPage: React.FC = () => {
                 <select
                   value={formData.currency}
                   onChange={(e) =>
-                    setFormData({ ...formData, currency: e.target.value })
+                    setFormData({
+                      ...formData,
+                      currency: e.target.value as "LKR" | "USD" | "EUR",
+                    })
                   }
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
                 >
-                  <option value="LKR">LKR (Sri Lankan Rupee)</option>
+                  <option value="LKR">LKR</option>
+                  <option value="USD">USD</option>
+                  <option value="EUR">EUR</option>
                 </select>
               </div>
               <div>
@@ -943,7 +1010,14 @@ const FeesPage: React.FC = () => {
                 <select
                   value={formData.frequency}
                   onChange={(e) =>
-                    setFormData({ ...formData, frequency: e.target.value })
+                    setFormData({
+                      ...formData,
+                      frequency: e.target.value as
+                        | "monthly"
+                        | "semester"
+                        | "annual"
+                        | "one-time",
+                    })
                   }
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
                 >
@@ -954,7 +1028,6 @@ const FeesPage: React.FC = () => {
                 </select>
               </div>
             </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Applicable Classes
@@ -985,23 +1058,6 @@ const FeesPage: React.FC = () => {
                 ))}
               </div>
             </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Status
-              </label>
-              <select
-                value={formData.status}
-                onChange={(e) =>
-                  setFormData({ ...formData, status: e.target.value })
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
-              >
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-              </select>
-            </div>
-
             <div className="flex items-center justify-end space-x-3 pt-4">
               <button
                 type="button"
@@ -1028,14 +1084,13 @@ const FeesPage: React.FC = () => {
               </h4>
               <p className="text-sm text-gray-600">{selectedItem.feeName}</p>
               <p className="text-lg font-bold text-gray-900 mt-2">
-                {selectedItem.currency} {selectedItem.amount}
+                {selectedItem.currency} {selectedItem.amount.toFixed(2)}
               </p>
               <p className="text-sm text-gray-600">
                 Remaining: {selectedItem.currency}{" "}
-                {selectedItem.amount - selectedItem.paidAmount}
+                {(selectedItem.amount - selectedItem.paidAmount).toFixed(2)}
               </p>
             </div>
-
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1051,7 +1106,7 @@ const FeesPage: React.FC = () => {
                   onChange={(e) =>
                     setPaymentFormData({
                       ...paymentFormData,
-                      paidAmount: parseFloat(e.target.value),
+                      paidAmount: parseFloat(e.target.value) || 0,
                     })
                   }
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
@@ -1074,10 +1129,10 @@ const FeesPage: React.FC = () => {
                 >
                   <option value="cash">Cash</option>
                   <option value="bank_transfer">Bank Transfer</option>
+                  <option value="credit_card">Credit Card</option>
                 </select>
               </div>
             </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Payment Date
@@ -1095,7 +1150,6 @@ const FeesPage: React.FC = () => {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
               />
             </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Notes
@@ -1113,7 +1167,6 @@ const FeesPage: React.FC = () => {
                 placeholder="Additional notes (optional)"
               />
             </div>
-
             <div className="flex items-center justify-end space-x-3 pt-4">
               <button
                 type="button"
@@ -1130,6 +1183,56 @@ const FeesPage: React.FC = () => {
               </button>
             </div>
           </form>
+        )}
+
+        {modalType === "view" && selectedItem && (
+          <div className="space-y-4">
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <h4 className="font-medium text-gray-900">
+                {selectedItem.studentName}
+              </h4>
+              <p className="text-sm text-gray-600">{selectedItem.feeName}</p>
+              <p className="text-lg font-bold text-gray-900 mt-2">
+                {selectedItem.currency} {selectedItem.amount.toFixed(2)}
+              </p>
+              <p className="text-sm text-gray-600">
+                Paid: {selectedItem.currency}{" "}
+                {selectedItem.paidAmount.toFixed(2)}
+              </p>
+              <p className="text-sm text-gray-600">
+                Remaining: {selectedItem.currency}{" "}
+                {(selectedItem.amount - selectedItem.paidAmount).toFixed(2)}
+              </p>
+              <p className="text-sm text-gray-600">
+                Status: {selectedItem.status}
+              </p>
+              {selectedItem.paidDate && (
+                <p className="text-sm text-gray-600">
+                  Paid Date:{" "}
+                  {new Date(selectedItem.paidDate).toLocaleDateString()}
+                </p>
+              )}
+              {selectedItem.paymentMethod && (
+                <p className="text-sm text-gray-600">
+                  Payment Method: {selectedItem.paymentMethod}
+                </p>
+              )}
+              {selectedItem.notes && (
+                <p className="text-sm text-gray-600">
+                  Notes: {selectedItem.notes}
+                </p>
+              )}
+            </div>
+            <div className="flex items-center justify-end pt-4">
+              <button
+                type="button"
+                onClick={handleCloseModal}
+                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors duration-200"
+              >
+                Close
+              </button>
+            </div>
+          </div>
         )}
 
         {modalType === "bulk-assign" && (
@@ -1151,13 +1254,12 @@ const FeesPage: React.FC = () => {
               >
                 <option value="">Choose fee structure</option>
                 {feeStructures.map((fee) => (
-                  <option key={fee._id || fee.id} value={fee._id || fee.id}>
-                    {fee.name} - {fee.currency} {fee.amount}
+                  <option key={fee._id} value={fee._id}>
+                    {fee.name} - {fee.currency} {fee.amount.toFixed(2)}
                   </option>
                 ))}
               </select>
             </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Select Classes
@@ -1186,7 +1288,6 @@ const FeesPage: React.FC = () => {
                 ))}
               </div>
             </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Due Date
@@ -1204,7 +1305,6 @@ const FeesPage: React.FC = () => {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
               />
             </div>
-
             <div className="flex items-center justify-end space-x-3 pt-4">
               <button
                 type="button"
@@ -1223,6 +1323,8 @@ const FeesPage: React.FC = () => {
           </form>
         )}
       </Modal>
+
+      <ToastContainer />
     </div>
   );
 };
