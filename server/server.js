@@ -4,6 +4,7 @@ import cors from "cors";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import dotenv from "dotenv";
+import fileUpload from "express-fileupload";
 
 // Import routes
 import authRoutes from "./routes/auth.js";
@@ -13,6 +14,7 @@ import classRoutes from "./routes/classes.js";
 import attendanceRoutes from "./routes/attendance.js";
 import feeRoutes from "./routes/fees.js";
 import noticeRoutes from "./routes/notices.js";
+import materialRoutes from "./routes/material.js";
 
 // Import middleware
 import { errorHandler } from "./middleware/errorHandler.js";
@@ -59,6 +61,7 @@ app.options("*", cors());
 // Body parsing middleware
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+app.use(fileUpload());
 
 // Database connection
 mongoose
@@ -90,6 +93,7 @@ app.use("/api/classes", classRoutes);
 app.use("/api/attendance", attendanceRoutes);
 app.use("/api/fees", feeRoutes);
 app.use("/api/notices", noticeRoutes);
+app.use("/api/materials", materialRoutes);
 
 // Root route handler
 app.get("/", (req, res) => {

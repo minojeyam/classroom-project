@@ -94,10 +94,10 @@ const TeacherMaterialsView: React.FC = () => {
     try {
       setLoading(true);
       const token = localStorage.getItem("accessToken") ?? undefined;
-      const response = await classesAPI.getClasses(
-        { teacher: user?.id },
-        token
-      );
+      const response = await classesAPI.getClasses({
+        teacher: user?.id,
+        token,
+      });
 
       if (response.status === "success") {
         setClasses(response.data.classes || []);
@@ -111,121 +111,76 @@ const TeacherMaterialsView: React.FC = () => {
 
   const fetchMaterials = async () => {
     try {
-      // Mock materials data - replace with actual API call
-      const mockMaterials: Material[] = [
-        {
-          id: "1",
-          title: "Chapter 5: Algebra Fundamentals",
-          description:
-            "Complete notes and examples for algebra basics including linear equations and graphing.",
-          type: "document",
-          classId: "1",
-          className: "Advanced Mathematics",
-          fileName: "algebra-fundamentals.pdf",
-          fileSize: 2048576, // 2MB
-          uploadDate: "2024-03-15T10:30:00.000Z",
-          isVisible: true,
-          downloadCount: 23,
-          createdBy: user?.id || "2",
-          createdByName:
-            user?.firstName + " " + user?.lastName || "Teacher User",
+      setLoading(true);
+      const token = JSON.parse(localStorage.getItem("user") || "{}")?.tokens
+        ?.accessToken;
+      if (!token) throw new Error("No access token found");
+      const response = await fetch("http://localhost:5000/api/materials", {
+        headers: {
+          Authorization: `Bearer ${token}`,
         },
-        {
-          id: "2",
-          title: "Physics Lab Experiment Video",
-          description:
-            "Demonstration of pendulum motion experiment with detailed explanations.",
-          type: "video",
-          classId: "2",
-          className: "Physics Fundamentals",
-          url: "https://example.com/physics-lab-video",
-          uploadDate: "2024-03-14T14:20:00.000Z",
-          isVisible: true,
-          downloadCount: 45,
-          createdBy: user?.id || "2",
-          createdByName:
-            user?.firstName + " " + user?.lastName || "Teacher User",
-        },
-        {
-          id: "3",
-          title: "Chemistry Periodic Table Reference",
-          description:
-            "Interactive periodic table with element properties and examples.",
-          type: "link",
-          classId: "3",
-          className: "Chemistry Lab",
-          url: "https://example.com/periodic-table",
-          uploadDate: "2024-03-13T09:15:00.000Z",
-          isVisible: false,
-          downloadCount: 12,
-          createdBy: user?.id || "2",
-          createdByName:
-            user?.firstName + " " + user?.lastName || "Teacher User",
-        },
-        {
-          id: "4",
-          title: "Math Problem Set Solutions",
-          description: "Step-by-step solutions for homework problems 1-20.",
-          type: "document",
-          classId: "1",
-          className: "Advanced Mathematics",
-          fileName: "problem-solutions.pdf",
-          fileSize: 1536000, // 1.5MB
-          uploadDate: "2024-03-12T16:45:00.000Z",
-          isVisible: true,
-          downloadCount: 67,
-          createdBy: user?.id || "2",
-          createdByName:
-            user?.firstName + " " + user?.lastName || "Teacher User",
-        },
-      ];
-
-      setMaterials(mockMaterials);
+      });
+      const result = await response.json();
+      if (result.status === "success") {
+        setMaterials(result.data.materials || []);
+      } else {
+        throw new Error(result.message || "Failed to fetch materials");
+      }
     } catch (err: any) {
       setError(err.message || "Failed to fetch materials");
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
+
+    const token = JSON.parse(localStorage.getItem("user") || "{}")?.tokens
+      ?.accessToken;
+    if (!token) {
+      setError("No access token found. Please log in again.");
+      return;
+    }
+
+    const form = new FormData();
+    form.append("title", formData.title);
+    form.append("description", formData.description);
+    form.append("type", formData.type);
+    form.append("classId", formData.classId);
+    form.append("isVisible", String(formData.isVisible));
+
+    if (formData.type === "link") {
+      form.append("url", formData.url);
+    } else if (formData.file) {
+      form.append("file", formData.file);
+    }
+
     try {
-      // Mock API call - replace with actual implementation
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const res = await fetch("http://localhost:5000/api/materials", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: form,
+      });
 
-      const newMaterial: Material = {
-        id: Date.now().toString(),
-        title: formData.title,
-        description: formData.description,
-        type: formData.type,
-        classId: formData.classId,
-        className: classes.find((c) => c._id === formData.classId)?.title || "",
-        url: formData.url,
-        fileName: formData.file?.name,
-        fileSize: formData.file?.size,
-        uploadDate: new Date().toISOString(),
-        isVisible: formData.isVisible,
-        downloadCount: 0,
-        createdBy: user?.id || "",
-        createdByName: user?.firstName + " " + user?.lastName || "",
-      };
+      const result = await res.json();
 
-      if (isEditMode && selectedMaterial) {
-        // Update existing material
-        setMaterials((prev) =>
-          prev.map((m) =>
-            m.id === selectedMaterial.id
-              ? { ...newMaterial, id: selectedMaterial.id }
-              : m
-          )
-        );
+      if (result.status === "success") {
+        const savedMaterial = result.data.material;
+        savedMaterial.className =
+          classes.find((c) => c._id === savedMaterial.classId)?.title || "";
+
+        setMaterials((prev) => [...prev, savedMaterial]);
+        handleCloseModal();
       } else {
-        // Add new material
-        setMaterials((prev) => [...prev, newMaterial]);
+        setError(result.message || "Upload failed");
       }
-
-      handleCloseModal();
     } catch (err: any) {
-      setError(err.message || "Failed to save material");
+      console.error("Upload error:", err);
+      setError("Failed to upload material.");
     }
   };
 
