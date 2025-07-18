@@ -93,14 +93,25 @@ const TeacherMaterialsView: React.FC = () => {
   const fetchTeacherClasses = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem("accessToken") ?? undefined;
-      const response = await classesAPI.getClasses({
-        teacher: user?.id,
-        token,
-      });
+      const token = JSON.parse(localStorage.getItem("user") || "{}")?.tokens
+        ?.accessToken;
+      if (!token) throw new Error("No access token found");
 
-      if (response.status === "success") {
-        setClasses(response.data.classes || []);
+      const response = await fetch(
+        `http://localhost:5000/api/classes?teacher=${user?.id}&status=active`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const result = await response.json();
+
+      if (result.status === "success") {
+        setClasses(result.data.classes || []);
+      } else {
+        throw new Error(result.message || "Failed to fetch classes");
       }
     } catch (err: any) {
       setError(err.message || "Failed to fetch classes");
@@ -109,20 +120,53 @@ const TeacherMaterialsView: React.FC = () => {
     }
   };
 
+  // const fetchMaterials = async () => {
+  //   try {
+  //     setLoading(true);
+  //     const token = JSON.parse(localStorage.getItem("user") || "{}")?.tokens
+  //       ?.accessToken;
+  //     if (!token) throw new Error("No access token found");
+  //     const response = await fetch("http://localhost:5000/api/materials", {
+  //       headers: {
+  //         Authorization: `Bearer ${token}`,
+  //       },
+  //     });
+  //     const result = await response.json();
+  //     if (result.status === "success") {
+  //       setMaterials(result.data.materials || []);
+  //     } else {
+  //       throw new Error(result.message || "Failed to fetch materials");
+  //     }
+  //   } catch (err: any) {
+  //     setError(err.message || "Failed to fetch materials");
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
   const fetchMaterials = async () => {
     try {
       setLoading(true);
       const token = JSON.parse(localStorage.getItem("user") || "{}")?.tokens
         ?.accessToken;
       if (!token) throw new Error("No access token found");
+
       const response = await fetch("http://localhost:5000/api/materials", {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
+
       const result = await response.json();
+
       if (result.status === "success") {
-        setMaterials(result.data.materials || []);
+        const normalizedMaterials = (result.data.materials || []).map(
+          (mat: any) => ({
+            ...mat,
+            id: mat._id,
+          })
+        );
+
+        setMaterials(normalizedMaterials);
       } else {
         throw new Error(result.message || "Failed to fetch materials");
       }
@@ -158,8 +202,14 @@ const TeacherMaterialsView: React.FC = () => {
     }
 
     try {
-      const res = await fetch("http://localhost:5000/api/materials", {
-        method: "POST",
+      const isEdit = isEditMode && selectedMaterial;
+      const url = isEdit
+        ? `http://localhost:5000/api/materials/${selectedMaterial?.id}`
+        : "http://localhost:5000/api/materials";
+      const method = isEdit ? "PUT" : "POST";
+
+      const res = await fetch(url, {
+        method,
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -169,11 +219,22 @@ const TeacherMaterialsView: React.FC = () => {
       const result = await res.json();
 
       if (result.status === "success") {
-        const savedMaterial = result.data.material;
-        savedMaterial.className =
-          classes.find((c) => c._id === savedMaterial.classId)?.title || "";
+        const updated = {
+          ...result.data.material,
+          id: result.data.material._id, // Normalize ID for UI
+          className:
+            classes.find((c) => c._id === result.data.material.classId)
+              ?.title || "",
+        };
 
-        setMaterials((prev) => [...prev, savedMaterial]);
+        if (isEdit) {
+          setMaterials((prev) =>
+            prev.map((m) => (m.id === updated.id ? updated : m))
+          );
+        } else {
+          setMaterials((prev) => [...prev, updated]);
+        }
+
         handleCloseModal();
       } else {
         setError(result.message || "Upload failed");
