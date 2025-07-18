@@ -29,14 +29,20 @@ const TeacherDashboard: React.FC = () => {
       try {
         const token = JSON.parse(localStorage.getItem("user") || "{}")?.tokens
           ?.accessToken;
-        const res = await axios.get("http://localhost:5000/api/classes", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        if (!token) return;
 
-        const classes = res.data.data.classes;
+        // Fetch teacher's classes
+        const classesRes = await axios.get(
+          "http://localhost:5000/api/classes",
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+
+        const classes = classesRes.data.data.classes || [];
         const today = new Date().getDay();
 
-        const classCount = classes.length;
+        const myClassCount = classes.length;
         const totalStudents = classes.reduce(
           (sum, cls) => sum + (cls.currentEnrollment || 0),
           0
@@ -45,34 +51,44 @@ const TeacherDashboard: React.FC = () => {
           (cls) => cls.schedule?.dayOfWeek === today
         ).length;
 
+        // Fetch attendance rate
+        const attendanceRes = await axios.get(
+          "http://localhost:5000/api/attendance/teacher/overview",
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+        const attendanceRate = attendanceRes.data.data.attendanceRate ?? "N/A";
+
+        // Update stats state
         setStats([
           {
             title: "My Classes",
-            value: String(classCount),
+            value: `${myClassCount}`,
             icon: BookOpen,
             color: "teal",
           },
           {
             title: "Total Students",
-            value: String(totalStudents),
+            value: `${totalStudents}`,
             icon: Users,
             color: "coral",
           },
           {
             title: "Today's Classes",
-            value: String(todaysClasses),
+            value: `${todaysClasses}`,
             icon: Calendar,
             color: "green",
           },
           {
             title: "Attendance Rate",
-            value: "N/A",
+            value: `${attendanceRate}%`,
             icon: CheckCircle,
             color: "blue",
           },
         ]);
       } catch (err) {
-        console.error("Failed to fetch stats:", err);
+        console.error("Error fetching teacher dashboard stats:", err);
       }
     };
 
