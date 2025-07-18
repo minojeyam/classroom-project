@@ -29,7 +29,7 @@ const sidebarItems: SidebarItem[] = [
     icon: <Home className="w-5 h-5" />,
     label: "Dashboard",
     href: "/dashboard",
-    roles: ["admin", "teacher", "student", "parent"],
+    roles: ["admin", "teacher"],
   },
   {
     icon: <Users className="w-5 h-5" />,
