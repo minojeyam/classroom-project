@@ -60,6 +60,11 @@ export const classesAPI = {
     const res = await API.post(`/classes/${classId}/enroll`, { studentId });
     return res.data;
   },
+
+  getMaterials: async () => {
+    const res = await API.get("/materials/student");
+    return res.data;
+  },
 };
 
 // USERS

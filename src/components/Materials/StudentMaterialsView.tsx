@@ -1,3 +1,4 @@
+// StudentMaterialsView.tsx
 import React, { useState, useEffect } from "react";
 import {
   Download,
@@ -48,7 +49,7 @@ interface Class {
 }
 
 const StudentMaterialsView: React.FC = () => {
-  const { user } = useAuth();
+  const { user, handleUnauthorized } = useAuth(); // Assuming handleUnauthorized is provided by AuthContext
   const [classes, setClasses] = useState<Class[]>([]);
   const [materials, setMaterials] = useState<Material[]>([]);
   const [loading, setLoading] = useState(true);
@@ -70,22 +71,12 @@ const StudentMaterialsView: React.FC = () => {
   const fetchStudentClasses = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem("accessToken") ?? undefined;
-
-      // For students, fetch classes they are enrolled in
-      // This would typically come from a student-specific endpoint
+      const token = localStorage.getItem("accessToken") ?? "";
       const response = await classesAPI.getClasses({}, token);
-
       if (response.status === "success") {
-        // Filter classes where student is enrolled (mock logic)
-        const enrolledClasses =
-          response.data.classes?.filter((classItem: any) =>
-            classItem.enrolledStudents?.some(
-              (enrollment: any) => enrollment.studentId === user?.id
-            )
-          ) || [];
-
-        setClasses(enrolledClasses);
+        setClasses(response.data.classes || []);
+      } else {
+        throw new Error(response.message || "Failed to fetch classes");
       }
     } catch (err: any) {
       setError(err.message || "Failed to fetch classes");
@@ -96,99 +87,44 @@ const StudentMaterialsView: React.FC = () => {
 
   const fetchMaterials = async () => {
     try {
-      // Mock materials data for student view - replace with actual API call
-      const mockMaterials: Material[] = [
-        {
-          id: "1",
-          title: "Chapter 5: Algebra Fundamentals",
-          description:
-            "Complete notes and examples for algebra basics including linear equations and graphing.",
-          type: "document",
-          classId: "1",
-          className: "Advanced Mathematics",
-          fileName: "algebra-fundamentals.pdf",
-          fileSize: 2048576, // 2MB
-          uploadDate: "2024-03-15T10:30:00.000Z",
-          downloadCount: 23,
-          createdByName: "Teacher User",
-        },
-        {
-          id: "2",
-          title: "Physics Lab Experiment Video",
-          description:
-            "Demonstration of pendulum motion experiment with detailed explanations.",
-          type: "video",
-          classId: "2",
-          className: "Physics Fundamentals",
-          url: "https://example.com/physics-lab-video",
-          uploadDate: "2024-03-14T14:20:00.000Z",
-          downloadCount: 45,
-          createdByName: "Teacher User",
-        },
-        {
-          id: "3",
-          title: "Chemistry Periodic Table Reference",
-          description:
-            "Interactive periodic table with element properties and examples.",
-          type: "link",
-          classId: "3",
-          className: "Chemistry Lab",
-          url: "https://example.com/periodic-table",
-          uploadDate: "2024-03-13T09:15:00.000Z",
-          downloadCount: 12,
-          createdByName: "Teacher User",
-        },
-        {
-          id: "4",
-          title: "Math Problem Set Solutions",
-          description: "Step-by-step solutions for homework problems 1-20.",
-          type: "document",
-          classId: "1",
-          className: "Advanced Mathematics",
-          fileName: "problem-solutions.pdf",
-          fileSize: 1536000, // 1.5MB
-          uploadDate: "2024-03-12T16:45:00.000Z",
-          downloadCount: 67,
-          createdByName: "Teacher User",
-        },
-        {
-          id: "5",
-          title: "Biology Cell Structure Diagrams",
-          description:
-            "Detailed diagrams of plant and animal cell structures with labels.",
-          type: "image",
-          classId: "4",
-          className: "Biology Basics",
-          fileName: "cell-diagrams.png",
-          fileSize: 3072000, // 3MB
-          uploadDate: "2024-03-11T11:20:00.000Z",
-          downloadCount: 34,
-          createdByName: "Teacher User",
-        },
-      ];
-
-      // Filter materials to only show those from enrolled classes
-      const enrolledClassIds = classes.map((c) => c._id);
-      const filteredMaterials = mockMaterials.filter((material) =>
-        enrolledClassIds.includes(material.classId)
-      );
-
-      setMaterials(filteredMaterials);
+      setLoading(true);
+      const response = await classesAPI.getMaterials();
+      if (response.status === "success") {
+        setMaterials(response.data);
+      } else {
+        throw new Error(response.message || "Failed to fetch materials");
+      }
     } catch (err: any) {
-      setError(err.message || "Failed to fetch materials");
+      if (err.response?.status === 401) {
+        setError("Session expired. Please log in again.");
+        handleUnauthorized && handleUnauthorized(); // Trigger logout or token refresh
+      } else {
+        setError(
+          err.response?.data?.message ||
+            err.message ||
+            "Failed to fetch materials"
+        );
+      }
+      console.error("Fetch materials error:", err.response || err);
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleDownload = async (material: Material) => {
     try {
-      // Mock download functionality - replace with actual implementation
-      if (material.type === "link") {
+      if (material.type === "link" && material.url) {
         window.open(material.url, "_blank");
-      } else {
-        // Simulate file download
-        console.log(`Downloading: ${material.fileName || material.title}`);
+      } else if (material.url) {
+        // Trigger file download
+        const link = document.createElement("a");
+        link.href = material.url;
+        link.setAttribute("download", material.fileName || material.title); // Set download attribute
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
 
-        // Update download count
+        // Update download count in the UI (optional)
         setMaterials((prev) =>
           prev.map((m) =>
             m.id === material.id
@@ -196,6 +132,8 @@ const StudentMaterialsView: React.FC = () => {
               : m
           )
         );
+      } else {
+        throw new Error("No URL available for download.");
       }
     } catch (err: any) {
       setError(err.message || "Failed to download material");
@@ -243,7 +181,6 @@ const StudentMaterialsView: React.FC = () => {
     return Math.round((bytes / Math.pow(1024, i)) * 100) / 100 + " " + sizes[i];
   };
 
-  // Filter materials based on selected class, search term, and type
   const filteredMaterials = materials.filter((material) => {
     const classMatch =
       selectedClass === "all" || material.classId === selectedClass;

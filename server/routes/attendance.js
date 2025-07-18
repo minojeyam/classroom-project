@@ -85,4 +85,38 @@ router.get("/teacher/overview", auth, async (req, res) => {
   }
 });
 
+// GET /api/attendance/student-summary
+router.get("/student-summary", auth, async (req, res) => {
+  try {
+    if (req.user.role !== "student") {
+      return res.status(403).json({
+        status: "error",
+        message: "Only students can access their summary",
+      });
+    }
+
+    const studentId = req.user.id;
+
+    const total = await Attendance.countDocuments({ studentId });
+    const present = await Attendance.countDocuments({
+      studentId,
+      status: "present",
+    });
+
+    const rate = total === 0 ? 0 : ((present / total) * 100).toFixed(1);
+
+    res.json({
+      status: "success",
+      data: {
+        totalDays: total,
+        daysPresent: present,
+        attendanceRate: `${rate}%`,
+      },
+    });
+  } catch (error) {
+    console.error("Student summary error:", error);
+    res.status(500).json({ status: "error", message: "Internal server error" });
+  }
+});
+
 export default router;

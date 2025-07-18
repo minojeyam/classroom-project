@@ -90,7 +90,7 @@ const sidebarItems: SidebarItem[] = [
     icon: <DollarSign className="w-5 h-5" />,
     label: "Balance & Payments",
     href: "/balance",
-    roles: ["admin", "student"],
+    roles: ["admin"],
   },
   {
     icon: <MessageSquare className="w-5 h-5" />,
@@ -104,12 +104,12 @@ const sidebarItems: SidebarItem[] = [
     href: "/reports",
     roles: ["admin", "teacher"],
   },
-  {
-    icon: <Upload className="w-5 h-5" />,
-    label: "Bulk Import",
-    href: "/import",
-    roles: ["admin"],
-  },
+  // {
+  //   icon: <Upload className="w-5 h-5" />,
+  //   label: "Bulk Import",
+  //   href: "/import",
+  //   roles: ["admin"],
+  // },
   {
     icon: <Settings className="w-5 h-5" />,
     label: "Settings",

@@ -61,7 +61,9 @@ app.options("*", cors());
 // Body parsing middleware
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+
 app.use(fileUpload());
+app.use("/uploads", express.static("uploads"));
 
 // Database connection
 mongoose

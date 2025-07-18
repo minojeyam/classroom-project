@@ -124,4 +124,40 @@ router.delete("/:id", auth, async (req, res) => {
   }
 });
 
+router.get("/student", auth, authorize(["student"]), async (req, res) => {
+  try {
+    const classIds = req.user.classIds;
+    const materials = await Material.find({
+      classId: { $in: classIds },
+      isVisible: true,
+    })
+      .populate("classId", "title")
+      .populate("createdBy", "firstName lastName");
+
+    const transformed = materials.map((m) => ({
+      id: m._id,
+      title: m.title,
+      description: m.description,
+      type: m.type,
+      classId: m.classId?._id,
+      className: m.classId?.title,
+      url: m.url,
+      fileName: m.fileName,
+      fileSize: m.fileSize,
+      uploadDate: m.uploadDate,
+      downloadCount: m.downloadCount,
+      createdByName: `${m.createdBy?.firstName || ""} ${
+        m.createdBy?.lastName || ""
+      }`.trim(),
+    }));
+
+    res.json({ status: "success", data: transformed });
+  } catch (error) {
+    console.error("Student material fetch error:", error);
+    res
+      .status(500)
+      .json({ status: "error", message: "Unable to fetch materials" });
+  }
+});
+
 export default router;
