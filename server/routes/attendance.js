@@ -47,4 +47,42 @@ router.get("/", auth, async (req, res) => {
   }
 });
 
+// 📍 Add this below other routes
+router.get("/teacher/overview", auth, async (req, res) => {
+  try {
+    if (req.user.role !== "teacher") {
+      return res
+        .status(403)
+        .json({ status: "error", message: "Only teachers can view this stat" });
+    }
+
+    // Get all attendance records for classes the teacher teaches
+    const teacherId = req.user.id;
+    const classIds = req.user.classIds || [];
+
+    if (!classIds.length) {
+      return res.json({
+        status: "success",
+        data: { attendanceRate: 0 },
+      });
+    }
+
+    const records = await Attendance.find({ classId: { $in: classIds } });
+
+    const totalMarked = records.length;
+    const totalPresent = records.filter((r) => r.status === "present").length;
+
+    const rate =
+      totalMarked === 0 ? 0 : ((totalPresent / totalMarked) * 100).toFixed(1);
+
+    res.json({
+      status: "success",
+      data: { attendanceRate: parseFloat(rate) },
+    });
+  } catch (error) {
+    console.error("Teacher overview error:", error);
+    res.status(500).json({ status: "error", message: "Internal server error" });
+  }
+});
+
 export default router;

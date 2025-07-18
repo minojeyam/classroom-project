@@ -9,6 +9,7 @@ import {
   DollarSign,
   MessageSquare,
   BarChart3,
+  FileText,
   Settings,
   LogOut,
   GraduationCap,
@@ -62,7 +63,7 @@ const sidebarItems: SidebarItem[] = [
     roles: ["teacher"],
   },
   {
-    icon: <BookOpen className="w-5 h-5" />,
+    icon: <FileText className="w-5 h-5" />,
     label: "Class Materials",
     href: "/materials",
     roles: ["teacher", "student"],
