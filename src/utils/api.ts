@@ -69,8 +69,11 @@ export const classesAPI = {
 
 // USERS
 export const usersAPI = {
-  getUsers: async (params = {}) => {
-    const res = await API.get("/users", { params });
+  getUsers: async (params = {}, token?: string) => {
+    const res = await API.get("/users", {
+      params,
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
     return res.data;
   },
 

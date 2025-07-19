@@ -1,4 +1,4 @@
-# IO Space - Multi-Location Classroom Management System
+# Multi-Location Classroom Management System
 
 A comprehensive classroom management system for multi-location educational instituitions built with React, Node.js, Express, and MongoDB.
 
@@ -69,7 +69,7 @@ If you prefer using MongoDB Atlas (cloud database):
 
 ```bash
 git clone <your-repo-url>
-cd io-space
+cd repo
 ```
 
 ### 2. Install Frontend Dependencies
@@ -96,7 +96,7 @@ PORT=5000
 NODE_ENV=development
 
 # Database Configuration
-MONGODB_URI=mongodb://localhost:27017/io-space
+MONGODB_URI=mongodb://localhost:27017/dbname
 
 # JWT Configuration
 JWT_SECRET=your-super-secret-jwt-key-here-make-it-long-and-complex-2024
@@ -160,7 +160,7 @@ npm run dev:all
 ### 3. Check Frontend
 
 - Visit `http://localhost:5173`
-- You should see the IO Space login page
+- You should see the login page
 
 ## Default Admin Account
 
@@ -170,8 +170,8 @@ To create an admin account, you can register through the registration form and t
 // Connect to MongoDB shell
 mongosh
 
-// Use the io-space database
-use io-space
+// Use the database
+use db
 
 // Update a user to be an admin
 db.users.updateOne(
@@ -185,20 +185,9 @@ db.users.updateOne(
 )
 ```
 
-## Demo Accounts
-
-The application includes demo accounts for testing:
-
-- **Admin**: admin@school.com / password
-- **Teacher**: teacher@school.com / password
-- **Student**: student@school.com / password
-- **Parent**: parent@school.com / password
-
-_Note: These are mock accounts for frontend demonstration. For full functionality, register new accounts through the registration form._
-
 ## Features
 
-- **Multi-role Authentication** (Admin, Teacher, Student, Parent)
+- **Multi-role Authentication** (Admin, Teacher, Student/Parent)
 - **User Registration & Approval System**
 - **Location Management** (Nelliyadi, Chavakacheri)
 - **Class Management**
@@ -285,7 +274,7 @@ _Note: These are mock accounts for frontend demonstration. For full functionalit
 ### Project Structure
 
 ```
-io-space/
+directory/
 ├── src/                    # Frontend React application
 │   ├── components/         # React components
 │   ├── contexts/          # React contexts
