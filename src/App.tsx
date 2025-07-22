@@ -20,6 +20,7 @@ import ReportsPage from "./components/Pages/ReportsPage";
 import AttendancePage from "./components/Pages/AttendancePage";
 import BalancePage from "./components/Pages/BalancePage";
 import MaterialsPage from "./components/Pages/MaterialsPage";
+import CalendarPage from "./components/Pages/CalenderPage";
 
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -33,12 +34,9 @@ const pages = {
   "/fees": "Fees",
   "/materials": "Materials",
   "/schedule": "Schedule",
-  "/exams": "Exams",
   "/notices": "Notice Board",
   "/approvals": "Pending Approvals",
   "/reports": "Reports",
-  "/import": "Bulk Import",
-  "/settings": "Settings",
   "/teacher-classes": "My Classes",
   "/teacher-fees": "My Class Fees",
   "/balance": "Fees Summary",
@@ -95,36 +93,25 @@ const AppContent: React.FC = () => {
       case "/materials":
         return <MaterialsPage />;
       case "/schedule":
-        return (
-          <ComingSoonPage
-            feature="Schedule Management"
-            description="View and manage class schedules, timetables, and events."
-          />
-        );
+        return <CalendarPage />;
       case "/notices":
         return <NoticeBoardPage />;
-
       case "/reports":
-        return (
-          <ComingSoonPage
-            feature="Reports & Analytics"
-            description="Generate comprehensive reports and analytics for better insights."
-          />
-        );
-      case "/import":
-        return (
-          <ComingSoonPage
-            feature="Bulk Import/Export"
-            description="Import and export data in bulk using CSV files."
-          />
-        );
-      case "/settings":
-        return (
-          <ComingSoonPage
-            feature="Settings"
-            description="Configure system settings, branding, and preferences."
-          />
-        );
+        return <ReportsPage />;
+      // case "/import":
+      //   return (
+      //     <ComingSoonPage
+      //       feature="Bulk Import/Export"
+      //       description="Import and export data in bulk using CSV files."
+      //     />
+      //   );
+      // case "/settings":
+      //   return (
+      //     <ComingSoonPage
+      //       feature="Settings"
+      //       description="Configure system settings, branding, and preferences."
+      //     />
+      //   );
       default:
         return renderDashboard();
     }

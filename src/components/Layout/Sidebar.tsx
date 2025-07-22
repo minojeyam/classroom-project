@@ -7,9 +7,10 @@ import {
   BookOpen,
   CreditCard,
   DollarSign,
+  FileText,
+  Calendar,
   MessageSquare,
   BarChart3,
-  FileText,
   Settings,
   LogOut,
   GraduationCap,
@@ -93,6 +94,12 @@ const sidebarItems: SidebarItem[] = [
     roles: ["admin"],
   },
   {
+    icon: <Calendar className="w-5 h-5" />,
+    label: "Class Schedule",
+    href: "/schedule",
+    roles: ["admin", "teacher", "student", "parent"],
+  },
+  {
     icon: <MessageSquare className="w-5 h-5" />,
     label: "Notice Board",
     href: "/notices",
@@ -110,12 +117,12 @@ const sidebarItems: SidebarItem[] = [
   //   href: "/import",
   //   roles: ["admin"],
   // },
-  {
-    icon: <Settings className="w-5 h-5" />,
-    label: "Settings",
-    href: "/settings",
-    roles: ["admin"],
-  },
+  // {
+  //   icon: <Settings className="w-5 h-5" />,
+  //   label: "Settings",
+  //   href: "/settings",
+  //   roles: ["admin"],
+  // },
 ];
 
 interface SidebarProps {
