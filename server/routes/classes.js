@@ -572,4 +572,30 @@ router.post(
   }
 );
 
+// @route   PATCH /api/classes/:id/disable
+// @desc    Mark a class as inactive (soft delete)
+// @access  Private (Admin)
+router.patch("/:id/disable", auth, authorize(["admin"]), async (req, res) => {
+  try {
+    const classItem = await Class.findById(req.params.id);
+    if (!classItem) {
+      return res
+        .status(404)
+        .json({ status: "error", message: "Class not found" });
+    }
+
+    classItem.status = "inactive";
+    await classItem.save();
+
+    res.json({
+      status: "success",
+      message: "Class marked as inactive",
+      data: { class: classItem },
+    });
+  } catch (error) {
+    console.error("Disable class error:", error);
+    res.status(500).json({ status: "error", message: "Internal server error" });
+  }
+});
+
 export default router;

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Plus, Edit, Trash2, BookOpen } from "lucide-react";
+import { Plus, Edit, Trash2, BookOpen, Eye } from "lucide-react";
 import DataTable from "../Common/DataTable";
 import Modal from "../Common/Modal";
 import { classesAPI, locationsAPI, usersAPI } from "../../utils/api";
@@ -119,7 +119,9 @@ const ClassesPage: React.FC = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const token = localStorage.getItem("accessToken") ?? undefined;
+        const token =
+          JSON.parse(localStorage.getItem("user") || "{}")?.tokens
+            ?.accessToken ?? "";
 
         const [classesResponse, locationsResponse, usersResponse] =
           await Promise.all([
@@ -145,6 +147,11 @@ const ClassesPage: React.FC = () => {
   const [showAssignModal, setShowAssignModal] = useState(false);
 
   const handleOpenAssignModal = (classId: string) => {
+    const classData = classes.find((cls) => cls._id === classId);
+    if (!classData || classData.status === "inactive") {
+      toast.warning("This class is inactive. Cannot assign students.");
+      return;
+    }
     setSelectedClassId(classId);
     setShowAssignModal(true);
   };
@@ -153,7 +160,9 @@ const ClassesPage: React.FC = () => {
   const refreshClasses = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem("accessToken") ?? undefined;
+      const token =
+        JSON.parse(localStorage.getItem("user") || "{}")?.tokens?.accessToken ??
+        "";
 
       const [classesResponse, locationsResponse, usersResponse] =
         await Promise.all([
@@ -232,7 +241,9 @@ const ClassesPage: React.FC = () => {
         currency: "LKR",
       };
 
-      const token = localStorage.getItem("accessToken") ?? undefined;
+      const token =
+        JSON.parse(localStorage.getItem("user") || "{}")?.tokens?.accessToken ??
+        "";
 
       if (isEditMode && selectedClass) {
         await classesAPI.updateClass(selectedClass._id, classData, token);
@@ -307,10 +318,40 @@ const ClassesPage: React.FC = () => {
     }
   };
 
+  const handleDisable = async (id: string) => {
+    const token =
+      JSON.parse(localStorage.getItem("user") || "{}")?.tokens?.accessToken ??
+      "";
+
+    try {
+      const res = await fetch(
+        `http://localhost:5000/api/classes/${id}/disable`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      const data = await res.json();
+      if (data.status === "success") {
+        toast.success("Class disabled");
+        await fetchData(); // Refresh list
+      } else {
+        toast.error(data.message);
+      }
+    } catch (error) {
+      toast.error("Failed to disable class");
+    }
+  };
+
   const handleDelete = async (id: string) => {
     if (window.confirm("Are you sure you want to delete this class?")) {
       try {
-        const token = localStorage.getItem("accessToken") ?? undefined;
+        const token =
+          JSON.parse(localStorage.getItem("user") || "{}")?.tokens
+            ?.accessToken ?? "";
         await classesAPI.deleteClass(id, token);
         await fetchData();
       } catch (err: any) {
@@ -486,6 +527,12 @@ const ClassesPage: React.FC = () => {
             <Edit className="w-4 h-4" />
           </button>
           <button
+            onClick={() => handleDisable(row._id)}
+            className="text-yellow-600 hover:text-yellow-800"
+          >
+            <Eye className="w-4 h-4" />
+          </button>
+          <button
             onClick={() => handleDelete(row._id)}
             className="text-red-600 hover:text-red-800 transition-colors duration-200"
           >
@@ -500,7 +547,12 @@ const ClassesPage: React.FC = () => {
       render: (_: any, row: Class) => (
         <button
           onClick={() => handleOpenAssignModal(row._id)}
-          className="bg-teal-600 text-white px-3 py-1 rounded text-sm hover:bg-teal-700"
+          disabled={row.status === "inactive"}
+          className={`px-3 py-1 rounded text-sm ${
+            row.status === "inactive"
+              ? "bg-gray-400 text-white cursor-not-allowed"
+              : "bg-teal-600 text-white hover:bg-teal-700"
+          }`}
         >
           Assign
         </button>

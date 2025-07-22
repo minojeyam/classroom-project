@@ -112,7 +112,7 @@ const classSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["active", "inactive", "completed", "cancelled"],
+      enum: ["active", "inactive", "completed"],
       default: "active",
     },
     startDate: {
