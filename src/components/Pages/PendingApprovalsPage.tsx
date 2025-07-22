@@ -42,7 +42,8 @@ const PendingApprovalsPage: React.FC = () => {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem("accessToken");
+      const token = JSON.parse(localStorage.getItem("user") || "{}")?.tokens
+        ?.accessToken;
 
       const queryParams = new URLSearchParams({
         status: showRejected ? "rejected" : "pending",
@@ -79,7 +80,8 @@ const PendingApprovalsPage: React.FC = () => {
 
   const handleApprove = async (userId: string) => {
     try {
-      const token = localStorage.getItem("accessToken");
+      const token = JSON.parse(localStorage.getItem("user") || "{}")?.tokens
+        ?.accessToken;
       const res = await fetch(
         `http://localhost:5000/api/users/${userId}/approve`,
         {
@@ -105,7 +107,8 @@ const PendingApprovalsPage: React.FC = () => {
   const handleReject = async (userId: string) => {
     const reason = prompt("Enter rejection reason (optional):") || "";
     try {
-      const token = localStorage.getItem("accessToken");
+      const token = JSON.parse(localStorage.getItem("user") || "{}")?.tokens
+        ?.accessToken;
       const res = await fetch(
         `http://localhost:5000/api/users/${userId}/reject`,
         {
@@ -131,7 +134,8 @@ const PendingApprovalsPage: React.FC = () => {
   };
 
   const handleBulkApprove = async () => {
-    const token = localStorage.getItem("accessToken");
+    const token = JSON.parse(localStorage.getItem("user") || "{}")?.tokens
+      ?.accessToken;
     try {
       await Promise.all(
         selectedUsers.map((userId) =>

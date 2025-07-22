@@ -73,7 +73,7 @@ const sidebarItems: SidebarItem[] = [
     icon: <UserCheck className="w-5 h-5" />,
     label: "Attendance",
     href: "/attendance",
-    roles: ["admin", "teacher"],
+    roles: ["teacher"],
   },
   {
     icon: <CreditCard className="w-5 h-5" />,
@@ -81,12 +81,12 @@ const sidebarItems: SidebarItem[] = [
     href: "/teacher-fees",
     roles: ["teacher"],
   },
-  {
-    icon: <CreditCard className="w-5 h-5" />,
-    label: "Fees",
-    href: "/fees",
-    roles: ["admin"],
-  },
+  // {
+  //   icon: <CreditCard className="w-5 h-5" />,
+  //   label: "Fees",
+  //   href: "/fees",
+  //   roles: ["admin"],
+  // },
   {
     icon: <DollarSign className="w-5 h-5" />,
     label: "Balance & Payments",
@@ -111,18 +111,6 @@ const sidebarItems: SidebarItem[] = [
     href: "/reports",
     roles: ["admin", "teacher"],
   },
-  // {
-  //   icon: <Upload className="w-5 h-5" />,
-  //   label: "Bulk Import",
-  //   href: "/import",
-  //   roles: ["admin"],
-  // },
-  // {
-  //   icon: <Settings className="w-5 h-5" />,
-  //   label: "Settings",
-  //   href: "/settings",
-  //   roles: ["admin"],
-  // },
 ];
 
 interface SidebarProps {

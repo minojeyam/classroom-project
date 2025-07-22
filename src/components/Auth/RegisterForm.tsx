@@ -159,7 +159,6 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleForm }) => {
             Register for Multi-Location Classroom Management
           </p>
         </div>
-
         {success ? (
           <div className="bg-green-50 border border-green-200 rounded-md p-4 text-center">
             <p className="text-green-700 font-semibold">
