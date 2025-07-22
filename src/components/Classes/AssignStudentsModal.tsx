@@ -18,11 +18,14 @@ const AssignStudentsModal: React.FC<AssignStudentsModalProps> = ({
   useEffect(() => {
     const fetchStudents = async () => {
       try {
-        const res = await fetch("/api/users?role=student&status=active", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const res = await fetch(
+          "http://localhost:5000/api/users?role=student&status=active",
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
         const data = await res.json();
         setStudents(data.data.users || []);
       } catch (err) {

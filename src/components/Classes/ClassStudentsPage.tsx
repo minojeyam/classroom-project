@@ -31,7 +31,10 @@ export default function ClassStudentsPage() {
     try {
       const res = await fetch(`http://localhost:5000/api/classes/${classId}`, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+          Authorization: `Bearer ${
+            JSON.parse(localStorage.getItem("user") || "{}")?.tokens
+              ?.accessToken
+          }`,
         },
       });
       const data = await res.json();

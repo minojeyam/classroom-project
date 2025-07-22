@@ -624,7 +624,10 @@ const ClassesPage: React.FC = () => {
           {showAssignModal && selectedClassId && (
             <AssignStudentsModal
               classId={selectedClassId}
-              token={localStorage.getItem("accessToken") || ""}
+              token={
+                JSON.parse(localStorage.getItem("user") || "{}")?.tokens
+                  ?.accessToken || ""
+              }
               onClose={() => setShowAssignModal(false)}
             />
           )}
