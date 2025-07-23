@@ -181,3 +181,45 @@ export const materials = {
     return res.data;
   },
 };
+
+// SCHDULE CLASS
+export const schedulesAPI = {
+  create: async (data: Record<string, any>) => {
+    const res = await API.post("/schedules", data, {
+      headers: {
+        ...getAuthHeader(),
+        "Content-Type": "application/json",
+      },
+    });
+    return res.data;
+  },
+
+  getAll: async (params: Record<string, any> = {}) => {
+    const res = await API.get("/schedules", {
+      headers: {
+        ...getAuthHeader(),
+      },
+      params,
+    });
+    return res.data;
+  },
+
+  update: async (id: string, data: Record<string, any>) => {
+    const res = await API.put(`/schedules/${id}`, data, {
+      headers: {
+        ...getAuthHeader(),
+        "Content-Type": "application/json",
+      },
+    });
+    return res.data;
+  },
+
+  delete: async (id: string) => {
+    const res = await API.delete(`/schedules/${id}`, {
+      headers: {
+        ...getAuthHeader(),
+      },
+    });
+    return res.data;
+  },
+};

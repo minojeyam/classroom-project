@@ -21,7 +21,12 @@ import {
 import Modal from "../Common/Modal";
 import DataTable from "../Common/DataTable";
 import { useAuth } from "../../contexts/AuthContext";
-import { classesAPI, locationsAPI, usersAPI } from "../../utils/api";
+import {
+  classesAPI,
+  locationsAPI,
+  usersAPI,
+  schedulesAPI,
+} from "../../utils/api";
 
 interface ScheduledClass {
   id: string;
@@ -129,6 +134,7 @@ const AdminCalendarView: React.FC = () => {
 
   useEffect(() => {
     fetchData();
+    fetchScheduledClasses();
   }, []);
 
   const fetchData = async () => {
@@ -166,84 +172,8 @@ const AdminCalendarView: React.FC = () => {
 
   const fetchScheduledClasses = async () => {
     try {
-      // Mock scheduled classes data - replace with actual API call
-      const mockScheduledClasses: ScheduledClass[] = [
-        {
-          id: "1",
-          classId: "1",
-          className: "Advanced Mathematics",
-          subject: "Mathematics",
-          teacherId: "2",
-          teacherName: "Teacher User",
-          date: "2024-03-20",
-          startTime: "09:00",
-          endTime: "10:30",
-          duration: 90,
-          locationId: "1",
-          locationName: "Nelliyadi Campus",
-          studentCount: 25,
-          status: "scheduled",
-          createdAt: "2024-03-15T10:00:00.000Z",
-          createdBy: "admin",
-        },
-        {
-          id: "2",
-          classId: "2",
-          className: "Physics Fundamentals",
-          subject: "Physics",
-          teacherId: "2",
-          teacherName: "Teacher User",
-          date: "2024-03-21",
-          startTime: "11:00",
-          endTime: "12:30",
-          duration: 90,
-          locationId: "2",
-          locationName: "Chavakacheri Campus",
-          studentCount: 22,
-          status: "scheduled",
-          createdAt: "2024-03-15T11:00:00.000Z",
-          createdBy: "teacher",
-        },
-        {
-          id: "3",
-          classId: "3",
-          className: "Chemistry Lab",
-          subject: "Chemistry",
-          teacherId: "2",
-          teacherName: "Teacher User",
-          date: "2024-03-22",
-          startTime: "14:00",
-          endTime: "15:30",
-          duration: 90,
-          locationId: "1",
-          locationName: "Nelliyadi Campus",
-          studentCount: 18,
-          status: "scheduled",
-          createdAt: "2024-03-15T12:00:00.000Z",
-          createdBy: "admin",
-        },
-        {
-          id: "4",
-          classId: "1",
-          className: "Advanced Mathematics",
-          subject: "Mathematics",
-          teacherId: "2",
-          teacherName: "Teacher User",
-          date: "2024-03-18",
-          startTime: "09:00",
-          endTime: "10:30",
-          duration: 90,
-          locationId: "1",
-          locationName: "Nelliyadi Campus",
-          studentCount: 25,
-          status: "cancelled",
-          cancellationNote: "Teacher unavailable due to emergency",
-          createdAt: "2024-03-15T10:00:00.000Z",
-          createdBy: "teacher",
-        },
-      ];
-
-      setScheduledClasses(mockScheduledClasses);
+      const response = await schedules.getAll();
+      setScheduledClasses(response.data.classes); // Adjust if response structure differs
     } catch (err: any) {
       console.error("Error fetching scheduled classes:", err);
     }
@@ -282,47 +212,23 @@ const AdminCalendarView: React.FC = () => {
     return false; // No conflict
   };
 
-  const handleScheduleClass = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleScheduleClass = async () => {
+    if (
+      !scheduleForm.classId ||
+      !scheduleForm.locationId ||
+      !scheduleForm.date ||
+      !scheduleForm.startTime ||
+      !scheduleForm.endTime
+    ) {
+      toast.error("Please fill in all required fields.");
+      return;
+    }
 
     try {
-      // Validate time conflict
-      if (
-        validateTimeConflict(
-          scheduleForm.teacherId,
-          scheduleForm.date,
-          scheduleForm.startTime,
-          scheduleForm.endTime
-        )
-      ) {
-        setError(
-          "Time conflict detected! The selected teacher already has a class scheduled at this time."
-        );
-        return;
-      }
-
-      const selectedClass = classTemplates.find(
-        (c) => c._id === scheduleForm.classId
-      );
-      const selectedTeacher = teachers.find(
-        (t) => t.id === scheduleForm.teacherId
-      );
-      const selectedLocation = locations.find(
-        (l) => l.id === scheduleForm.locationId
-      );
-
-      if (!selectedClass || !selectedTeacher || !selectedLocation) {
-        setError("Please select valid class, teacher, and location");
-        return;
-      }
-
-      const newScheduledClass: ScheduledClass = {
-        id: Date.now().toString(),
+      const payload = {
         classId: scheduleForm.classId,
-        className: selectedClass.title,
-        subject: selectedClass.subject,
-        teacherId: scheduleForm.teacherId,
-        teacherName: `${selectedTeacher.firstName} ${selectedTeacher.lastName}`,
+        teacherId: user.id,
+        locationId: scheduleForm.locationId,
         date: scheduleForm.date,
         startTime: scheduleForm.startTime,
         endTime: scheduleForm.endTime,
@@ -330,30 +236,21 @@ const AdminCalendarView: React.FC = () => {
           scheduleForm.startTime,
           scheduleForm.endTime
         ),
-        locationId: scheduleForm.locationId,
-        locationName: selectedLocation.name,
-        studentCount: selectedClass.currentEnrollment,
-        status: "scheduled",
-        createdAt: new Date().toISOString(),
-        createdBy: "admin",
       };
 
-      setScheduledClasses((prev) => [...prev, newScheduledClass]);
-      setIsScheduleModalOpen(false);
-      setScheduleForm({
-        classId: "",
-        teacherId: "",
-        date: "",
-        startTime: "09:00",
-        endTime: "10:30",
-        locationId: "",
-        notes: "",
-      });
-      setError("");
-
-      alert("Class scheduled successfully!");
+      await schedules.create(payload);
+      // toast.success("Class scheduled successfully");
+      setIsModalOpen(false);
+      fetchScheduledClasses();
     } catch (err: any) {
-      setError(err.message || "Failed to schedule class");
+      if (err.response?.status === 409) {
+        toast.error(
+          err.response.data.message ||
+            "Time conflict. Please choose a different time."
+        );
+      } else {
+        toast.error("Failed to schedule class");
+      }
     }
   };
 
@@ -426,42 +323,80 @@ const AdminCalendarView: React.FC = () => {
     }
   };
 
+  const handleBulkSchedule = async () => {
+    if (
+      !bulkScheduleForm.classId ||
+      !bulkScheduleForm.locationId ||
+      !bulkScheduleForm.startDate ||
+      !bulkScheduleForm.endDate ||
+      !bulkScheduleForm.startTime ||
+      !bulkScheduleForm.endTime
+    ) {
+      toast.error("Please fill in all required fields for bulk scheduling.");
+      return;
+    }
+
+    const start = new Date(bulkScheduleForm.startDate);
+    const end = new Date(bulkScheduleForm.endDate);
+    const selectedDay = parseInt(bulkScheduleForm.dayOfWeek, 10);
+    const createdSchedules = [];
+
+    while (start <= end) {
+      if (start.getDay() === selectedDay) {
+        createdSchedules.push({
+          classId: bulkScheduleForm.classId,
+          teacherId: user.id,
+          locationId: bulkScheduleForm.locationId,
+          date: start.toISOString().split("T")[0],
+          startTime: bulkScheduleForm.startTime,
+          endTime: bulkScheduleForm.endTime,
+          duration: calculateDuration(
+            bulkScheduleForm.startTime,
+            bulkScheduleForm.endTime
+          ),
+        });
+      }
+      start.setDate(start.getDate() + 1);
+    }
+
+    try {
+      await Promise.all(
+        createdSchedules.map((schedule) => schedules.create(schedule))
+      );
+      toast.success("Bulk classes scheduled successfully");
+      setIsBulkModalOpen(false);
+      fetchScheduledClasses();
+    } catch (err: any) {
+      if (err.response?.status === 409) {
+        toast.error(
+          err.response.data.message ||
+            "Some classes conflicted. Please review your schedule."
+        );
+      } else {
+        toast.error("Failed to schedule bulk classes");
+      }
+    }
+  };
+
   const handleCancelClass = async () => {
-    if (!selectedClassForCancel || !cancellationNote.trim()) {
-      setError("Please provide a cancellation note");
+    if (!selectedClassForCancel?.id || !cancellationNote.trim()) {
+      toast.error("Please provide a reason for cancellation.");
       return;
     }
 
     try {
-      // Update the class status to cancelled
-      setScheduledClasses((prev) =>
-        prev.map((scheduledClass) =>
-          scheduledClass.id === selectedClassForCancel.id
-            ? {
-                ...scheduledClass,
-                status: "cancelled",
-                cancellationNote: cancellationNote.trim(),
-              }
-            : scheduledClass
-        )
-      );
+      await schedules.update(selectedClassForCancel.id, {
+        status: "cancelled",
+        cancellationNote,
+      });
 
-      // Mock notification sending
-      await sendCancellationNotifications(
-        selectedClassForCancel,
-        cancellationNote.trim()
-      );
-
+      // toast.success("Class cancelled successfully");
       setIsCancelModalOpen(false);
-      setSelectedClassForCancel(null);
       setCancellationNote("");
-      setError("");
-
-      alert(
-        "Class cancelled successfully! Notifications sent to teacher, students, and admin."
-      );
-    } catch (err: any) {
-      setError(err.message || "Failed to cancel class");
+      fetchScheduledClasses();
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to cancel class");
     }
   };
 

@@ -13,7 +13,7 @@ import {
   Download,
 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
-import { classesAPI } from "../../utils/api";
+import { classesAPI, schedulesAPI } from "../../utils/api";
 
 interface ScheduledClass {
   id: string;
