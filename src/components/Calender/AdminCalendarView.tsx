@@ -140,12 +140,14 @@ const AdminCalendarView: React.FC = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem("accessToken") ?? undefined;
+      const token =
+        JSON.parse(localStorage.getItem("user") || "{}")?.tokens?.accessToken ??
+        "";
 
       const [classesResponse, teachersResponse, locationsResponse] =
         await Promise.all([
           classesAPI.getClasses({}, token),
-          usersAPI.getAll({ role: "teacher" }),
+          usersAPI.getUsers({ role: "admin" }, token),
           locationsAPI.getLocations({}, token),
         ]);
 
@@ -161,7 +163,6 @@ const AdminCalendarView: React.FC = () => {
         setLocations(locationsResponse.data.locations || []);
       }
 
-      // Fetch scheduled classes (mock data for now)
       await fetchScheduledClasses();
     } catch (err: any) {
       setError(err.message || "Failed to fetch data");
@@ -172,8 +173,36 @@ const AdminCalendarView: React.FC = () => {
 
   const fetchScheduledClasses = async () => {
     try {
-      const response = await schedules.getAll();
-      setScheduledClasses(response.data.classes); // Adjust if response structure differs
+      const token =
+        JSON.parse(localStorage.getItem("user") || "{}")?.tokens?.accessToken ??
+        "";
+
+      const response = await schedulesAPI.getAll();
+      const rawClasses = response.data.classes;
+
+      const formatted = rawClasses.map((item: any) => ({
+        id: item._id,
+        classId: item.classId?._id || "",
+        className: item.classId?.title || "Untitled",
+        subject: item.classId?.subject || "",
+        teacherId: item.teacherId?._id || "",
+        teacherName: `${item.teacherId?.firstName || ""} ${
+          item.teacherId?.lastName || ""
+        }`.trim(),
+        date: item.date,
+        startTime: item.startTime,
+        endTime: item.endTime,
+        duration: item.duration,
+        locationId: item.locationId?._id || "",
+        locationName: item.locationId?.name || "",
+        studentCount: item.classId?.currentEnrollment || 0,
+        status: item.status,
+        cancellationNote: item.cancellationNote,
+        createdAt: item.createdAt,
+        createdBy: item.createdBy,
+      }));
+
+      setScheduledClasses(formatted);
     } catch (err: any) {
       console.error("Error fetching scheduled classes:", err);
     }
