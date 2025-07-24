@@ -111,8 +111,33 @@ const StudentCalendarView: React.FC = () => {
 
         setEnrolledClasses(studentClasses);
 
-        // Generate scheduled classes from enrolled classes (mock data)
-        generateScheduledClasses(studentClasses);
+        const scheduleResponse = await schedulesAPI.getAll();
+        const allScheduled = scheduleResponse.data.classes || [];
+
+        const studentClassIds = studentClasses.map((c) => c._id);
+
+        const filteredSchedules = allScheduled
+          .filter((s: any) =>
+            studentClassIds.includes(s.classId?._id || s.classId)
+          )
+          .map((s: any) => ({
+            id: s._id,
+            classId: s.classId?._id || s.classId,
+            className: s.classId?.title || "",
+            subject: s.classId?.subject || "",
+            teacherName: `${s.teacherId?.firstName || ""} ${
+              s.teacherId?.lastName || ""
+            }`,
+            date: s.date,
+            startTime: s.startTime,
+            endTime: s.endTime,
+            duration: s.duration,
+            locationName: s.locationId?.name || "",
+            status: s.status,
+            cancellationNote: s.cancellationNote,
+          }));
+
+        setScheduledClasses(filteredSchedules);
       }
     } catch (err: any) {
       setError(err.message || "Failed to fetch schedule");
