@@ -13,7 +13,7 @@ axiosInstance.interceptors.request.use(
       const token = parsedUser.tokens?.accessToken;
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
-        console.log("Token sent:", token);
+        // console.log("Token sent:", token);
       } else {
         console.log("No accessToken found in user.tokens");
       }

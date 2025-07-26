@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { UserCheck, UserX, User } from "lucide-react";
 import DataTable from "../Common/DataTable";
+import { toast } from "react-toastify";
+import Modal from "../Common/Modal";
 
 const PendingApprovalsPage: React.FC = () => {
   const [pendingUsers, setPendingUsers] = useState<any[]>([]);
@@ -14,6 +16,9 @@ const PendingApprovalsPage: React.FC = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [showRejected, setShowRejected] = useState(false);
+  const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
+const [selectedRejectUserId, setSelectedRejectUserId] = useState<string | null>(null);
+const [rejectReason, setRejectReason] = useState("");
 
   useEffect(() => {
     fetchLocations();
@@ -95,7 +100,7 @@ const PendingApprovalsPage: React.FC = () => {
       const data = await res.json();
       if (data.status === "success") {
         setPendingUsers((prev) => prev.filter((user) => user._id !== userId));
-        alert("User approved successfully");
+        toast.success("User approved successfully");
       } else {
         throw new Error(data.message);
       }
@@ -104,38 +109,45 @@ const PendingApprovalsPage: React.FC = () => {
     }
   };
 
-  const handleReject = async (userId: string) => {
-    const reason = prompt("Enter rejection reason (optional):") || "";
+  const handleRejectClick = (userId: string) => {
+    setSelectedRejectUserId(userId);
+    setRejectReason("");
+    setIsRejectModalOpen(true);
+  };
+  
+  const handleConfirmReject = async () => {
+    if (!selectedRejectUserId) return;
     try {
-      const token = JSON.parse(localStorage.getItem("user") || "{}")?.tokens
-        ?.accessToken;
+      const token = JSON.parse(localStorage.getItem("user") || "{}")?.tokens?.accessToken;
       const res = await fetch(
-        `http://localhost:5000/api/users/${userId}/reject`,
+        `http://localhost:5000/api/users/${selectedRejectUserId}/reject`,
         {
           method: "PUT",
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ reason }),
+          body: JSON.stringify({ reason: rejectReason }),
         }
       );
-
+  
       const data = await res.json();
       if (data.status === "success") {
-        setPendingUsers((prev) => prev.filter((user) => user._id !== userId));
-        alert("User rejected successfully");
+        setPendingUsers((prev) => prev.filter((user) => user._id !== selectedRejectUserId));
+        toast.success("User rejected successfully!");
       } else {
         throw new Error(data.message);
       }
     } catch (err: any) {
-      setError(err.message || "Failed to reject user");
+      toast.error(err.message || "Failed to reject user");
+    } finally {
+      setIsRejectModalOpen(false);
+      setSelectedRejectUserId(null);
     }
   };
 
   const handleBulkApprove = async () => {
-    const token = JSON.parse(localStorage.getItem("user") || "{}")?.tokens
-      ?.accessToken;
+    const token = JSON.parse(localStorage.getItem("user") || "{}")?.tokens?.accessToken;
     try {
       await Promise.all(
         selectedUsers.map((userId) =>
@@ -145,15 +157,19 @@ const PendingApprovalsPage: React.FC = () => {
           })
         )
       );
+  
       setPendingUsers((prev) =>
         prev.filter((user) => !selectedUsers.includes(user._id))
       );
       setSelectedUsers([]);
-      alert("Selected users approved successfully");
+  
+      toast.success("Users approved successfully!");
     } catch (err: any) {
       setError("Bulk approval failed.");
+      toast.error("Bulk approval failed!");
     }
   };
+  
 
   const columns = [
     {
@@ -272,7 +288,7 @@ const PendingApprovalsPage: React.FC = () => {
               <UserCheck className="w-5 h-5" />
             </button>
             <button
-              onClick={() => handleReject(row._id)}
+              onClick={() => handleRejectClick(row._id)}
               className="p-1 bg-red-50 rounded-md hover:bg-red-100 text-red-600 transition-colors duration-200"
               title="Reject"
             >
@@ -438,6 +454,38 @@ const PendingApprovalsPage: React.FC = () => {
           )}
         </>
       )}
+
+<Modal
+  isOpen={isRejectModalOpen}
+  onClose={() => setIsRejectModalOpen(false)}
+  title="Reject User"
+  size="sm"
+>
+  <label className="block text-sm font-medium text-gray-700 mb-2">
+    Reason for Rejection (optional)
+  </label>
+  <textarea
+    value={rejectReason}
+    onChange={(e) => setRejectReason(e.target.value)}
+    placeholder="Enter reason..."
+    className="w-full border rounded px-3 py-2 text-sm"
+  />
+  <div className="flex justify-end space-x-3 mt-4">
+    <button
+      onClick={() => setIsRejectModalOpen(false)}
+      className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+    >
+      Cancel
+    </button>
+    <button
+      onClick={handleConfirmReject}
+      className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+    >
+      Reject
+    </button>
+  </div>
+</Modal>
+
     </div>
   );
 };

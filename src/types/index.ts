@@ -99,6 +99,5 @@ export interface DashboardStats {
   totalLocations: number;
   totalRevenue: number;
   attendanceRate: number;
-  pendingApprovals: number;
   overduePayments: number;
 }

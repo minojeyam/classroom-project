@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 import DataTable from "../Common/DataTable";
-import { usersAPI, locationsAPI } from "../../utils/api";
+import { usersAPI } from "../../utils/api";
 
 const UsersPage: React.FC = () => {
   const [users, setUsers] = useState<any[]>([]);
@@ -10,43 +10,44 @@ const UsersPage: React.FC = () => {
   const [selectedRole, setSelectedRole] = useState("all");
   const token = localStorage.getItem("accessToken");
 
-  // useEffect(() => {
-  //   if (!token) return;
+  useEffect(() => {
+    if (!token) return;
 
-  //   fetch("http://localhost:5000/api/users", {
-  //     headers: { Authorization: `Bearer ${token}` },
-  //     credentials: "include",
-  //   }).then(async (res) => {
-  //     const data = await res.json();
-  //     if (!res.ok) return;
+    fetch("http://localhost:5000/api/users", {
+      headers: { Authorization: `Bearer ${token}` },
+      credentials: "include",
+    }).then(async (res) => {
+      const data = await res.json();
+      if (!res.ok) return;
 
-  //     const formattedUsers = data.data.users
-  //       .filter((user: any) => user.status === "active")
-  //       .map((user: any) => ({
-  //         id: user._id,
-  //         firstName: user.firstName,
-  //         lastName: user.lastName,
-  //         email: user.email,
-  //         role: user.role,
-  //         status: user.status,
-  //         phoneNumber: user.phoneNumber,
-  //         joinDate: new Date(user.enrollmentDate).toISOString().split("T")[0],
-  //         locationName: user.locationId?.name || "N/A",
-  //         locationId: user.locationId?._id || "",
-  //       }));
-  //     setUsers(formattedUsers);
-  //   });
+      const formattedUsers = data.data.users
+        .filter((user: any) => user.status === "active")
+        .map((user: any) => ({
+          id: user._id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          role: user.role,
+          status: user.status,
+          phoneNumber: user.phoneNumber,
+          joinDate: new Date(user.enrollmentDate).toISOString().split("T")[0],
+          locationName: user.locationId?.name || "N/A",
+          locationId: user.locationId?._id || "",
+        }));
+      setUsers(formattedUsers);
+    });
 
-  //   fetch("http://localhost:5000/api/locations", {
-  //     headers: { Authorization: `Bearer ${token}` },
-  //   })
-  //     .then(async (res) => {
-  //       const data = await res.json();
-  //       if (!res.ok) return;
-  //       setLocations(data.data.locations || []);
-  //     })
-  //     .catch((err) => console.error("Location fetch error:", err));
-  // }, [token]);
+    fetch("http://localhost:5000/api/locations", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(async (res) => {
+        const data = await res.json();
+        console.log(data.data, "student data")
+        if (!res.ok) return;
+        setLocations(data.data.locations || []);
+      })
+      .catch((err) => console.error("Location fetch error:", err));
+  }, [token]);
 
   useEffect(() => {
     if (!token) {
@@ -164,12 +165,12 @@ const UsersPage: React.FC = () => {
     { key: "joinDate", label: "Join Date", sortable: true },
   ];
 
-  const actions = (
-    <button className="px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700 transition-colors duration-200 flex items-center space-x-2">
-      <Plus className="w-4 h-4" />
-      <span>Add User</span>
-    </button>
-  );
+  // const actions = (
+  //   <button className="px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700 transition-colors duration-200 flex items-center space-x-2">
+  //     <Plus className="w-4 h-4" />
+  //     <span>Add User</span>
+  //   </button>
+  // );
 
   return (
     <div className="space-y-6">
@@ -238,7 +239,7 @@ const UsersPage: React.FC = () => {
         columns={columns}
         data={currentUsers}
         title="All Users"
-        actions={actions}
+        // actions={actions}
       />
 
       <div className="flex justify-between items-center pt-4">

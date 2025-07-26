@@ -5,6 +5,8 @@ import Modal from "../Common/Modal";
 import { classesAPI, locationsAPI, usersAPI } from "../../utils/api";
 import AssignStudentsModal from "../Classes/AssignStudentsModal";
 import "react-toastify/dist/ReactToastify.css";
+import { toast } from "react-toastify";
+import ConfirmModal from "../Common/ConfirmModal";
 
 export type Frequency = "monthly" | "semester" | "annual" | "one-time";
 
@@ -67,6 +69,24 @@ export interface Class {
   endDate: string; // ISO string
 }
 
+
+interface FormData {
+  title: string;
+  level: string;
+  subject: string;
+  description: string;
+  locationId: string;
+  teacherId: string;
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+  capacity: number;
+  fees: Fee[];
+  status: "active" | "inactive" | "completed" | "cancelled";
+  startDate: string;
+  endDate: string;
+}
+
 const ClassesPage: React.FC = () => {
   const [classes, setClasses] = useState<Class[]>([]);
   const [locations, setLocations] = useState<any[]>([]);
@@ -78,7 +98,7 @@ const ClassesPage: React.FC = () => {
   const [selectedClass, setSelectedClass] = useState<Class | null>(null);
   const [selectedLocation, setSelectedLocation] = useState("all");
   const [selectedGrade, setSelectedGrade] = useState("all");
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     title: "",
     level: "",
     subject: "",
@@ -101,6 +121,16 @@ const ClassesPage: React.FC = () => {
     startDate: "",
     endDate: "",
   });
+// confirmation Model 
+const [confirmDelete, setConfirmDelete] = useState<{
+  isOpen: boolean;
+  classId: string | null;
+}>({ isOpen: false, classId: null });
+
+const handleDeleteClick = (id: string) => {
+  setConfirmDelete({ isOpen: true, classId: id });
+};
+
 
   // Extract unique grades from classes for filter
   const uniqueGrades = [...new Set(classes.map((c) => c.level))].sort();
@@ -201,8 +231,8 @@ const ClassesPage: React.FC = () => {
         {
           name: "Monthly tuition",
           amount: 450,
-          frequency: "monthly",
-          category: "tuition",
+          frequency: "monthly" as Frequency,
+          category: "tuition" as Category,
         },
       ],
       status: "active",
@@ -210,40 +240,24 @@ const ClassesPage: React.FC = () => {
       endDate: "",
     });
   };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     try {
       if (formData.fees.length === 0) {
         toast.error("Please add at least one fee");
         return;
       }
 
+      const token = JSON.parse(localStorage.getItem("user") || "{}")?.tokens?.accessToken ?? "";
+
       const classData = {
-        title: formData.title,
-        level: formData.level,
-        subject: formData.subject,
-        description: formData.description,
-        locationId: formData.locationId,
-        teacherId: formData.teacherId,
-        schedule: {
+        ...formData, currency: "LKR", schedule: {
           dayOfWeek: formData.dayOfWeek,
           startTime: formData.startTime,
           endTime: formData.endTime,
-          duration: calculateDuration(formData.startTime, formData.endTime),
-        },
-        capacity: formData.capacity,
-        status: formData.status,
-        startDate: formData.startDate,
-        endDate: formData.endDate,
-        fees: formData.fees,
-        currency: "LKR",
+          duration: calculateDuration(formData.startTime, formData.endTime)
+        }
       };
-
-      const token =
-        JSON.parse(localStorage.getItem("user") || "{}")?.tokens?.accessToken ??
-        "";
 
       if (isEditMode && selectedClass) {
         await classesAPI.updateClass(selectedClass._id, classData, token);
@@ -253,13 +267,14 @@ const ClassesPage: React.FC = () => {
         toast.success("Class created");
       }
 
-      onClose();
+      handleCloseModal();
       refreshClasses();
     } catch (err: any) {
       console.error("Submission error:", err.response?.data || err.message);
       toast.error(err.response?.data?.message || "Failed to save class");
     }
   };
+
 
   const calculateDuration = (startTime: string, endTime: string): number => {
     const start = new Date(`2000-01-01T${startTime}:00`);
@@ -346,17 +361,17 @@ const ClassesPage: React.FC = () => {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (window.confirm("Are you sure you want to delete this class?")) {
-      try {
-        const token =
-          JSON.parse(localStorage.getItem("user") || "{}")?.tokens
-            ?.accessToken ?? "";
-        await classesAPI.deleteClass(id, token);
-        await fetchData();
-      } catch (err: any) {
-        setError(err.message || "Failed to delete class");
-      }
+  const handleConfirmDelete = async () => {
+    if (!confirmDelete.classId) return;
+  
+    try {
+      const token =
+        JSON.parse(localStorage.getItem("user") || "{}")?.tokens?.accessToken ??
+        "";
+      await classesAPI.deleteClass(confirmDelete.classId, token);
+      await fetchData();
+    } catch (err: any) {
+      setError(err.message || "Failed to delete class");
     }
   };
 
@@ -501,15 +516,14 @@ const ClassesPage: React.FC = () => {
       sortable: true,
       render: (value: string) => (
         <span
-          className={`px-2 py-1 rounded-full text-xs font-medium ${
-            value === "active"
+          className={`px-2 py-1 rounded-full text-xs font-medium ${value === "active"
               ? "bg-green-100 text-green-800"
               : value === "inactive"
-              ? "bg-gray-100 text-gray-800"
-              : value === "completed"
-              ? "bg-blue-100 text-blue-800"
-              : "bg-red-100 text-red-800"
-          }`}
+                ? "bg-gray-100 text-gray-800"
+                : value === "completed"
+                  ? "bg-blue-100 text-blue-800"
+                  : "bg-red-100 text-red-800"
+            }`}
         >
           {value.charAt(0).toUpperCase() + value.slice(1)}
         </span>
@@ -533,7 +547,7 @@ const ClassesPage: React.FC = () => {
             <Eye className="w-4 h-4" />
           </button>
           <button
-            onClick={() => handleDelete(row._id)}
+            onClick={() => handleDeleteClick(row._id)}
             className="text-red-600 hover:text-red-800 transition-colors duration-200"
           >
             <Trash2 className="w-4 h-4" />
@@ -548,11 +562,10 @@ const ClassesPage: React.FC = () => {
         <button
           onClick={() => handleOpenAssignModal(row._id)}
           disabled={row.status === "inactive"}
-          className={`px-3 py-1 rounded text-sm ${
-            row.status === "inactive"
+          className={`px-3 py-1 rounded text-sm ${row.status === "inactive"
               ? "bg-gray-400 text-white cursor-not-allowed"
               : "bg-teal-600 text-white hover:bg-teal-700"
-          }`}
+            }`}
         >
           Assign
         </button>
@@ -748,7 +761,7 @@ const ClassesPage: React.FC = () => {
               <select
                 value={formData.status}
                 onChange={(e) =>
-                  setFormData({ ...formData, status: e.target.value })
+                  setFormData({ ...formData, status: e.target.value as "active" | "inactive" | "completed" | "cancelled" })
                 }
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
@@ -935,9 +948,9 @@ const ClassesPage: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <div className="relative">
+                    {/* <div className="relative">
                       <span className="absolute left-2 top-1 text-sm text-gray-500">
-                        LKR
+                       LKR
                       </span>
                       <input
                         type="number"
@@ -952,6 +965,22 @@ const ClassesPage: React.FC = () => {
                           setFormData({ ...formData, fees: newFees });
                         }}
                         className="w-full pl-6 pr-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      />
+                    </div> */}
+                    <div className="relative w-full">
+                      <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm select-none">
+                        LKR
+                      </span>
+                      <input
+                        type="number"
+                        placeholder="Amount"
+                        value={fee.amount}
+                        onChange={(e) => {
+                          const newFees = [...formData.fees];
+                          newFees[index].amount = Number(e.target.value);
+                          setFormData({ ...formData, fees: newFees });
+                        }}
+                        className="w-full px-10 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                       />
                     </div>
                   </div>
@@ -1080,7 +1109,19 @@ const ClassesPage: React.FC = () => {
           </div>
         </form>
       </Modal>
+      <ConfirmModal
+  isOpen={confirmDelete.isOpen}
+  onClose={() => setConfirmDelete({ isOpen: false, classId: null })}
+  onConfirm={handleConfirmDelete}
+  title="Delete Class"
+  message="Are you sure you want to delete this class? This action cannot be undone."
+  confirmText="Delete"
+  cancelText="Cancel"
+/>
     </div>
+
+
+
   );
 };
 

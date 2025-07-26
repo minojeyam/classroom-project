@@ -64,34 +64,78 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setLoading(false);
   }, []);
 
+  // const login = async (email: string, password: string) => {
+  //   setLoading(true);
+  //   try {
+  //     const res = await fetch("http://localhost:5000/api/auth/login", {
+  //       method: "POST",
+  //       headers: {
+  //         "Content-Type": "application/json",
+  //       },
+  //       body: JSON.stringify({ email, password }),
+  //     });
+
+  //     const data = await res.json();
+
+  //     if (!res.ok) {
+  //       throw new Error(data.message || "Login failed");
+  //     }
+
+  //     const { user, tokens } = data.data;
+  //     if (!tokens || !tokens.accessToken) {
+  //       throw new Error("Invalid token response from server");
+  //     }
+
+  //     const fullUser: User = {
+  //       ...user,
+  //       tokens,
+  //     };
+
+  //     localStorage.setItem("user", JSON.stringify(fullUser));
+  //     setUser(fullUser);
+  //   } catch (error: any) {
+  //     throw new Error(error.message || "Login failed");
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+
+  // const logout = () => {
+  //   setUser(null);
+  //   localStorage.removeItem("user");
+  // };
+
+
   const login = async (email: string, password: string) => {
     setLoading(true);
     try {
       const res = await fetch("http://localhost:5000/api/auth/login", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
-
+  
       const data = await res.json();
-
+  
       if (!res.ok) {
         throw new Error(data.message || "Login failed");
       }
-
+  
       const { user, tokens } = data.data;
       if (!tokens || !tokens.accessToken) {
         throw new Error("Invalid token response from server");
       }
-
+  
       const fullUser: User = {
         ...user,
         tokens,
       };
-
+  
+      // **Store both user and token separately**
       localStorage.setItem("user", JSON.stringify(fullUser));
+      localStorage.setItem("accessToken", tokens.accessToken);   
+      localStorage.setItem("refreshToken", tokens.refreshToken); 
+  
       setUser(fullUser);
     } catch (error: any) {
       throw new Error(error.message || "Login failed");
@@ -100,12 +144,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+
   const logout = () => {
     setUser(null);
     localStorage.removeItem("user");
+    localStorage.removeItem("accessToken");   
+    localStorage.removeItem("refreshToken");  
   };
+  
+  
 
-  const accessToken = user ? user.tokens.accessToken : null;
+
+  const accessToken = user?.tokens?.accessToken ?? null; 
 
   const value = {
     user,

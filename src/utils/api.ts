@@ -8,8 +8,12 @@ export const getAuthHeader = () => {
 
 // LOCATIONS
 export const locationsAPI = {
-  getLocations: async () => {
-    const res = await API.get("/locations");
+  getLocations: async (token: string | undefined) => {
+    const res = await API.get("/locations", {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
     return res.data;
   },
 
@@ -27,32 +31,88 @@ export const locationsAPI = {
     const res = await API.delete(`/locations/${id}`);
     return res.data;
   },
+
+
+
+  /** ✅ NEW: Get Location Status Overview */
+  locationOverview: async (token?: string) => {
+    const res = await API.get("/locations/stats/overview", {
+      headers: token ? { Authorization: `Bearer ${token}` } : getAuthHeader(),
+    });
+    return res.data;
+  },
+
 };
 
 // CLASSES
 export const classesAPI = {
-  getClasses: async (params = {}) => {
-    const res = await API.get("/classes", { params });
+  // getClasses: async (params = {}) => {
+  //   const res = await API.get("/classes", { params });
+  //   return res.data;
+  // },
+
+  getClasses: async (params = {}, token: string | undefined) => {
+    const res = await API.get("/classes", {
+      params,
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
     return res.data;
   },
 
-  getClassById: async (id: string) => {
-    const res = await API.get(`/classes/${id}`);
+
+  // getClassById: async (id: string) => {
+  //   const res = await API.get(`/classes/${id}`);
+  //   return res.data;
+  // },
+
+  getClassById: async (id: string, token: string) => {
+    const res = await API.get(`/classes/${id}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
     return res.data;
   },
 
-  createClass: async (data: any) => {
-    const res = await API.post("/classes", data);
+
+
+  // createClass: async (data: any) => {
+  //   const res = await API.post("/classes", data);
+  //   return res.data;
+  // },
+
+  createClass: async (data: any, token: string) => {
+    const res = await API.post(`/classes`, data, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      }
+    });
+    return res.data
+  },
+
+  // updateClass: async (id: string, data: any) => {
+  //   const res = await API.put(`/classes/${id}`, data);
+  //   return res.data;
+  // },
+
+  updateClass: async (id: string, data: any, token: string) => {
+    const res = await API.put(`/classes/${id}`, data, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
     return res.data;
   },
 
-  updateClass: async (id: string, data: any) => {
-    const res = await API.put(`/classes/${id}`, data);
-    return res.data;
-  },
 
-  deleteClass: async (id: string) => {
-    const res = await API.delete(`/classes/${id}`);
+  deleteClass: async (id: string, token: string) => {
+    const res = await API.delete(`/classes/${id}`, {
+      headers: {
+        Authorization: `Brearer ${token}`
+      }
+    });
     return res.data;
   },
 
@@ -63,6 +123,15 @@ export const classesAPI = {
 
   getMaterials: async () => {
     const res = await API.get("/materials/student");
+    return res.data;
+  },
+
+  /** ✅ NEW: Get Classes Status Overview */
+
+  classOverview: async (token?: string) => {
+    const res = await API.get("/classes/stats/overview", {
+      headers: token ? { Authorization: `Bearer ${token}` } : getAuthHeader(),
+    });
     return res.data;
   },
 };
@@ -101,6 +170,24 @@ export const usersAPI = {
     const res = await API.delete(`/users/${id}`);
     return res.data;
   },
+
+  /** NEW: Get Users Status Overview */
+  getStatusOverview: async (token?: string) => {
+    const res = await API.get("/users/stats/overview", {
+      headers: token ? { Authorization: `Bearer ${token}` } : getAuthHeader(),
+    });
+    return res.data;
+  },
+
+
+  /** NEW: Get Pending Approvals Stats */
+  getPendingApprovals: async (token?: string) => {
+    const res = await API.get("/users/stats/pending-approvals", {
+      headers: token ? { Authorization: `Bearer ${token}` } : getAuthHeader(),
+    });
+    return res.data;
+  },
+
 };
 
 // NOTICES

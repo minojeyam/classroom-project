@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   Users,
   MapPin,
@@ -10,36 +10,83 @@ import {
   Calendar,
 } from "lucide-react";
 import StatsCard from "./StatsCard";
+import { usersAPI } from "../../utils/api";
+import { classesAPI } from "../../utils/api";
+import { locationsAPI } from "../../utils/api";
 
 const AdminDashboard: React.FC = () => {
+  const [overview, setOverview] = useState<any>(null);
+  const [classOverview, setClassOverview] = useState<any>(null)
+  const [locationOverview, setLocationOverview] = useState<any>(null)
+  const [loading, setLoading] = useState(true);
+  const [pendingAprovals, setPendingAprovales] = useState<any>(null)
+   
+  // Get Overview 
+  useEffect(() => {
+    const fetchOverview = async () => {
+      try {
+        setLoading(true);
+  
+        const [userResponse, classesResponse, locationsResponse, pendingAprovals] = await Promise.all([
+          usersAPI.getStatusOverview(),
+          classesAPI.classOverview(),
+          locationsAPI.locationOverview(),
+          usersAPI.getPendingApprovals()
+        ]);
+  
+        setOverview(userResponse.data);
+        setClassOverview(classesResponse.data);
+        setLocationOverview(locationsResponse.data);
+        setPendingAprovales(pendingAprovals.data)
+  
+        console.log(pendingAprovals.data.monthly.trend?.value, "pending aprovals");
+        console.log(locationsResponse.data);
+  
+      } catch (error) {
+        console.error("Error fetching overview:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+  
+    fetchOverview();
+  }, []);
+  
+  if (loading) return <p>Loading...</p>;
+  if (!overview) return <p>No data available</p>;
+
+
+
+  // Number of classes
   const stats = [
+  
     {
       title: "Total Students",
-      value: "1,247",
+      value: overview.students.count || 0,
       icon: Users,
       color: "teal" as const,
-      trend: { value: 12, isPositive: true },
+      trend: { value: overview.students.trend.value || 0, isPositive: overview.students.trend.value >= 0 },
     },
     {
       title: "Total Teachers",
-      value: "89",
+      value: overview.teachers.count || 0      ,
       icon: UserCheck,
       color: "coral" as const,
-      trend: { value: 5, isPositive: true },
+      trend: { value: overview.teachers.trend.value || 0, isPositive: overview.teachers.trend.value >= 0 },
     },
     {
       title: "Total Classes",
-      value: "156",
+      value: classOverview.totalClasses ,
       icon: BookOpen,
       color: "green" as const,
-      trend: { value: 8, isPositive: true },
+      trend: { value: classOverview.percentageChange, isPositive: classOverview.percentageChange >= 0 },
     },
     {
       title: "Locations",
-      value: "12",
+      value: locationOverview.stats.totalLocations || 0,
       icon: MapPin,
       color: "purple" as const,
-      trend: { value: 2, isPositive: true },
+      trend: { value: locationOverview.trends.activeLocations.value, isPositive: locationOverview.trends.activeLocations.value >= 0 },
     },
     {
       title: "Monthly Revenue",
@@ -57,10 +104,10 @@ const AdminDashboard: React.FC = () => {
     },
     {
       title: "Pending Approvals",
-      value: "23",
+      value: pendingAprovals.totalPending,
       icon: AlertCircle,
       color: "orange" as const,
-      trend: { value: -10, isPositive: false },
+      trend: { value: pendingAprovals.monthly.trend?.value, isPositive: pendingAprovals.monthly.trend?.value >= 0 },
     },
     {
       title: "Overdue Payments",
@@ -112,7 +159,9 @@ const AdminDashboard: React.FC = () => {
         ))}
       </div>
 
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+
+
+      {/* <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">
           Quick Actions
         </h3>
@@ -134,7 +183,7 @@ const AdminDashboard: React.FC = () => {
             <p className="text-sm font-medium text-gray-900">View Reports</p>
           </button>
         </div>
-      </div>
+      </div> */}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">

@@ -4,6 +4,9 @@ import DataTable from "../Common/DataTable";
 import Modal from "../Common/Modal";
 import { locationsAPI } from "../../utils/api";
 import { toast } from "react-toastify";
+import { useAuth } from "../../contexts/AuthContext";
+import ConfirmModal from "../Common/ConfirmModal";
+
 
 interface Location {
   id: string;
@@ -49,6 +52,16 @@ const LocationsPage: React.FC = () => {
     status: "active",
   });
 
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  // for Disable 
+  const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
+const [selectedStatusLocation, setSelectedStatusLocation] = useState<Location | null>(null);
+
+
+  const { accessToken } = useAuth();
+
   useEffect(() => {
     fetchLocations();
   }, []);
@@ -56,7 +69,10 @@ const LocationsPage: React.FC = () => {
   const fetchLocations = async () => {
     try {
       setLoading(true);
-      const response = await locationsAPI.getLocations();
+  
+    
+      const response = await locationsAPI.getLocations(accessToken ?? undefined);
+  
       if (response.status === "success") {
         setLocations(response.data.locations || []);
       } else {
@@ -68,34 +84,70 @@ const LocationsPage: React.FC = () => {
       setLoading(false);
     }
   };
+  
 
-  const handleToggleStatus = async (location: Location) => {
-    const newStatus = location.status === "active" ? "inactive" : "active";
-    if (
-      !window.confirm(
-        `Are you sure you want to ${
-          newStatus === "inactive" ? "disable" : "enable"
-        } "${location.name}"?`
-      )
-    )
-      return;
+  // const handleToggleStatus = async (location: Location) => {
+  //   const newStatus = location.status === "active" ? "inactive" : "active";
+  //   if (
+  //     !window.confirm(
+  //       `Are you sure you want to ${
+  //         newStatus === "inactive" ? "disable" : "enable"
+  //       } "${location.name}"?`
+  //     )
+  //   )
+  //     return;
 
+  //   try {
+  //     await locationsAPI.updateLocation(location.id, {
+  //       ...location,
+  //       status: newStatus,
+  //       address: location.address, // ensure structure
+  //     });
+  //     toast.success(
+  //       `"${location.name}" ${
+  //         newStatus === "inactive" ? "disabled" : "enabled"
+  //       }`
+  //     );
+  //     fetchLocations();
+  //   } catch (err: any) {
+  //     toast.error(err.message || "Failed to update location status");
+  //   }
+  // };
+
+  const handleToggleStatus = (location: Location) => {
+    setSelectedStatusLocation(location);
+    setIsStatusModalOpen(true);
+  };
+  
+  const confirmToggleStatus = async () => {
+    if (!selectedStatusLocation) return;
+  
+    const newStatus =
+      selectedStatusLocation.status === "active" ? "inactive" : "active";
+  
     try {
-      await locationsAPI.updateLocation(location.id, {
-        ...location,
+      await locationsAPI.updateLocation(selectedStatusLocation.id, {
+        ...selectedStatusLocation,
         status: newStatus,
-        address: location.address, // ensure structure
+        address: selectedStatusLocation.address,
       });
+  
       toast.success(
-        `"${location.name}" ${
+        `"${selectedStatusLocation.name}" ${
           newStatus === "inactive" ? "disabled" : "enabled"
-        }`
+        } successfully`
       );
+  
       fetchLocations();
     } catch (err: any) {
       toast.error(err.message || "Failed to update location status");
+    } finally {
+      setIsStatusModalOpen(false);
+      setSelectedStatusLocation(null);
     }
   };
+  
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -115,19 +167,23 @@ const LocationsPage: React.FC = () => {
         color: formData.color,
         status: formData.status,
       };
-
+  
       if (isEditMode && selectedLocation) {
         await locationsAPI.updateLocation(selectedLocation.id, locationData);
+        toast.success("Location updated successfully");  
       } else {
         await locationsAPI.createLocation(locationData);
+        toast.success("Location created successfully"); 
       }
-
+  
       fetchLocations();
       handleCloseModal();
     } catch (err: any) {
-      toast.error(err.message || "Failed to save location");
+      toast.error(err.message || "Failed to save location"); 
     }
   };
+
+
 
   const handleEdit = (location: Location) => {
     setSelectedLocation(location);
@@ -148,14 +204,25 @@ const LocationsPage: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const handleDelete = async (id: string) => {
-    if (window.confirm("Are you sure you want to delete this location?")) {
-      try {
-        await locationsAPI.deleteLocation(id);
-        fetchLocations();
-      } catch (err: any) {
-        toast.error(err.message || "Failed to delete location");
-      }
+ 
+
+   // When user clicks "Delete" button:
+   const handleOpenConfirm = (id: string) => {
+    setSelectedId(id);
+    setIsConfirmOpen(true);
+  };
+
+  // The actual deletion after user confirms:
+  const handleDelete = async () => {
+    if (!selectedId) return;
+
+    try {
+      await locationsAPI.deleteLocation(selectedId);
+      fetchLocations();
+      setIsConfirmOpen(false);
+      setSelectedId(null);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to delete location");
     }
   };
 
@@ -264,7 +331,7 @@ const LocationsPage: React.FC = () => {
             <Power className="w-4 h-4" />
           </button>
           <button
-            onClick={() => handleDelete(row.id)}
+            onClick={() => handleOpenConfirm(row.id)}
             className="text-red-600 hover:text-red-800"
           >
             <Trash2 className="w-4 h-4" />
@@ -451,6 +518,29 @@ const LocationsPage: React.FC = () => {
           </div>
         </form>
       </Modal>
+
+      {/* Confirmation Modal */}
+      <ConfirmModal
+        isOpen={isConfirmOpen}
+        onClose={() => setIsConfirmOpen(false)}
+        onConfirm={handleDelete}
+        title="Delete Location"
+        message="Are you sure you want to delete this location?"
+        confirmText="Delete"
+        cancelText="Cancel"
+      />
+
+<ConfirmModal
+  isOpen={isStatusModalOpen}
+  onClose={() => setIsStatusModalOpen(false)}
+  onConfirm={confirmToggleStatus}
+  title={`${selectedStatusLocation?.status === "active" ? "Disable" : "Enable"} Location`}
+  message={`Are you sure you want to ${
+    selectedStatusLocation?.status === "active" ? "disable" : "enable"
+  } "${selectedStatusLocation?.name}"?`}
+  confirmText={selectedStatusLocation?.status === "active" ? "Disable" : "Enable"}
+  cancelText="Cancel"
+/>
     </div>
   );
 };
