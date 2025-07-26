@@ -22,6 +22,7 @@ import { errorHandler } from "./middleware/errorHandler.js";
 import { notFound } from "./middleware/notFound.js";
 
 // Load environment variables
+
 dotenv.config();
 
 const app = express();

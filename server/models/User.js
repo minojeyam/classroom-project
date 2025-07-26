@@ -1,6 +1,8 @@
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import dayjs from "dayjs"; // install this via `npm install dayjs`
+
 
 const userSchema = new mongoose.Schema(
   {
@@ -49,7 +51,7 @@ const userSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["active", "inactive", "pending"],
+      enum: ["active", "inactive", "pending", "rejected"],
       default: "pending",
     },
     rejectionReason: {
@@ -194,3 +196,5 @@ userSchema.methods.toJSON = function () {
 };
 
 export default mongoose.model("User", userSchema);
+
+

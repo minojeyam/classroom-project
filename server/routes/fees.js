@@ -298,9 +298,9 @@ router.delete(
   }
 );
 
+
 // @route   GET /api/fees/class-overview
-// @desc    Get fee overview for all classes
-// @access  Private (Admin, Teacher)
+// @desc    Get fee overview for all classes with revenue growth & collection %
 router.get(
   "/class-overview",
   auth,
@@ -310,15 +310,42 @@ router.get(
       const classes = await Class.find().select(
         "title enrolledStudents monthlyFee"
       );
+
       const feeRecords = await StudentFee.find()
         .populate("classId", "title")
         .populate("feeStructureId", "category");
 
-      // Aggregate data by class
+      // ---------- Date ranges ----------
+      const now = new Date();
+      const startOfCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+
+      const currentMonthFees = feeRecords.filter(
+        (fee) => fee.paidDate && fee.paidDate >= startOfCurrentMonth
+      );
+      const lastMonthFees = feeRecords.filter(
+        (fee) => fee.paidDate && fee.paidDate >= startOfLastMonth && fee.paidDate <= endOfLastMonth
+      );
+
+      const currentMonthRevenue = currentMonthFees.reduce(
+        (sum, record) => sum + (record.paidAmount || 0),
+        0
+      );
+      const previousMonthRevenue = lastMonthFees.reduce(
+        (sum, record) => sum + (record.paidAmount || 0),
+        0
+      );
+
+      const feeIncreasePercentage =
+        previousMonthRevenue > 0
+          ? ((currentMonthRevenue - previousMonthRevenue) / previousMonthRevenue) * 100
+          : 0;
+
+      // ---------- Per-Class Overview ----------
       const overview = classes.map((classItem) => {
         const classFeeRecords = feeRecords.filter(
-          (record) =>
-            record.classId?._id.toString() === classItem._id.toString()
+          (record) => record.classId?._id.toString() === classItem._id.toString()
         );
 
         const totalStudents = classItem.enrolledStudents.length;
@@ -331,15 +358,14 @@ router.get(
           0
         );
 
-        const paidCount = classFeeRecords.filter(
-          (record) => record.status === "paid"
-        ).length;
-        const partialCount = classFeeRecords.filter(
-          (record) => record.status === "partial"
-        ).length;
-        const pendingCount = classFeeRecords.filter(
-          (record) => record.status === "pending"
-        ).length;
+        const collectionPercentage =
+          totalExpectedRevenue > 0
+            ? (collectedAmount / totalExpectedRevenue) * 100
+            : 0;
+
+        const paidCount = classFeeRecords.filter((r) => r.status === "paid").length;
+        const partialCount = classFeeRecords.filter((r) => r.status === "partial").length;
+        const pendingCount = classFeeRecords.filter((r) => r.status === "pending").length;
 
         return {
           classId: classItem._id,
@@ -347,20 +373,30 @@ router.get(
           totalStudents,
           totalExpectedRevenue,
           collectedAmount,
+          collectionPercentage,
           paidCount,
           partialCount,
           pendingCount,
-          currency: classItem.monthlyFee?.currency || "LKR", // Default to LKR if no currency
+          currency: classItem.monthlyFee?.currency || "LKR"
         };
       });
 
-      res.json({ status: "success", data: overview });
+      res.json({
+        status: "success",
+        data: {
+          overview,
+          monthlyRevenue: {
+            currentMonthRevenue,
+            previousMonthRevenue,
+            feeIncreasePercentage
+          }
+        }
+      });
     } catch (error) {
       console.error("Get class fee overview error:", error);
-      res
-        .status(500)
-        .json({ status: "error", message: "Internal server error" });
+      res.status(500).json({ status: "error", message: "Internal server error" });
     }
   }
 );
+
 export default router;

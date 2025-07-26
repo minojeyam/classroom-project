@@ -598,4 +598,60 @@ router.patch("/:id/disable", auth, authorize(["admin"]), async (req, res) => {
   }
 });
 
+// GET /api/classes/stats/overview (with monthly trends)
+router.get("/stats/overview", auth, authorize(["admin"]), async (req, res) => {
+  try {
+    const now = new Date();
+
+    // Current month range
+    const startOfCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfCurrentMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+
+    // Previous month range
+    const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    // Classes this month
+    const currentMonthClasses = await Class.countDocuments({
+      createdAt: { $gte: startOfCurrentMonth, $lt: endOfCurrentMonth },
+    });
+
+    // Classes last month
+    const lastMonthClasses = await Class.countDocuments({
+      createdAt: { $gte: startOfLastMonth, $lt: endOfLastMonth },
+    });
+
+    // Total classes overall
+    const totalClasses = await Class.countDocuments();
+
+    // Monthly percentage trend
+    let percentageChange = 0;
+    if (lastMonthClasses > 0) {
+      percentageChange =
+        ((currentMonthClasses - lastMonthClasses) / lastMonthClasses) * 100;
+    } else if (currentMonthClasses > 0) {
+      percentageChange = 100; // no classes last month, but classes now
+    }
+
+    res.json({
+      status: "success",
+      data: {
+        totalClasses,
+        currentMonthClasses,
+        lastMonthClasses,
+        percentageChange: Number(percentageChange.toFixed(2)),
+        trend: {
+          value: Number(percentageChange.toFixed(2)),
+          isPositive: percentageChange >= 0,
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Classes monthly trend error:", error);
+    res.status(500).json({ status: "error", message: "Server error" });
+  }
+});
+
+
+
 export default router;

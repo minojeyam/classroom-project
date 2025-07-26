@@ -297,47 +297,138 @@ router.delete("/:id", auth, authorize(["admin"]), async (req, res) => {
 });
 
 // @route   GET /api/users/stats/overview
-// @desc    Get user statistics (admin only)
+// @desc    Students & Teachers monthly overview
 // @access  Private (Admin)
 router.get("/stats/overview", auth, authorize(["admin"]), async (req, res) => {
   try {
-    const stats = await Promise.all([
-      User.countDocuments({ role: "student", status: "active" }),
-      User.countDocuments({ role: "teacher", status: "active" }),
-      User.countDocuments({ role: "parent", status: "active" }),
-      User.countDocuments({ status: "pending" }),
-      User.countDocuments({ status: "inactive" }),
-    ]);
+    const now = new Date();
 
-    const [
-      activeStudents,
-      activeTeachers,
-      activeParents,
-      pendingUsers,
-      inactiveUsers,
-    ] = stats;
+    // --- Current Month Range ---
+    const startOfCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfCurrentMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+
+    // --- Last Month Range ---
+    const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    // --- Students ---
+    const currentMonthStudents = await User.countDocuments({
+      role: "student",
+      status: "active",
+      createdAt: { $gte: startOfCurrentMonth, $lt: endOfCurrentMonth },
+    });
+
+    const lastMonthStudents = await User.countDocuments({
+      role: "student",
+      status: "active",
+      createdAt: { $gte: startOfLastMonth, $lt: endOfLastMonth },
+    });
+
+    const studentPercentage =
+      lastMonthStudents > 0
+        ? ((currentMonthStudents - lastMonthStudents) / lastMonthStudents) * 100
+        : currentMonthStudents > 0
+        ? 100
+        : 0;
+
+    // --- Teachers ---
+    const currentMonthTeachers = await User.countDocuments({
+      role: "teacher",
+      status: "active",
+      createdAt: { $gte: startOfCurrentMonth, $lt: endOfCurrentMonth },
+    });
+
+    const lastMonthTeachers = await User.countDocuments({
+      role: "teacher",
+      status: "active",
+      createdAt: { $gte: startOfLastMonth, $lt: endOfLastMonth },
+    });
+
+    const teacherPercentage =
+      lastMonthTeachers > 0
+        ? ((currentMonthTeachers - lastMonthTeachers) / lastMonthTeachers) * 100
+        : currentMonthTeachers > 0
+        ? 100
+        : 0;
 
     res.json({
       status: "success",
       data: {
-        stats: {
-          activeStudents,
-          activeTeachers,
-          activeParents,
-          pendingUsers,
-          inactiveUsers,
-          totalActiveUsers: activeStudents + activeTeachers + activeParents,
-          totalUsers:
-            activeStudents +
-            activeTeachers +
-            activeParents +
-            pendingUsers +
-            inactiveUsers,
+        students: {
+          count: currentMonthStudents,
+          trend: {
+            value: Number(studentPercentage.toFixed(2)),
+            isPositive: studentPercentage >= 0,
+          },
+        },
+        teachers: {
+          count: currentMonthTeachers,
+          trend: {
+            value: Number(teacherPercentage.toFixed(2)),
+            isPositive: teacherPercentage >= 0,
+          },
         },
       },
     });
   } catch (error) {
-    console.error("Get user stats error:", error);
+    console.error("Get students & teachers stats error:", error);
+    res.status(500).json({ status: "error", message: "Internal server error" });
+  }
+});
+
+
+
+// @route   GET /api/users/stats/pending-approvals
+// @desc    Get pending approvals count and monthly percentage change
+// @access  Private (Admin)
+router.get("/stats/pending-approvals", auth, authorize(["admin"]), async (req, res) => {
+  try {
+    const now = new Date();
+
+    // --- Current Month Range ---
+    const startOfCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfCurrentMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+
+    // --- Last Month Range ---
+    const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    // --- Pending Approvals ---
+    const currentMonthPending = await User.countDocuments({
+      status: "pending",
+      createdAt: { $gte: startOfCurrentMonth, $lt: endOfCurrentMonth },
+    });
+
+    const lastMonthPending = await User.countDocuments({
+      status: "pending",
+      createdAt: { $gte: startOfLastMonth, $lt: endOfLastMonth },
+    });
+
+    const percentageChange =
+      lastMonthPending > 0
+        ? ((currentMonthPending - lastMonthPending) / lastMonthPending) * 100
+        : currentMonthPending > 0
+        ? 100
+        : 0;
+
+    // --- Total Pending Approvals (all time) ---
+    const totalPending = await User.countDocuments({ status: "pending" });
+
+    res.json({
+      status: "success",
+      data: {
+        totalPending,
+        monthly: {
+          count: currentMonthPending,
+          trend: {
+            value: Number(percentageChange.toFixed(2)),
+            isPositive: percentageChange >= 0,
+          },
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Get pending approvals stats error:", error);
     res.status(500).json({ status: "error", message: "Internal server error" });
   }
 });

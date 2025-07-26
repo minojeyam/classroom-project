@@ -246,9 +246,23 @@ router.delete("/:id", auth, authorize(["admin"]), async (req, res) => {
 // @route   GET /api/locations/stats/overview
 // @desc    Get location statistics
 // @access  Private (admin only)
+// @route   GET /api/locations/stats/overview
+// @desc    Get location statistics with monthly trends
+// @access  Private (admin only)
 router.get("/stats/overview", auth, authorize(["admin"]), async (req, res) => {
   try {
-    const stats = await Promise.all([
+    // ==== Date Ranges ====
+    const now = new Date();
+    const firstDayThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const firstDayLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastDayLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+
+    // ==== Helper for trend calculation ====
+    const calcTrend = (current, previous) =>
+      previous > 0 ? ((current - previous) / previous) * 100 : current > 0 ? 100 : 0;
+
+    // ==== Current month stats ====
+    const [active, inactive, maintenance, capacityData] = await Promise.all([
       Location.countDocuments({ status: "active" }),
       Location.countDocuments({ status: "inactive" }),
       Location.countDocuments({ status: "maintenance" }),
@@ -264,9 +278,83 @@ router.get("/stats/overview", auth, authorize(["admin"]), async (req, res) => {
       ]),
     ]);
 
-    const [active, inactive, maintenance, capacityData] = stats;
     const { totalCapacity = 0, totalEnrollment = 0 } = capacityData[0] || {};
+    const totalLocations = active + inactive + maintenance;
 
+    // ==== Last month stats ====
+    const [activeLast, inactiveLast, maintenanceLast, capacityLastData] =
+      await Promise.all([
+        Location.countDocuments({
+          status: "active",
+          createdAt: { $gte: firstDayLastMonth, $lte: lastDayLastMonth },
+        }),
+        Location.countDocuments({
+          status: "inactive",
+          createdAt: { $gte: firstDayLastMonth, $lte: lastDayLastMonth },
+        }),
+        Location.countDocuments({
+          status: "maintenance",
+          createdAt: { $gte: firstDayLastMonth, $lte: lastDayLastMonth },
+        }),
+        Location.aggregate([
+          {
+            $match: {
+              status: "active",
+              createdAt: { $gte: firstDayLastMonth, $lte: lastDayLastMonth },
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              totalCapacity: { $sum: "$capacity" },
+              totalEnrollment: { $sum: "$currentEnrollment" },
+            },
+          },
+        ]),
+      ]);
+
+    const { totalCapacity: lastCapacity = 0, totalEnrollment: lastEnrollment = 0 } =
+      capacityLastData[0] || {};
+    const totalLocationsLast = activeLast + inactiveLast + maintenanceLast;
+
+    // ==== Trends ====
+    const trends = {
+      activeLocations: {
+        value: Number(calcTrend(active, activeLast).toFixed(2)),
+        isPositive: active >= activeLast,
+      },
+      inactiveLocations: {
+        value: Number(calcTrend(inactive, inactiveLast).toFixed(2)),
+        isPositive: inactive >= inactiveLast,
+      },
+      maintenanceLocations: {
+        value: Number(calcTrend(maintenance, maintenanceLast).toFixed(2)),
+        isPositive: maintenance >= maintenanceLast,
+      },
+      totalLocations: {
+        value: Number(calcTrend(totalLocations, totalLocationsLast).toFixed(2)),
+        isPositive: totalLocations >= totalLocationsLast,
+      },
+      totalCapacity: {
+        value: Number(calcTrend(totalCapacity, lastCapacity).toFixed(2)),
+        isPositive: totalCapacity >= lastCapacity,
+      },
+      totalEnrollment: {
+        value: Number(calcTrend(totalEnrollment, lastEnrollment).toFixed(2)),
+        isPositive: totalEnrollment >= lastEnrollment,
+      },
+      occupancyRate: {
+        value: Number(
+          calcTrend(
+            totalCapacity > 0 ? (totalEnrollment / totalCapacity) * 100 : 0,
+            lastCapacity > 0 ? (lastEnrollment / lastCapacity) * 100 : 0
+          ).toFixed(2)
+        ),
+        isPositive: totalEnrollment >= lastEnrollment,
+      },
+    };
+
+    // ==== Final Response ====
     res.json({
       status: "success",
       data: {
@@ -274,7 +362,7 @@ router.get("/stats/overview", auth, authorize(["admin"]), async (req, res) => {
           activeLocations: active,
           inactiveLocations: inactive,
           maintenanceLocations: maintenance,
-          totalLocations: active + inactive + maintenance,
+          totalLocations,
           totalCapacity,
           totalEnrollment,
           occupancyRate:
@@ -282,6 +370,7 @@ router.get("/stats/overview", auth, authorize(["admin"]), async (req, res) => {
               ? Math.round((totalEnrollment / totalCapacity) * 100)
               : 0,
         },
+        trends,
       },
     });
   } catch (error) {
@@ -289,5 +378,6 @@ router.get("/stats/overview", auth, authorize(["admin"]), async (req, res) => {
     res.status(500).json({ status: "error", message: "Internal server error" });
   }
 });
+
 
 export default router;
