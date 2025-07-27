@@ -102,20 +102,6 @@ const AppContent: React.FC = () => {
         return <ReportsPage />;
       case "/teacher-reports":
         return <TeacherReport />;
-      // case "/import":
-      //   return (
-      //     <ComingSoonPage
-      //       feature="Bulk Import/Export"
-      //       description="Import and export data in bulk using CSV files."
-      //     />
-      //   );
-      // case "/settings":
-      //   return (
-      //     <ComingSoonPage
-      //       feature="Settings"
-      //       description="Configure system settings, branding, and preferences."
-      //     />
-      //   );
       default:
         return renderDashboard();
     }
