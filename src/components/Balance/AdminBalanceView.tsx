@@ -688,7 +688,7 @@ const FeesPage: React.FC = () => {
             <div>
               <p className="text-sm font-medium text-gray-600">Total Revenue</p>
               <p className="text-2xl font-bold text-gray-900 mt-2">
-                ₹{overallStats.totalRevenue.toLocaleString()}
+                LKR{overallStats.totalRevenue.toLocaleString()}
               </p>
               <p className="text-sm text-gray-500 mt-1">This month</p>
             </div>
@@ -705,7 +705,7 @@ const FeesPage: React.FC = () => {
                 Received Amount
               </p>
               <p className="text-2xl font-bold text-green-600 mt-2">
-                ₹{overallStats.receivedAmount.toLocaleString()}
+                LKR{overallStats.receivedAmount.toLocaleString()}
               </p>
               <p className="text-sm text-gray-500 mt-1">
                 {overallStats.totalStudents} students
@@ -724,7 +724,7 @@ const FeesPage: React.FC = () => {
                 Pending Amount
               </p>
               <p className="text-2xl font-bold text-orange-600 mt-2">
-                ₹{overallStats.pendingAmount.toLocaleString()}
+                LKR{overallStats.pendingAmount.toLocaleString()}
               </p>
               <p className="text-sm text-gray-500 mt-1">Outstanding fees</p>
             </div>
@@ -838,7 +838,7 @@ const FeesPage: React.FC = () => {
                           </div>
                           <div className="text-right">
                             <p className="text-2xl font-bold text-gray-900">
-                              ₹{location.monthlyRevenue.toLocaleString()}
+                              LKR{location.monthlyRevenue.toLocaleString()}
                             </p>
                             <p className="text-sm text-gray-500">
                               Monthly Revenue
@@ -849,13 +849,13 @@ const FeesPage: React.FC = () => {
                         <div className="grid grid-cols-3 gap-4 mb-4">
                           <div className="text-center">
                             <p className="text-lg font-bold text-green-600">
-                              ₹{location.receivedAmount.toLocaleString()}
+                              LKR{location.receivedAmount.toLocaleString()}
                             </p>
                             <p className="text-xs text-gray-500">Received</p>
                           </div>
                           <div className="text-center">
                             <p className="text-lg font-bold text-orange-600">
-                              ₹{location.pendingAmount.toLocaleString()}
+                              LKR{location.pendingAmount.toLocaleString()}
                             </p>
                             <p className="text-xs text-gray-500">Pending</p>
                           </div>
@@ -893,7 +893,7 @@ const FeesPage: React.FC = () => {
                                     {classData.className}
                                   </h5>
                                   <span className="text-sm font-bold text-gray-900">
-                                    ₹{classData.totalRevenue.toLocaleString()}
+                                    LKR{classData.totalRevenue.toLocaleString()}
                                   </span>
                                 </div>
                                 <p className="text-sm text-gray-600">
@@ -905,11 +905,11 @@ const FeesPage: React.FC = () => {
                                   </span>
                                   <div className="flex items-center space-x-2">
                                     <span className="text-xs text-green-600">
-                                      ₹
+                                      LKR
                                       {classData.receivedAmount.toLocaleString()}
                                     </span>
                                     <span className="text-xs text-orange-600">
-                                      ₹
+                                      LKR
                                       {classData.pendingAmount.toLocaleString()}
                                     </span>
                                   </div>
@@ -1017,7 +1017,7 @@ const FeesPage: React.FC = () => {
                 <div>
                   <p className="text-sm text-gray-600">Monthly Fee</p>
                   <p className="font-semibold text-gray-900">
-                    ₹{selectedClass.monthlyFee}
+                    {selectedClass.monthlyFee}
                   </p>
                 </div>
               </div>
@@ -1027,13 +1027,13 @@ const FeesPage: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="bg-green-50 p-4 rounded-lg text-center">
                 <p className="text-2xl font-bold text-green-600">
-                  ₹{selectedClass.receivedAmount.toLocaleString()}
+                  LKR{selectedClass.receivedAmount.toLocaleString()}
                 </p>
                 <p className="text-sm text-gray-600">Received Amount</p>
               </div>
               <div className="bg-orange-50 p-4 rounded-lg text-center">
                 <p className="text-2xl font-bold text-orange-600">
-                  ₹{selectedClass.pendingAmount.toLocaleString()}
+                  LKR{selectedClass.pendingAmount.toLocaleString()}
                 </p>
                 <p className="text-sm text-gray-600">Pending Amount</p>
               </div>
@@ -1081,7 +1081,7 @@ const FeesPage: React.FC = () => {
                       <p className="text-sm text-gray-600">{student.email}</p>
                       <div className="flex items-center justify-between mt-1">
                         <span className="text-xs text-gray-500">
-                          Paid: ₹{student.paidAmount} / ₹{student.monthlyFee}
+                          Paid: {student.paidAmount} / LKR{student.monthlyFee}
                         </span>
                         {student.lastPaymentDate && (
                           <span className="text-xs text-gray-500">
@@ -1112,13 +1112,13 @@ const FeesPage: React.FC = () => {
               <div className="grid grid-cols-3 gap-4 mt-3">
                 <div className="text-center">
                   <p className="font-bold text-green-600">
-                    ₹{selectedClass.receivedAmount.toLocaleString()}
+                    LKR{selectedClass.receivedAmount.toLocaleString()}
                   </p>
                   <p className="text-xs text-gray-500">Received</p>
                 </div>
                 <div className="text-center">
                   <p className="font-bold text-orange-600">
-                    ₹{selectedClass.pendingAmount.toLocaleString()}
+                    LKR{selectedClass.pendingAmount.toLocaleString()}
                   </p>
                   <p className="text-xs text-gray-500">Pending</p>
                 </div>
@@ -1181,14 +1181,14 @@ const FeesPage: React.FC = () => {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div>
                           <p className="font-medium text-gray-900">
-                            ₹{student.monthlyFee}
+                            LKR{student.monthlyFee}
                           </p>
                           <p className="text-sm text-green-600">
-                            Paid: ₹{student.paidAmount}
+                            Paid: LKR{student.paidAmount}
                           </p>
                           {student.pendingAmount > 0 && (
                             <p className="text-sm text-orange-600">
-                              Pending: ₹{student.pendingAmount}
+                              Pending: LKR{student.pendingAmount}
                             </p>
                           )}
                         </div>
@@ -1374,7 +1374,7 @@ const FeesPage: React.FC = () => {
               </h4>
               <p className="text-sm text-gray-600">{selectedItem.feeName}</p>
               <p className="text-lg font-bold text-gray-900 mt-2">
-                ₹{selectedItem.amount}
+                LKR{selectedItem.amount}
               </p>
             </div>
 
@@ -1460,7 +1460,7 @@ const FeesPage: React.FC = () => {
                 <option value="">Choose fee structure</option>
                 {feeStructures.map((fee) => (
                   <option key={fee.id} value={fee.id}>
-                    {fee.name} - ₹{fee.amount}
+                    {fee.name} - LKR{fee.amount}
                   </option>
                 ))}
               </select>

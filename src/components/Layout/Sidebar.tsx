@@ -111,6 +111,12 @@ const sidebarItems: SidebarItem[] = [
     href: "/reports",
     roles: ["admin", "teacher"],
   },
+  {
+    icon: <BarChart3 className="w-5 h-5" />,
+    label: "Reports",
+    href: "/teacher-reports",
+    roles: ["teacher"],
+  },
 ];
 
 interface SidebarProps {

@@ -478,7 +478,7 @@ const ClassesPage: React.FC = () => {
               {row.fees.slice(0, 2).map((fee, index) => (
                 <div key={index} className="text-sm">
                   <span className="font-medium text-gray-900">
-                    ₹{fee.amount}
+                    LKR{fee.amount}
                   </span>
                   <span className="text-gray-500 ml-1">({fee.frequency})</span>
                 </div>
