@@ -110,9 +110,9 @@ const ReportsPage: React.FC = () => {
       
       const [classesResponse, teachersResponse, locationsResponse, studentsResponse] = await Promise.all([
         classesAPI.getClasses({}, token),
-        usersAPI.getAll({ role: 'teacher' }),
+        usersAPI.getUsers({ role: 'teacher' }),
         locationsAPI.getLocations({}, token),
-        usersAPI.getAll({ role: 'student' })
+        usersAPI.getUsers({ role: 'student' })
       ]);
       
       if (classesResponse.status === 'success') {

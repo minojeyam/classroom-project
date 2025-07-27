@@ -14,6 +14,7 @@ import DataTable from "../Common/DataTable";
 import Modal from "../Common/Modal";
 import axiosInstance from "../../utils/axios"; // Adjust path if needed
 import { useAuth } from "../../contexts/AuthContext";
+import { toast } from "react-toastify";
 
 interface Notice {
   id?: string; // Make id optional to handle potential _id mismatch
@@ -85,7 +86,8 @@ const NoticeBoardPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Submitting payload:", formData); // Log payload for debugging
+    console.log("Submitting payload:", formData);
+  
     try {
       const payload = {
         ...formData,
@@ -95,23 +97,25 @@ const NoticeBoardPage: React.FC = () => {
           ? new Date(formData.expiresAt).toISOString()
           : undefined,
       };
-      if (
-        isEditMode &&
-        selectedNotice &&
-        (selectedNotice.id || selectedNotice._id)
-      ) {
+  
+      if (isEditMode && selectedNotice && (selectedNotice.id || selectedNotice._id)) {
         await axiosInstance.put(
           `/notices/${selectedNotice.id || selectedNotice._id}`,
           payload
         );
+        toast.success("Notice updated successfully!");
       } else {
         await axiosInstance.post("/notices", payload);
+        toast.success("Notice created successfully!");
       }
+  
       fetchNotices();
       handleCloseModal();
     } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to save notice");
-      console.error("Error details:", err.response?.data); // Log detailed error response
+      const errorMessage = err.response?.data?.message || "Failed to save notice";
+      setError(errorMessage);
+      toast.error(errorMessage);
+      console.error("Error details:", err.response?.data);
     }
   };
 
@@ -120,6 +124,7 @@ const NoticeBoardPage: React.FC = () => {
     const noticeId = notice.id || notice._id;
     if (!noticeId) {
       setError("Invalid notice selected for editing");
+      toast.error("Invalid notice selected for editing");
       return;
     }
     setSelectedNotice(notice);
@@ -138,6 +143,8 @@ const NoticeBoardPage: React.FC = () => {
     });
     setIsEditMode(true);
     setIsModalOpen(true);
+  
+   
   };
 
   const handleDelete = async (id: string) => {
@@ -352,6 +359,13 @@ const NoticeBoardPage: React.FC = () => {
       label: "Actions",
       render: (_: any, row: Notice) => (
         <div className="flex items-center space-x-2">
+           <button
+        onClick={() => handleEdit(row)}
+        className="text-yellow-600 hover:text-yellow-800 transition-colors duration-200"
+        title="Edit"
+      >
+        <Edit className="w-4 h-4" /> {/* use lucide-react Edit icon */}
+      </button>
           <button
             onClick={() => handleAcknowledge(row.id || row._id || "")}
             className="text-blue-600 hover:text-blue-800 transition-colors duration-200"
@@ -367,6 +381,7 @@ const NoticeBoardPage: React.FC = () => {
           >
             <Trash2 className="w-4 h-4" />
           </button>
+          
         </div>
       ),
     },
