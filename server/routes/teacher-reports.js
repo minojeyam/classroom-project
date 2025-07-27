@@ -1,7 +1,7 @@
 import express from "express";
 import { auth, authorize } from "../middleware/auth.js";
 import Class from "../models/Class.js";
-import User from "../models/User.js";
+import Attendance from "../models/Attendance.js";
 import StudentFee from "../models/StudentFee.js";
 
 const router = express.Router();
@@ -12,27 +12,111 @@ router.use(auth, authorize(["teacher"]));
 // @route GET /api/reports/class-overview
 router.get("/class-overview", async (req, res) => {
   try {
-    const classes = await Class.find({ teacherId: req.user.id })
+    const { classId, range, from, to } = req.query;
+
+    // Step 1: Get teacher's class list
+    const teacherClasses = await Class.find({ teacherId: req.user.id })
       .populate("locationId", "name")
       .populate("teacherId", "firstName lastName");
 
-    const data = classes.map((c) => ({
-      classId: c._id,
-      className: c.title,
-      subject: c.subject,
-      level: c.level,
-      teacherName: `${c.teacherId.firstName} ${c.teacherId.lastName}`,
-      locationName: c.locationId.name,
-      totalStudents: c.currentEnrollment,
-      activeStudents: Math.floor(c.currentEnrollment * 0.95),
-      averageAttendance: 90, // placeholder
-      totalRevenue: c.currentEnrollment * (c.monthlyFee?.amount || 4500),
-      pendingFees:
-        Math.floor(c.currentEnrollment * 0.1) * (c.monthlyFee?.amount || 4500),
-    }));
+    let filteredClasses = teacherClasses;
+
+    if (classId && classId !== "all") {
+      filteredClasses = teacherClasses.filter(
+        (c) => c._id.toString() === classId
+      );
+    }
+
+    // Step 2: Handle date filtering
+    let startDate, endDate;
+
+    if (from && to) {
+      startDate = new Date(from);
+      endDate = new Date(to);
+    } else if (range) {
+      const now = new Date();
+      switch (range) {
+        case "this-week": {
+          const first = now.getDate() - now.getDay();
+          startDate = new Date(now.setDate(first));
+          endDate = new Date(now.setDate(first + 6));
+          break;
+        }
+        case "this-month":
+          startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+          endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+          break;
+        case "this-quarter": {
+          const q = Math.floor((now.getMonth() + 3) / 3);
+          startDate = new Date(now.getFullYear(), (q - 1) * 3, 1);
+          endDate = new Date(now.getFullYear(), q * 3, 0);
+          break;
+        }
+        case "this-year":
+          startDate = new Date(now.getFullYear(), 0, 1);
+          endDate = new Date(now.getFullYear(), 11, 31);
+          break;
+      }
+    }
+
+    const data = await Promise.all(
+      filteredClasses.map(async (c) => {
+        const studentIds = c.enrolledStudents.map((s) => s.studentId);
+
+        // Filter attendance by date
+        const attendanceQuery = { classId: c._id };
+        if (startDate && endDate) {
+          attendanceQuery.date = {
+            $gte: startDate.toISOString().split("T")[0],
+            $lte: endDate.toISOString().split("T")[0],
+          };
+        }
+
+        const attendanceRecords = await Attendance.find(attendanceQuery);
+        const totalRecords = attendanceRecords.length;
+        const presentRecords = attendanceRecords.filter(
+          (a) => a.status === "present"
+        ).length;
+        const averageAttendance = totalRecords
+          ? Math.round((presentRecords / totalRecords) * 100)
+          : 0;
+
+        // Filter fee records by date
+        const feeQuery = { classId: c._id };
+        if (startDate && endDate) {
+          feeQuery.createdAt = { $gte: startDate, $lte: endDate };
+        }
+
+        const feeRecords = await StudentFee.find(feeQuery);
+
+        const totalRevenue = feeRecords.reduce(
+          (sum, r) => sum + (r.paidAmount || 0),
+          0
+        );
+        const pendingFees = feeRecords.reduce(
+          (sum, r) => sum + ((r.amount || 0) - (r.paidAmount || 0)),
+          0
+        );
+
+        return {
+          classId: c._id,
+          className: c.title,
+          subject: c.subject,
+          level: c.level,
+          teacherName: `${c.teacherId.firstName} ${c.teacherId.lastName}`,
+          locationName: c.locationId.name,
+          totalStudents: c.currentEnrollment,
+          activeStudents: studentIds.length,
+          averageAttendance,
+          totalRevenue,
+          pendingFees,
+        };
+      })
+    );
 
     res.json({ status: "success", data });
   } catch (err) {
+    console.error("Class overview error:", err);
     res
       .status(500)
       .json({ status: "error", message: "Failed to fetch class overview" });
@@ -42,25 +126,85 @@ router.get("/class-overview", async (req, res) => {
 // @route GET /api/reports/attendance
 router.get("/attendance", async (req, res) => {
   try {
-    const classes = await Class.find({ teacherId: req.user.id });
-    const data = [];
+    const { classId, from, to, range } = req.query;
 
-    classes.forEach((c) => {
-      for (let i = 0; i < c.currentEnrollment; i++) {
-        const attendanceRate = Math.floor(Math.random() * 20) + 80;
-        data.push({
-          studentId: `s-${i}`,
-          studentName: `Student ${i + 1}`,
-          className: c.title,
-          date: new Date().toISOString().split("T")[0],
-          status: Math.random() > 0.8 ? "absent" : "present",
-          attendanceRate,
-        });
+    const classes = await Class.find({ teacherId: req.user.id });
+    const teacherClassIds = classes.map((c) => c._id.toString());
+
+    // Filter logic
+    const query = {
+      classId:
+        classId && classId !== "all" ? classId : { $in: teacherClassIds },
+    };
+
+    if (from && to) {
+      query.date = { $gte: from, $lte: to };
+    } else if (range) {
+      const now = new Date();
+      let start, end;
+
+      switch (range) {
+        case "this-week":
+          const today = now.getDay(); // 0 = Sun
+          start = new Date(now);
+          start.setDate(now.getDate() - today);
+          end = new Date(start);
+          end.setDate(start.getDate() + 6);
+          break;
+        case "this-month":
+          start = new Date(now.getFullYear(), now.getMonth(), 1);
+          end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+          break;
+        case "this-quarter":
+          const quarter = Math.floor((now.getMonth() + 3) / 3);
+          start = new Date(now.getFullYear(), (quarter - 1) * 3, 1);
+          end = new Date(now.getFullYear(), quarter * 3, 0);
+          break;
+        case "this-year":
+          start = new Date(now.getFullYear(), 0, 1);
+          end = new Date(now.getFullYear(), 11, 31);
+          break;
       }
+
+      if (start && end) {
+        query.date = {
+          $gte: start.toISOString().split("T")[0],
+          $lte: end.toISOString().split("T")[0],
+        };
+      }
+    }
+
+    const records = await Attendance.find(query)
+      .populate("studentId", "firstName lastName")
+      .populate("classId", "title");
+
+    // Map to structure
+    const data = records.map((record) => {
+      const studentRecords = records.filter(
+        (r) =>
+          r.studentId._id.toString() === record.studentId._id.toString() &&
+          r.classId._id.toString() === record.classId._id.toString()
+      );
+      const presentCount = studentRecords.filter(
+        (r) => r.status === "present"
+      ).length;
+      const attendanceRate = Math.round(
+        (presentCount / studentRecords.length) * 100
+      );
+
+      return {
+        studentId: record.studentId._id,
+        studentName: `${record.studentId.firstName} ${record.studentId.lastName}`,
+        className: record.classId.title,
+        date: record.date,
+        status: record.status,
+        attendanceRate,
+      };
     });
 
     res.json({ status: "success", data });
   } catch (err) {
+    console.error("Attendance fetch error:", err);
     res
       .status(500)
       .json({ status: "error", message: "Failed to fetch attendance data" });

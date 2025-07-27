@@ -32,6 +32,16 @@ const TeacherReportsPage: React.FC = () => {
     new Date().toISOString().slice(0, 7)
   );
 
+  const [dateRangeType, setDateRangeType] = useState("this-month");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
+  const [selectedClassId, setSelectedClassId] = useState("all");
+  const [overviewDateRangeType, setOverviewDateRangeType] =
+    useState("this-month");
+  const [overviewCustomFrom, setOverviewCustomFrom] = useState("");
+  const [overviewCustomTo, setOverviewCustomTo] = useState("");
+  const [overviewSelectedClassId, setOverviewSelectedClassId] = useState("all");
+
   const fetchClasses = async () => {
     try {
       const token = localStorage.getItem("accessToken") ?? undefined;
@@ -44,39 +54,101 @@ const TeacherReportsPage: React.FC = () => {
     }
   };
 
-  const generateClassOverviewData = () => {
-    const mock = classes.map((c) => ({
-      classId: c._id,
-      className: c.title,
-      teacherName: `${c.teacherId.firstName} ${c.teacherId.lastName}`,
-      locationName: c.locationId.name,
-      subject: c.subject,
-      level: c.level,
-      totalStudents: c.currentEnrollment,
-      activeStudents: Math.floor(c.currentEnrollment * 0.95),
-      averageAttendance: Math.floor(Math.random() * 20) + 80,
-      totalRevenue: c.currentEnrollment * (c.monthlyFee?.amount || 4500),
-      pendingFees:
-        Math.floor(c.currentEnrollment * 0.1) * (c.monthlyFee?.amount || 4500),
-    }));
-    setClassOverviewData(mock);
+  const fetchClassOverviewData = async () => {
+    try {
+      setLoading(true);
+      const token = JSON.parse(localStorage.getItem("user") || "{}")?.tokens
+        ?.accessToken;
+
+      if (!token) {
+        setError("Access token missing. Please log in again.");
+        return;
+      }
+
+      const queryParams = new URLSearchParams();
+
+      if (overviewSelectedClassId !== "all") {
+        queryParams.append("classId", overviewSelectedClassId);
+      }
+
+      if (
+        overviewDateRangeType === "custom" &&
+        overviewCustomFrom &&
+        overviewCustomTo
+      ) {
+        queryParams.append("from", overviewCustomFrom);
+        queryParams.append("to", overviewCustomTo);
+      } else {
+        queryParams.append("range", overviewDateRangeType);
+      }
+
+      const res = await fetch(
+        `http://localhost:5000/api/reports/class-overview?${queryParams.toString()}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const result = await res.json();
+      if (result.status === "success") {
+        setClassOverviewData(result.data);
+      } else {
+        setError(result.message || "Failed to fetch class overview");
+      }
+    } catch (err) {
+      setError("Error fetching class overview");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const generateAttendanceData = () => {
-    const mock = classes.flatMap((c) => {
-      return Array.from({ length: c.currentEnrollment }, (_, i) => {
-        const rate = Math.floor(Math.random() * 20) + 80;
-        return {
-          studentId: `student-${i}`,
-          studentName: `Student ${i + 1}`,
-          className: c.title,
-          date: new Date().toISOString().split("T")[0],
-          status: ["present", "absent", "late"][Math.floor(Math.random() * 3)],
-          attendanceRate: rate,
-        };
-      });
-    });
-    setAttendanceData(mock);
+  const fetchAttendanceData = async () => {
+    try {
+      setLoading(true);
+      const token = JSON.parse(localStorage.getItem("user") || "{}")?.tokens
+        ?.accessToken;
+      if (!token) {
+        setError("Access token missing. Please log in again.");
+        return;
+      }
+
+      const queryParams = new URLSearchParams();
+
+      // Apply class filter
+      if (selectedClassId !== "all") {
+        queryParams.append("classId", selectedClassId);
+      }
+
+      // Apply date range
+      if (dateRangeType === "custom" && customFrom && customTo) {
+        queryParams.append("from", customFrom);
+        queryParams.append("to", customTo);
+      } else {
+        queryParams.append("range", dateRangeType);
+      }
+
+      const res = await fetch(
+        `http://localhost:5000/api/reports/attendance?${queryParams.toString()}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const result = await res.json();
+      if (result.status === "success") {
+        setAttendanceData(result.data);
+      } else {
+        setError(result.message || "Failed to fetch attendance data");
+      }
+    } catch (err) {
+      setError("Error fetching attendance data");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const generateFeeCollectionData = () => {
@@ -194,10 +266,10 @@ const TeacherReportsPage: React.FC = () => {
   useEffect(() => {
     switch (selectedReport) {
       case "class-overview":
-        generateClassOverviewData();
+        fetchClassOverviewData();
         break;
       case "attendance":
-        generateAttendanceData();
+        fetchAttendanceData();
         break;
       case "fee-collection":
         generateFeeCollectionData();
@@ -209,7 +281,20 @@ const TeacherReportsPage: React.FC = () => {
         fetchScheduleSummary();
         break;
     }
-  }, [selectedReport, classes, filterMonth]);
+  }, [
+    selectedReport,
+    classes,
+    filterMonth,
+    selectedClassId,
+    dateRangeType,
+    customFrom,
+    customTo,
+    selectedReport,
+    overviewSelectedClassId,
+    overviewDateRangeType,
+    overviewCustomFrom,
+    overviewCustomTo,
+  ]);
 
   const availableReports = [
     { id: "class-overview", name: "Class Overview Report", icon: BookOpen },
@@ -240,6 +325,76 @@ const TeacherReportsPage: React.FC = () => {
     if (selectedReport === "class-overview") {
       return (
         <>
+          {/* Filters and View Toggle */}
+          <div className="border rounded p-4 w-full max-w-3xl bg-white shadow-sm mb-6">
+            <h4 className="text-sm font-semibold text-gray-700 mb-4 flex items-center">
+              <Filter className="w-4 h-4 mr-2" /> Filters
+            </h4>
+
+            <div className="flex gap-4 mb-4">
+              <div className="flex-1">
+                <label className="block text-xs text-gray-500 mb-1">
+                  Date Range
+                </label>
+                <select
+                  value={overviewDateRangeType}
+                  onChange={(e) => setOverviewDateRangeType(e.target.value)}
+                  className="border border-gray-300 rounded px-2 py-1 text-sm w-full"
+                >
+                  <option value="this-week">This Week</option>
+                  <option value="this-month">This Month</option>
+                  <option value="this-quarter">This Quarter</option>
+                  <option value="this-year">This Year</option>
+                  <option value="custom">Custom Range</option>
+                </select>
+              </div>
+
+              <div className="flex-1">
+                <label className="block text-xs text-gray-500 mb-1">
+                  Class
+                </label>
+                <select
+                  value={overviewSelectedClassId}
+                  onChange={(e) => setOverviewSelectedClassId(e.target.value)}
+                  className="border border-gray-300 rounded px-2 py-1 text-sm w-full"
+                >
+                  <option value="all">All Classes</option>
+                  {classes.map((c) => (
+                    <option key={c._id} value={c._id}>
+                      {c.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {overviewDateRangeType === "custom" && (
+              <div className="flex gap-4 mb-4">
+                <div className="flex-1">
+                  <label className="block text-xs text-gray-500 mb-1">
+                    From
+                  </label>
+                  <input
+                    type="date"
+                    value={overviewCustomFrom}
+                    onChange={(e) => setOverviewCustomFrom(e.target.value)}
+                    className="border border-gray-300 rounded px-2 py-1 text-sm w-full"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-xs text-gray-500 mb-1">To</label>
+                  <input
+                    type="date"
+                    value={overviewCustomTo}
+                    onChange={(e) => setOverviewCustomTo(e.target.value)}
+                    className="border border-gray-300 rounded px-2 py-1 text-sm w-full"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Summary Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
             {renderSummaryCard(
               "Total Classes",
@@ -274,69 +429,95 @@ const TeacherReportsPage: React.FC = () => {
             )}
           </div>
 
-          <div className="overflow-x-auto bg-white rounded-lg border border-gray-200">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Class
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Teacher
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Location
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Students
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Attendance
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Revenue
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Pending
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {classOverviewData.map((c) => (
-                  <tr key={c.classId} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">
-                          {c.className}
-                        </p>
-                        <p className="text-sm text-gray-500">
-                          {c.subject} • {c.level}
-                        </p>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {c.teacherName}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {c.locationName}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {c.activeStudents}/{c.totalStudents}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {c.averageAttendance}%
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600">
-                      LKR{c.totalRevenue.toLocaleString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-orange-600">
-                      LKR{c.pendingFees.toLocaleString()}
-                    </td>
+          {chartView === "chart" ? (
+            <div className="bg-white p-4 rounded-lg border border-gray-200">
+              <h4 className="text-lg font-semibold mb-4">
+                Class Performance Overview
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <h5 className="text-sm font-semibold mb-2">
+                    Attendance Rates by Class
+                  </h5>
+                  <div className="h-64 bg-gray-100 rounded-lg flex items-center justify-center text-gray-500">
+                    Chart Placeholder
+                  </div>
+                </div>
+                <div>
+                  <h5 className="text-sm font-semibold mb-2">
+                    Revenue by Class
+                  </h5>
+                  <div className="h-64 bg-gray-100 rounded-lg flex items-center justify-center text-gray-500">
+                    Chart Placeholder
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="overflow-x-auto bg-white rounded-lg border border-gray-200">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Class
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Teacher
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Location
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Students
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Attendance
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Revenue
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Pending
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {classOverviewData.map((c) => (
+                    <tr key={c.classId} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">
+                            {c.className}
+                          </p>
+                          <p className="text-sm text-gray-500">
+                            {c.subject} • {c.level}
+                          </p>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {c.teacherName}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {c.locationName}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {c.activeStudents}/{c.totalStudents}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {c.averageAttendance}%
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600">
+                        LKR{c.totalRevenue.toLocaleString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-orange-600">
+                        LKR{c.pendingFees.toLocaleString()}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </>
       );
     }
@@ -351,6 +532,76 @@ const TeacherReportsPage: React.FC = () => {
 
       return (
         <>
+          {/* Filters */}
+          <div className="border rounded p-4 w-full max-w-3xl bg-white shadow-sm mb-6">
+            <h4 className="text-sm font-semibold text-gray-700 mb-4 flex items-center">
+              <Filter className="w-4 h-4 mr-2" /> Filters
+            </h4>
+
+            <div className="flex gap-4 mb-4">
+              <div className="flex-1">
+                <label className="block text-xs text-gray-500 mb-1">
+                  Date Range
+                </label>
+                <select
+                  value={dateRangeType}
+                  onChange={(e) => setDateRangeType(e.target.value)}
+                  className="border border-gray-300 rounded px-2 py-1 text-sm w-full"
+                >
+                  <option value="this-week">This Week</option>
+                  <option value="this-month">This Month</option>
+                  <option value="this-quarter">This Quarter</option>
+                  <option value="this-year">This Year</option>
+                  <option value="custom">Custom Range</option>
+                </select>
+              </div>
+
+              <div className="flex-1">
+                <label className="block text-xs text-gray-500 mb-1">
+                  Class
+                </label>
+                <select
+                  value={selectedClassId}
+                  onChange={(e) => setSelectedClassId(e.target.value)}
+                  className="border border-gray-300 rounded px-2 py-1 text-sm w-full"
+                >
+                  <option value="all">All Classes</option>
+                  {classes.map((c) => (
+                    <option key={c._id} value={c._id}>
+                      {c.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {dateRangeType === "custom" && (
+              <div className="flex gap-4 mb-4">
+                <div className="flex-1">
+                  <label className="block text-xs text-gray-500 mb-1">
+                    From
+                  </label>
+                  <input
+                    type="date"
+                    value={customFrom}
+                    onChange={(e) => setCustomFrom(e.target.value)}
+                    className="border border-gray-300 rounded px-2 py-1 text-sm w-full"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-xs text-gray-500 mb-1">To</label>
+                  <input
+                    type="date"
+                    value={customTo}
+                    onChange={(e) => setCustomTo(e.target.value)}
+                    className="border border-gray-300 rounded px-2 py-1 text-sm w-full"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Summary Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
             {renderSummaryCard("Present", present, Users, "green")}
             {renderSummaryCard("Absent", absent, Users, "red")}
@@ -358,6 +609,7 @@ const TeacherReportsPage: React.FC = () => {
             {renderSummaryCard("Overall Rate", `${rate}%`, TrendingUp, "blue")}
           </div>
 
+          {/* Attendance Table */}
           <div className="overflow-x-auto bg-white rounded-lg border border-gray-200">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
@@ -808,17 +1060,30 @@ const TeacherReportsPage: React.FC = () => {
             <div className="flex items-center space-x-3">
               <button
                 onClick={() => {
-                  if (selectedReport === "class-overview")
-                    generateClassOverviewData();
-                  if (selectedReport === "attendance") generateAttendanceData();
-                  if (selectedReport === "fee-collection")
-                    generateFeeCollectionData();
+                  switch (selectedReport) {
+                    case "class-overview":
+                      fetchClassOverviewData();
+                      break;
+                    case "attendance":
+                      fetchAttendanceData();
+                      break;
+                    case "fee-collection":
+                      generateFeeCollectionData();
+                      break;
+                    case "revenue-summary":
+                      fetchRevenueSummary();
+                      break;
+                    case "schedule-summary":
+                      fetchScheduleSummary();
+                      break;
+                  }
                 }}
                 className="px-3 py-2 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-colors duration-200 flex items-center space-x-2"
               >
                 <RefreshCw className="w-4 h-4" />
                 <span>Refresh</span>
               </button>
+
               <button
                 onClick={() => {
                   switch (selectedReport) {
