@@ -2,6 +2,8 @@
 import express from "express";
 import { body, validationResult } from "express-validator";
 import ScheduledClass from "../models/ScheduledClass.js";
+import ClassModel from "../models/Class.js";
+
 import { auth, authorize } from "../middleware/auth.js";
 
 const router = express.Router();
@@ -86,7 +88,23 @@ router.get("/", auth, async (req, res) => {
   if (classId) query.classId = classId;
   if (date) query.date = date;
   if (status) query.status = status;
-  if (role === "teacher") query.teacherId = id;
+
+  if (role === "teacher") {
+    query.teacherId = id;
+  }
+
+  if (role === "student") {
+    const mongoose = await import("mongoose");
+
+    const enrolled = await ClassModel.find({
+      enrolledStudents: {
+        $elemMatch: { studentId: new mongoose.Types.ObjectId(id) },
+      },
+    });
+
+    const enrolledClassIds = enrolled.map((cls) => cls._id.toString());
+    query.classId = { $in: enrolledClassIds };
+  }
 
   const classes = await ScheduledClass.find(query).populate(
     "classId teacherId locationId"
