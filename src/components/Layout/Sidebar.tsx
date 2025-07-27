@@ -70,6 +70,12 @@ const sidebarItems: SidebarItem[] = [
     roles: ["teacher", "student"],
   },
   {
+    icon: <Calendar className="w-5 h-5" />,
+    label: "Class Schedule",
+    href: "/schedule",
+    roles: ["admin", "teacher", "student", "parent"],
+  },
+  {
     icon: <UserCheck className="w-5 h-5" />,
     label: "Attendance",
     href: "/attendance",
@@ -94,12 +100,6 @@ const sidebarItems: SidebarItem[] = [
     roles: ["admin"],
   },
   {
-    icon: <Calendar className="w-5 h-5" />,
-    label: "Class Schedule",
-    href: "/schedule",
-    roles: ["admin", "teacher", "student", "parent"],
-  },
-  {
     icon: <MessageSquare className="w-5 h-5" />,
     label: "Notice Board",
     href: "/notices",
@@ -109,7 +109,7 @@ const sidebarItems: SidebarItem[] = [
     icon: <BarChart3 className="w-5 h-5" />,
     label: "Reports",
     href: "/reports",
-    roles: ["admin", "teacher"],
+    roles: ["admin"],
   },
   {
     icon: <BarChart3 className="w-5 h-5" />,

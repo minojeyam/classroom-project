@@ -22,11 +22,13 @@ const TeacherReportsPage: React.FC = () => {
   const [revenueSummary, setRevenueSummary] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
   const [classes, setClasses] = useState<any[]>([]);
   const [classOverviewData, setClassOverviewData] = useState<any[]>([]);
   const [attendanceData, setAttendanceData] = useState<any[]>([]);
   const [feeCollectionData, setFeeCollectionData] = useState<any[]>([]);
   const [scheduleSummary, setScheduleSummary] = useState([]);
+
   const [chartView, setChartView] = useState("table");
   const [filterMonth, setFilterMonth] = useState(
     new Date().toISOString().slice(0, 7)
@@ -53,6 +55,12 @@ const TeacherReportsPage: React.FC = () => {
   const [revenueCustomTo, setRevenueCustomTo] = useState("");
   const [revenueClassId, setRevenueClassId] = useState("all");
   const [revenueSubject, setRevenueSubject] = useState("all");
+
+  const [scheduleDateRangeType, setScheduleDateRangeType] =
+    useState("this-month");
+  const [scheduleCustomFrom, setScheduleCustomFrom] = useState("");
+  const [scheduleCustomTo, setScheduleCustomTo] = useState("");
+  const [scheduleClassId, setScheduleClassId] = useState("all");
 
   const fetchClasses = async () => {
     try {
@@ -188,24 +196,48 @@ const TeacherReportsPage: React.FC = () => {
   const fetchRevenueSummary = async () => {
     try {
       setLoading(true);
-      const token = JSON.parse(localStorage.getItem("user") || "{}").tokens
+      const token = JSON.parse(localStorage.getItem("user") || "{}")?.tokens
         ?.accessToken;
       if (!token) {
         setError("Access token missing. Please log in again.");
         return;
       }
 
+      const queryParams = new URLSearchParams();
+
+      if (revenueClassId !== "all") {
+        queryParams.append("classId", revenueClassId);
+      }
+
+      if (revenueSubject !== "all") {
+        queryParams.append("subject", revenueSubject);
+      }
+
+      if (
+        revenueDateRangeType === "custom" &&
+        revenueCustomFrom &&
+        revenueCustomTo
+      ) {
+        queryParams.append("from", revenueCustomFrom);
+        queryParams.append("to", revenueCustomTo);
+      } else {
+        queryParams.append("range", revenueDateRangeType);
+      }
+
       const res = await fetch(
-        "http://localhost:5000/api/reports/revenue-summary",
+        `http://localhost:5000/api/reports/revenue-summary?${queryParams.toString()}`,
         {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         }
       );
+
       const result = await res.json();
       if (result.status === "success") {
         setRevenueSummary(result.data);
       } else {
-        setError(result.message || "Failed to fetch data");
+        setError(result.message || "Failed to fetch revenue summary");
       }
     } catch (err) {
       setError("Failed to load revenue data");
@@ -284,18 +316,39 @@ const TeacherReportsPage: React.FC = () => {
   // };
   const fetchScheduleSummary = async () => {
     try {
-      const token = JSON.parse(localStorage.getItem("user") || "{}").tokens
+      const token = JSON.parse(localStorage.getItem("user") || "{}")?.tokens
         ?.accessToken;
       if (!token) {
         setError("Access token missing. Please log in again.");
         return;
       }
+
+      const queryParams = new URLSearchParams();
+
+      if (scheduleClassId !== "all") {
+        queryParams.append("classId", scheduleClassId);
+      }
+
+      if (
+        scheduleDateRangeType === "custom" &&
+        scheduleCustomFrom &&
+        scheduleCustomTo
+      ) {
+        queryParams.append("from", scheduleCustomFrom);
+        queryParams.append("to", scheduleCustomTo);
+      } else {
+        queryParams.append("range", scheduleDateRangeType);
+      }
+
       const res = await fetch(
-        `http://localhost:5000/api/reports/schedule-summary?month=${filterMonth}`,
+        `http://localhost:5000/api/reports/schedule-summary?${queryParams.toString()}`,
         {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         }
       );
+
       const result = await res.json();
       if (result.status === "success") {
         setScheduleSummary(result.data);
@@ -360,14 +413,29 @@ const TeacherReportsPage: React.FC = () => {
     feeCustomTo,
     feeSelectedClassId,
     feeStatus,
+    selectedReport,
+    revenueDateRangeType,
+    revenueCustomFrom,
+    revenueCustomTo,
+    revenueClassId,
+    revenueSubject,
+    selectedReport,
+    scheduleDateRangeType,
+    scheduleCustomFrom,
+    scheduleCustomTo,
+    scheduleClassId,
   ]);
 
   const availableReports = [
     { id: "class-overview", name: "Class Overview Report", icon: BookOpen },
-    { id: "attendance", name: "Attendance Report", icon: Users },
-    { id: "fee-collection", name: "Fee Collection Report", icon: DollarSign },
-    { id: "revenue-summary", name: "Revenue Summary", icon: BarChart3 },
-    { id: "schedule-summary", name: "Schedule Summary", icon: Calendar },
+    { id: "attendance", name: "Class Attendance Report", icon: Users },
+    {
+      id: "fee-collection",
+      name: "Class Fee Collection Report",
+      icon: DollarSign,
+    },
+    { id: "revenue-summary", name: "Class Revenue Summary", icon: BarChart3 },
+    { id: "schedule-summary", name: "Class Schedule Summary", icon: Calendar },
   ];
 
   const renderSummaryCard = (
@@ -1161,6 +1229,74 @@ const TeacherReportsPage: React.FC = () => {
 
       return (
         <>
+          <div className="border rounded p-4 w-full max-w-4xl bg-white shadow-sm mb-6">
+            <h4 className="text-sm font-semibold text-gray-700 mb-4 flex items-center">
+              <Filter className="w-4 h-4 mr-2" /> Filters
+            </h4>
+
+            <div className="flex flex-wrap gap-4 mb-4">
+              <div className="flex-1 min-w-[150px]">
+                <label className="block text-xs text-gray-500 mb-1">
+                  Date Range
+                </label>
+                <select
+                  value={scheduleDateRangeType}
+                  onChange={(e) => setScheduleDateRangeType(e.target.value)}
+                  className="border border-gray-300 rounded px-2 py-1 text-sm w-full"
+                >
+                  <option value="this-week">This Week</option>
+                  <option value="this-month">This Month</option>
+                  <option value="this-quarter">This Quarter</option>
+                  <option value="this-year">This Year</option>
+                  <option value="custom">Custom Range</option>
+                </select>
+              </div>
+
+              <div className="flex-1 min-w-[150px]">
+                <label className="block text-xs text-gray-500 mb-1">
+                  Class
+                </label>
+                <select
+                  value={scheduleClassId}
+                  onChange={(e) => setScheduleClassId(e.target.value)}
+                  className="border border-gray-300 rounded px-2 py-1 text-sm w-full"
+                >
+                  <option value="all">All Classes</option>
+                  {classes.map((c) => (
+                    <option key={c._id} value={c._id}>
+                      {c.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {scheduleDateRangeType === "custom" && (
+              <div className="flex gap-4">
+                <div className="flex-1 min-w-[150px]">
+                  <label className="block text-xs text-gray-500 mb-1">
+                    From
+                  </label>
+                  <input
+                    type="date"
+                    value={scheduleCustomFrom}
+                    onChange={(e) => setScheduleCustomFrom(e.target.value)}
+                    className="border border-gray-300 rounded px-2 py-1 text-sm w-full"
+                  />
+                </div>
+                <div className="flex-1 min-w-[150px]">
+                  <label className="block text-xs text-gray-500 mb-1">To</label>
+                  <input
+                    type="date"
+                    value={scheduleCustomTo}
+                    onChange={(e) => setScheduleCustomTo(e.target.value)}
+                    className="border border-gray-300 rounded px-2 py-1 text-sm w-full"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
             {renderSummaryCard(
               "Total Scheduled",
@@ -1192,35 +1328,69 @@ const TeacherReportsPage: React.FC = () => {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th>Class</th>
-                  <th>Total Scheduled</th>
-                  <th>Completed</th>
-                  <th>Cancelled</th>
-                  <th>Upcoming</th>
-                  <th>Attendance Rate</th>
-                  <th>Avg Students Present</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Class
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Total Scheduled
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Completed
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Cancelled
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Upcoming
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Attendance Rate
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Avg Students Present
+                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {scheduleSummary.map((c, i) => (
-                  <tr key={i}>
-                    <td>{c.className}</td>
-                    <td>{c.totalScheduled}</td>
-                    <td className="text-green-600">{c.completed}</td>
-                    <td className="text-red-600">{c.cancelled}</td>
-                    <td className="text-blue-600">{c.upcoming}</td>
-                    <td>
-                      <div className="flex items-center space-x-2">
-                        <div className="w-16 bg-gray-200 h-2 rounded-full">
-                          <div
-                            className="bg-green-500 h-2 rounded-full"
-                            style={{ width: `${c.attendanceRate}%` }}
-                          ></div>
-                        </div>
-                        <span>{c.attendanceRate}%</span>
-                      </div>
+                  <tr key={i} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {c.className}
                     </td>
-                    <td>{c.avgStudentsPresent}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {c.totalScheduled}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600">
+                      {c.completed}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-red-600">
+                      {c.cancelled}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-600">
+                      {c.upcoming}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      {c.totalScheduled > 0 ? (
+                        <div className="flex items-center space-x-2">
+                          <div className="w-16 bg-gray-200 h-2 rounded-full">
+                            <div
+                              className="bg-green-500 h-2 rounded-full"
+                              style={{ width: `${c.attendanceRate}%` }}
+                            ></div>
+                          </div>
+                          <span>{c.attendanceRate}%</span>
+                        </div>
+                      ) : (
+                        <span className="text-sm text-gray-400">N/A</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {c.totalScheduled > 0 ? (
+                        c.avgStudentsPresent
+                      ) : (
+                        <span className="text-sm text-gray-400">N/A</span>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
