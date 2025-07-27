@@ -27,6 +27,8 @@ import {
   usersAPI,
   schedulesAPI,
 } from "../../utils/api";
+import { toast } from "react-toastify";
+import ConfirmModal from "../Common/ConfirmModal";
 
 interface ScheduledClass {
   id: string;
@@ -95,6 +97,13 @@ const AdminCalendarView: React.FC = () => {
   const [selectedClassForCancel, setSelectedClassForCancel] =
     useState<ScheduledClass | null>(null);
 
+
+  // Delete Model
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [classIdToDelete, setClassIdToDelete] = useState<string | null>(null);
+
+
+
   // Form states
   const [scheduleForm, setScheduleForm] = useState({
     classId: "",
@@ -140,16 +149,13 @@ const AdminCalendarView: React.FC = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const token =
-        JSON.parse(localStorage.getItem("user") || "{}")?.tokens?.accessToken ??
-        "";
+      const token = JSON.parse(localStorage.getItem("user") || "{}")?.tokens?.accessToken ?? "";
 
-      const [classesResponse, teachersResponse, locationsResponse] =
-        await Promise.all([
-          classesAPI.getClasses({}, token),
-          usersAPI.getUsers({ role: "admin" }, token),
-          locationsAPI.getLocations({}, token),
-        ]);
+      const [classesResponse, teachersResponse, locationsResponse] = await Promise.all([
+        classesAPI.getClasses({}, token),
+        usersAPI.getUsers({ role: "teacher" }, token), // <-- FIXED
+        locationsAPI.getLocations({}, token),
+      ]);
 
       if (classesResponse.status === "success") {
         setClassTemplates(classesResponse.data.classes || []);
@@ -177,7 +183,7 @@ const AdminCalendarView: React.FC = () => {
         JSON.parse(localStorage.getItem("user") || "{}")?.tokens?.accessToken ??
         "";
 
-      const response = await schedulesAPI.getAll();
+      const response = await schedulesAPI.getAll({}, token);
       const rawClasses = response.data.classes;
 
       const formatted = rawClasses.map((item: any) => ({
@@ -186,9 +192,8 @@ const AdminCalendarView: React.FC = () => {
         className: item.classId?.title || "Untitled",
         subject: item.classId?.subject || "",
         teacherId: item.teacherId?._id || "",
-        teacherName: `${item.teacherId?.firstName || ""} ${
-          item.teacherId?.lastName || ""
-        }`.trim(),
+        teacherName: `${item.teacherId?.firstName || ""} ${item.teacherId?.lastName || ""
+          }`.trim(),
         date: item.date,
         startTime: item.startTime,
         endTime: item.endTime,
@@ -241,9 +246,12 @@ const AdminCalendarView: React.FC = () => {
     return false; // No conflict
   };
 
-  const handleScheduleClass = async () => {
+  const handleScheduleClass = async (e: React.FormEvent) => {
+    e.preventDefault();
+
     if (
       !scheduleForm.classId ||
+      !scheduleForm.teacherId ||  // Make sure teacher is selected
       !scheduleForm.locationId ||
       !scheduleForm.date ||
       !scheduleForm.startTime ||
@@ -253,35 +261,64 @@ const AdminCalendarView: React.FC = () => {
       return;
     }
 
+    // Optional: Validate time conflict
+    if (
+      validateTimeConflict(
+        scheduleForm.teacherId,
+        scheduleForm.date,
+        scheduleForm.startTime,
+        scheduleForm.endTime
+      )
+    ) {
+      toast.error("Time conflict detected with existing scheduled class.");
+      return;
+    }
+
     try {
+      const duration = calculateDuration(scheduleForm.startTime, scheduleForm.endTime);
+      if (duration <= 0) {
+        toast.error("End time must be after start time.");
+        return;
+      }
+
       const payload = {
         classId: scheduleForm.classId,
-        teacherId: user.id,
+        teacherId: scheduleForm.teacherId, // Use selected teacher from form
         locationId: scheduleForm.locationId,
         date: scheduleForm.date,
         startTime: scheduleForm.startTime,
         endTime: scheduleForm.endTime,
-        duration: calculateDuration(
-          scheduleForm.startTime,
-          scheduleForm.endTime
-        ),
+        duration,
+        notes: scheduleForm.notes || "",
       };
 
-      await schedules.create(payload);
-      // toast.success("Class scheduled successfully");
-      setIsModalOpen(false);
+      await schedulesAPI.create(payload);
+      toast.success("Class scheduled successfully");
+
+      setIsScheduleModalOpen(false);
+      setScheduleForm({
+        classId: "",
+        teacherId: "",
+        date: "",
+        startTime: "09:00",
+        endTime: "10:30",
+        locationId: "",
+        notes: "",
+      });
+
       fetchScheduledClasses();
     } catch (err: any) {
       if (err.response?.status === 409) {
         toast.error(
-          err.response.data.message ||
-            "Time conflict. Please choose a different time."
+          err.response.data.message || "Time conflict. Please choose a different time."
         );
       } else {
         toast.error("Failed to schedule class");
+        console.error("Scheduling error:", err);
       }
     }
   };
+
 
   const handleEditClass = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -299,7 +336,7 @@ const AdminCalendarView: React.FC = () => {
           selectedClassForEdit.id
         )
       ) {
-        setError(
+        toast.error(
           "Time conflict detected! The selected teacher already has a class scheduled at this time."
         );
         return;
@@ -309,14 +346,14 @@ const AdminCalendarView: React.FC = () => {
         (c) => c._id === scheduleForm.classId
       );
       const selectedTeacher = teachers.find(
-        (t) => t.id === scheduleForm.teacherId
+        (t) => t._id === scheduleForm.teacherId // <-- use `_id` instead of `id`
       );
       const selectedLocation = locations.find(
-        (l) => l.id === scheduleForm.locationId
+        (l) => l._id === scheduleForm.locationId // <-- use `_id` instead of `id`
       );
 
       if (!selectedClass || !selectedTeacher || !selectedLocation) {
-        setError("Please select valid class, teacher, and location");
+        toast.error("Please select valid class, teacher, and location");
         return;
       }
 
@@ -346,66 +383,66 @@ const AdminCalendarView: React.FC = () => {
       setSelectedClassForEdit(null);
       setError("");
 
-      alert("Class updated successfully!");
+      toast.success("Class updated successfully!");
     } catch (err: any) {
-      setError(err.message || "Failed to update class");
+      toast.error(err.message || "Failed to update class");
     }
   };
 
-  const handleBulkSchedule = async () => {
-    if (
-      !bulkScheduleForm.classId ||
-      !bulkScheduleForm.locationId ||
-      !bulkScheduleForm.startDate ||
-      !bulkScheduleForm.endDate ||
-      !bulkScheduleForm.startTime ||
-      !bulkScheduleForm.endTime
-    ) {
-      toast.error("Please fill in all required fields for bulk scheduling.");
-      return;
-    }
+  // const handleBulkSchedule = async () => {
+  //   if (
+  //     !bulkScheduleForm.classId ||
+  //     !bulkScheduleForm.locationId ||
+  //     !bulkScheduleForm.startDate ||
+  //     !bulkScheduleForm.endDate ||
+  //     !bulkScheduleForm.startTime ||
+  //     !bulkScheduleForm.endTime
+  //   ) {
+  //     toast.error("Please fill in all required fields for bulk scheduling.");
+  //     return;
+  //   }
 
-    const start = new Date(bulkScheduleForm.startDate);
-    const end = new Date(bulkScheduleForm.endDate);
-    const selectedDay = parseInt(bulkScheduleForm.dayOfWeek, 10);
-    const createdSchedules = [];
+  //   const start = new Date(bulkScheduleForm.startDate);
+  //   const end = new Date(bulkScheduleForm.endDate);
+  //   const selectedDay = parseInt(bulkScheduleForm.dayOfWeek, 10);
+  //   const createdSchedules = [];
 
-    while (start <= end) {
-      if (start.getDay() === selectedDay) {
-        createdSchedules.push({
-          classId: bulkScheduleForm.classId,
-          teacherId: user.id,
-          locationId: bulkScheduleForm.locationId,
-          date: start.toISOString().split("T")[0],
-          startTime: bulkScheduleForm.startTime,
-          endTime: bulkScheduleForm.endTime,
-          duration: calculateDuration(
-            bulkScheduleForm.startTime,
-            bulkScheduleForm.endTime
-          ),
-        });
-      }
-      start.setDate(start.getDate() + 1);
-    }
+  //   while (start <= end) {
+  //     if (start.getDay() === selectedDay) {
+  //       createdSchedules.push({
+  //         classId: bulkScheduleForm.classId,
+  //         teacherId: user.id,
+  //         locationId: bulkScheduleForm.locationId,
+  //         date: start.toISOString().split("T")[0],
+  //         startTime: bulkScheduleForm.startTime,
+  //         endTime: bulkScheduleForm.endTime,
+  //         duration: calculateDuration(
+  //           bulkScheduleForm.startTime,
+  //           bulkScheduleForm.endTime
+  //         ),
+  //       });
+  //     }
+  //     start.setDate(start.getDate() + 1);
+  //   }
 
-    try {
-      await Promise.all(
-        createdSchedules.map((schedule) => schedules.create(schedule))
-      );
-      toast.success("Bulk classes scheduled successfully");
-      setIsBulkModalOpen(false);
-      fetchScheduledClasses();
-    } catch (err: any) {
-      if (err.response?.status === 409) {
-        toast.error(
-          err.response.data.message ||
-            "Some classes conflicted. Please review your schedule."
-        );
-      } else {
-        toast.error("Failed to schedule bulk classes");
-      }
-    }
-  };
+  //   try {
+  //     await Promise.all(
+  //       createdSchedules.map((schedule) => schedules.create(schedule))
+  //     );
+  //     toast.success("Bulk classes scheduled successfully");
+  //     setIsBulkModalOpen(false);
+  //     fetchScheduledClasses();
+  //   } catch (err: any) {
+  //     if (err.response?.status === 409) {
+  //       toast.error(
+  //         err.response.data.message ||
+  //           "Some classes conflicted. Please review your schedule."
+  //       );
+  //     } else {
+  //       toast.error("Failed to schedule bulk classes");
+  //     }
+  //   }
+  // };
 
   const handleCancelClass = async () => {
     if (!selectedClassForCancel?.id || !cancellationNote.trim()) {
@@ -414,12 +451,12 @@ const AdminCalendarView: React.FC = () => {
     }
 
     try {
-      await schedules.update(selectedClassForCancel.id, {
+      await schedulesAPI.update(selectedClassForCancel.id, {
         status: "cancelled",
         cancellationNote,
       });
 
-      // toast.success("Class cancelled successfully");
+      toast.success("Class cancelled successfully");
       setIsCancelModalOpen(false);
       setCancellationNote("");
       fetchScheduledClasses();
@@ -428,6 +465,26 @@ const AdminCalendarView: React.FC = () => {
       toast.error("Failed to cancel class");
     }
   };
+
+
+  const handleDeleteClick = (classId: string) => {
+    setClassIdToDelete(classId);
+    setIsDeleteModalOpen(true);
+  };
+
+
+  const confirmDeleteClass = async () => {
+    if (!classIdToDelete) return;
+    try {
+      setScheduledClasses((prev) => prev.filter((c) => c.id !== classIdToDelete));
+      toast.success("Class deleted successfully!");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to delete class");
+    } finally {
+      setClassIdToDelete(null);
+    }
+  };
+  
 
   const handleDeleteClass = async (classId: string) => {
     if (
@@ -575,11 +632,10 @@ const AdminCalendarView: React.FC = () => {
           </div>
           <div>
             <p
-              className={`font-medium ${
-                row.status === "cancelled"
-                  ? "text-red-600 line-through"
-                  : "text-gray-900"
-              }`}
+              className={`font-medium ${row.status === "cancelled"
+                ? "text-red-600 line-through"
+                : "text-gray-900"
+                }`}
             >
               {value}
             </p>
@@ -681,7 +737,7 @@ const AdminCalendarView: React.FC = () => {
             </>
           )}
           <button
-            onClick={() => handleDeleteClass(row.id)}
+            onClick={() => handleDeleteClick(row.id)}
             className="p-1 text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors duration-200"
             title="Delete Class"
           >
@@ -751,21 +807,19 @@ const AdminCalendarView: React.FC = () => {
           <div className="flex items-center bg-gray-100 rounded-lg p-1">
             <button
               onClick={() => setActiveView("calendar")}
-              className={`px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${
-                activeView === "calendar"
-                  ? "bg-white text-gray-900 shadow-sm"
-                  : "text-gray-600 hover:text-gray-900"
-              }`}
+              className={`px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${activeView === "calendar"
+                ? "bg-white text-gray-900 shadow-sm"
+                : "text-gray-600 hover:text-gray-900"
+                }`}
             >
               Calendar
             </button>
             <button
               onClick={() => setActiveView("list")}
-              className={`px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${
-                activeView === "list"
-                  ? "bg-white text-gray-900 shadow-sm"
-                  : "text-gray-600 hover:text-gray-900"
-              }`}
+              className={`px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${activeView === "list"
+                ? "bg-white text-gray-900 shadow-sm"
+                : "text-gray-600 hover:text-gray-900"
+                }`}
             >
               List
             </button>
@@ -803,15 +857,14 @@ const AdminCalendarView: React.FC = () => {
                 </p>
               </div>
               <div
-                className={`w-12 h-12 rounded-lg flex items-center justify-center ${
-                  stat.color === "blue"
-                    ? "bg-blue-500"
-                    : stat.color === "green"
+                className={`w-12 h-12 rounded-lg flex items-center justify-center ${stat.color === "blue"
+                  ? "bg-blue-500"
+                  : stat.color === "green"
                     ? "bg-green-500"
                     : stat.color === "teal"
-                    ? "bg-teal-500"
-                    : "bg-red-500"
-                }`}
+                      ? "bg-teal-500"
+                      : "bg-red-500"
+                  }`}
               >
                 <stat.icon className="w-6 h-6 text-white" />
               </div>
@@ -889,18 +942,18 @@ const AdminCalendarView: React.FC = () => {
             filterLocation !== "all" ||
             filterStatus !== "all" ||
             searchTerm) && (
-            <button
-              onClick={() => {
-                setFilterTeacher("all");
-                setFilterLocation("all");
-                setFilterStatus("all");
-                setSearchTerm("");
-              }}
-              className="px-3 py-2 bg-gray-100 text-gray-600 rounded-md hover:bg-gray-200 text-sm whitespace-nowrap"
-            >
-              Clear Filters
-            </button>
-          )}
+              <button
+                onClick={() => {
+                  setFilterTeacher("all");
+                  setFilterLocation("all");
+                  setFilterStatus("all");
+                  setSearchTerm("");
+                }}
+                className="px-3 py-2 bg-gray-100 text-gray-600 rounded-md hover:bg-gray-200 text-sm whitespace-nowrap"
+              >
+                Clear Filters
+              </button>
+            )}
         </div>
       </div>
 
@@ -967,16 +1020,14 @@ const AdminCalendarView: React.FC = () => {
                   return (
                     <div
                       key={index}
-                      className={`h-24 border border-gray-200 rounded-lg p-1 cursor-pointer hover:bg-gray-50 transition-colors duration-200 ${
-                        isToday ? "bg-blue-50 border-blue-200" : ""
-                      } ${isSelected ? "bg-blue-100 border-blue-300" : ""}`}
+                      className={`h-24 border border-gray-200 rounded-lg p-1 cursor-pointer hover:bg-gray-50 transition-colors duration-200 ${isToday ? "bg-blue-50 border-blue-200" : ""
+                        } ${isSelected ? "bg-blue-100 border-blue-300" : ""}`}
                       onClick={() => setSelectedDate(day)}
                     >
                       <div className="flex items-center justify-between mb-1">
                         <span
-                          className={`text-sm font-medium ${
-                            isToday ? "text-blue-600" : "text-gray-900"
-                          }`}
+                          className={`text-sm font-medium ${isToday ? "text-blue-600" : "text-gray-900"
+                            }`}
                         >
                           {day.getDate()}
                         </span>
@@ -991,13 +1042,12 @@ const AdminCalendarView: React.FC = () => {
                         {dayClasses.slice(0, 2).map((scheduledClass) => (
                           <div
                             key={scheduledClass.id}
-                            className={`text-xs p-1 rounded truncate ${
-                              scheduledClass.status === "cancelled"
-                                ? "bg-red-100 text-red-700 line-through"
-                                : scheduledClass.status === "completed"
+                            className={`text-xs p-1 rounded truncate ${scheduledClass.status === "cancelled"
+                              ? "bg-red-100 text-red-700 line-through"
+                              : scheduledClass.status === "completed"
                                 ? "bg-green-100 text-green-700"
                                 : "bg-blue-100 text-blue-700"
-                            }`}
+                              }`}
                             title={`${scheduledClass.className} - ${scheduledClass.teacherName} - ${scheduledClass.startTime}`}
                           >
                             {scheduledClass.startTime}{" "}
@@ -1043,11 +1093,10 @@ const AdminCalendarView: React.FC = () => {
                         <div className="flex-1">
                           <div className="flex items-center space-x-3 mb-2">
                             <h4
-                              className={`font-medium ${
-                                scheduledClass.status === "cancelled"
-                                  ? "text-red-600 line-through"
-                                  : "text-gray-900"
-                              }`}
+                              className={`font-medium ${scheduledClass.status === "cancelled"
+                                ? "text-red-600 line-through"
+                                : "text-gray-900"
+                                }`}
                             >
                               {scheduledClass.className}
                             </h4>
@@ -1400,6 +1449,17 @@ const AdminCalendarView: React.FC = () => {
           </div>
         )}
       </Modal>
+
+      <ConfirmModal
+  isOpen={isDeleteModalOpen}
+  onClose={() => setIsDeleteModalOpen(false)}
+  onConfirm={confirmDeleteClass}
+  title="Delete Scheduled Class"
+  message="Are you sure you want to permanently delete this scheduled class?"
+  confirmText="Delete"
+  cancelText="Cancel"
+/>
+
     </div>
   );
 };

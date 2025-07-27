@@ -8,7 +8,7 @@ export const getAuthHeader = () => {
 
 // LOCATIONS
 export const locationsAPI = {
-  getLocations: async (token: string | undefined) => {
+  getLocations: async (p0: {}, token: string | undefined) => {
     const res = await API.get("/locations", {
       headers: {
         Authorization: `Bearer ${token}`
@@ -271,40 +271,44 @@ export const materials = {
 
 // SCHDULE CLASS
 export const schedulesAPI = {
-  create: async (data: Record<string, any>) => {
-    const res = await API.post("/schedules", data, {
+  create: async (data: Record<string, any> ,token?: string | undefined) => {
+    const res = await API.post("/schedules", data,  {
       headers: {
-        ...getAuthHeader(),
+        // ...getAuthHeader(),
+        Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
     });
     return res.data;
   },
 
-  getAll: async (params: Record<string, any> = {}) => {
+  getAll: async (params: Record<string, any> = {}, token?: string | undefined ) => {
     const res = await API.get("/schedules", {
       headers: {
-        ...getAuthHeader(),
+        // ...getAuthHeader(),
+        Authorization: `Bearer ${token}`,
       },
       params,
     });
     return res.data;
   },
 
-  update: async (id: string, data: Record<string, any>) => {
+  update: async (id: string, data: Record<string, any>, token?: string | undefined  ) => {
     const res = await API.put(`/schedules/${id}`, data, {
       headers: {
-        ...getAuthHeader(),
+        Authorization: `Bearer ${token}`,
+        // ...getAuthHeader(),
         "Content-Type": "application/json",
       },
     });
     return res.data;
   },
 
-  delete: async (id: string) => {
+  delete: async (id: string, token?: string | undefined ) => {
     const res = await API.delete(`/schedules/${id}`, {
       headers: {
-        ...getAuthHeader(),
+        // ...getAuthHeader(),
+        Authorization: `Bearer ${token}`,
       },
     });
     return res.data;
