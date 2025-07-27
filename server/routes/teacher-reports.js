@@ -214,32 +214,91 @@ router.get("/attendance", async (req, res) => {
 // @route GET /api/reports/fee-collection
 router.get("/fee-collection", async (req, res) => {
   try {
+    const { classId, status, from, to, range } = req.query;
+
+    // Step 1: Get teacher's class list
     const classes = await Class.find({ teacherId: req.user.id });
-    const data = [];
+    const teacherClassIds = classes.map((c) => c._id.toString());
 
-    classes.forEach((c) => {
-      for (let i = 0; i < c.currentEnrollment; i++) {
-        const total = c.monthlyFee?.amount || 4500;
-        const paid = Math.random() > 0.2 ? total : Math.floor(total * 0.5);
+    // Step 2: Build query
+    const query = {
+      classId:
+        classId && classId !== "all" ? classId : { $in: teacherClassIds },
+    };
 
-        data.push({
-          studentId: `s-${i}`,
-          studentName: `Student ${i + 1}`,
-          className: c.title,
-          totalAmount: total,
-          paidAmount: paid,
-          pendingAmount: total - paid,
-          lastPaymentDate: new Date(Date.now() - Math.random() * 1e9)
-            .toISOString()
-            .split("T")[0],
-          paymentStatus:
-            paid === total ? "paid" : paid === 0 ? "pending" : "partial",
-        });
+    // Step 3: Add date filter
+    let startDate, endDate;
+
+    if (from && to) {
+      startDate = new Date(from);
+      endDate = new Date(to);
+    } else if (range) {
+      const now = new Date();
+      switch (range) {
+        case "this-week": {
+          const first = now.getDate() - now.getDay();
+          startDate = new Date(now.setDate(first));
+          endDate = new Date(now.setDate(first + 6));
+          break;
+        }
+        case "this-month":
+          startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+          endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+          break;
+        case "this-quarter": {
+          const q = Math.floor((now.getMonth() + 3) / 3);
+          startDate = new Date(now.getFullYear(), (q - 1) * 3, 1);
+          endDate = new Date(now.getFullYear(), q * 3, 0);
+          break;
+        }
+        case "this-year":
+          startDate = new Date(now.getFullYear(), 0, 1);
+          endDate = new Date(now.getFullYear(), 11, 31);
+          break;
       }
+    }
+
+    if (startDate && endDate) {
+      query.createdAt = { $gte: startDate, $lte: endDate };
+    }
+
+    if (status && status !== "all") {
+      query.status = status;
+    }
+
+    // Step 4: Fetch fees
+    const fees = await StudentFee.find(query)
+      .populate("studentId", "firstName lastName")
+      .populate("classId", "title");
+
+    const data = fees.map((fee) => {
+      const total = fee.amount;
+      const paid = fee.paidAmount || 0;
+      const pending = total - paid;
+
+      let paymentStatus = "pending";
+      if (paid === 0) paymentStatus = "pending";
+      else if (paid < total) paymentStatus = "partial";
+      else if (paid >= total) paymentStatus = "paid";
+      if (fee.status === "overdue") paymentStatus = "overdue";
+
+      return {
+        studentId: fee.studentId._id,
+        studentName: `${fee.studentId.firstName} ${fee.studentId.lastName}`,
+        className: fee.classId.title,
+        totalAmount: total,
+        paidAmount: paid,
+        pendingAmount: pending,
+        lastPaymentDate: fee.paidDate
+          ? new Date(fee.paidDate).toISOString().split("T")[0]
+          : "-",
+        paymentStatus,
+      };
     });
 
     res.json({ status: "success", data });
   } catch (err) {
+    console.error("Fee collection error:", err);
     res
       .status(500)
       .json({ status: "error", message: "Failed to fetch fee data" });

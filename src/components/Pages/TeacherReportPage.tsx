@@ -31,7 +31,6 @@ const TeacherReportsPage: React.FC = () => {
   const [filterMonth, setFilterMonth] = useState(
     new Date().toISOString().slice(0, 7)
   );
-
   const [dateRangeType, setDateRangeType] = useState("this-month");
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
@@ -41,6 +40,11 @@ const TeacherReportsPage: React.FC = () => {
   const [overviewCustomFrom, setOverviewCustomFrom] = useState("");
   const [overviewCustomTo, setOverviewCustomTo] = useState("");
   const [overviewSelectedClassId, setOverviewSelectedClassId] = useState("all");
+  const [feeDateRangeType, setFeeDateRangeType] = useState("this-month");
+  const [feeCustomFrom, setFeeCustomFrom] = useState("");
+  const [feeCustomTo, setFeeCustomTo] = useState("");
+  const [feeSelectedClassId, setFeeSelectedClassId] = useState("all");
+  const [feeStatus, setFeeStatus] = useState("all"); // paid, partial, pending, overdue
 
   const fetchClasses = async () => {
     try {
@@ -202,6 +206,54 @@ const TeacherReportsPage: React.FC = () => {
     }
   };
 
+  const fetchFeeCollectionData = async () => {
+    try {
+      setLoading(true);
+      const token = JSON.parse(localStorage.getItem("user") || "{}")?.tokens
+        ?.accessToken;
+
+      if (!token) {
+        setError("Access token missing. Please log in again.");
+        return;
+      }
+
+      const queryParams = new URLSearchParams();
+
+      if (feeSelectedClassId !== "all") {
+        queryParams.append("classId", feeSelectedClassId);
+      }
+
+      if (feeStatus !== "all") {
+        queryParams.append("status", feeStatus);
+      }
+
+      if (feeDateRangeType === "custom" && feeCustomFrom && feeCustomTo) {
+        queryParams.append("from", feeCustomFrom);
+        queryParams.append("to", feeCustomTo);
+      } else {
+        queryParams.append("range", feeDateRangeType);
+      }
+
+      const res = await fetch(
+        `http://localhost:5000/api/reports/fee-collection?${queryParams.toString()}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      const result = await res.json();
+      if (result.status === "success") {
+        setFeeCollectionData(result.data);
+      } else {
+        setError(result.message || "Failed to fetch fee data");
+      }
+    } catch (err) {
+      setError("Error fetching fee collection data");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // const fetchScheduleSummary = async () => {
   //   try {
   //     const token = JSON.parse(localStorage.getItem("user") || "{}")?.tokens
@@ -272,7 +324,7 @@ const TeacherReportsPage: React.FC = () => {
         fetchAttendanceData();
         break;
       case "fee-collection":
-        generateFeeCollectionData();
+        fetchFeeCollectionData();
         break;
       case "revenue-summary":
         fetchRevenueSummary();
@@ -294,6 +346,12 @@ const TeacherReportsPage: React.FC = () => {
     overviewDateRangeType,
     overviewCustomFrom,
     overviewCustomTo,
+    selectedReport,
+    feeDateRangeType,
+    feeCustomFrom,
+    feeCustomTo,
+    feeSelectedClassId,
+    feeStatus,
   ]);
 
   const availableReports = [
@@ -701,6 +759,91 @@ const TeacherReportsPage: React.FC = () => {
 
       return (
         <>
+          <div className="border rounded p-4 w-full max-w-4xl bg-white shadow-sm mb-6">
+            <h4 className="text-sm font-semibold text-gray-700 mb-4 flex items-center">
+              <Filter className="w-4 h-4 mr-2" /> Filters
+            </h4>
+
+            <div className="flex flex-wrap gap-4 mb-4">
+              <div className="flex-1 min-w-[150px]">
+                <label className="block text-xs text-gray-500 mb-1">
+                  Date Range
+                </label>
+                <select
+                  value={feeDateRangeType}
+                  onChange={(e) => setFeeDateRangeType(e.target.value)}
+                  className="border border-gray-300 rounded px-2 py-1 text-sm w-full"
+                >
+                  <option value="this-week">This Week</option>
+                  <option value="this-month">This Month</option>
+                  <option value="this-quarter">This Quarter</option>
+                  <option value="this-year">This Year</option>
+                  <option value="custom">Custom Range</option>
+                </select>
+              </div>
+
+              <div className="flex-1 min-w-[150px]">
+                <label className="block text-xs text-gray-500 mb-1">
+                  Class
+                </label>
+                <select
+                  value={feeSelectedClassId}
+                  onChange={(e) => setFeeSelectedClassId(e.target.value)}
+                  className="border border-gray-300 rounded px-2 py-1 text-sm w-full"
+                >
+                  <option value="all">All Classes</option>
+                  {classes.map((c) => (
+                    <option key={c._id} value={c._id}>
+                      {c.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex-1 min-w-[150px]">
+                <label className="block text-xs text-gray-500 mb-1">
+                  Payment Status
+                </label>
+                <select
+                  value={feeStatus}
+                  onChange={(e) => setFeeStatus(e.target.value)}
+                  className="border border-gray-300 rounded px-2 py-1 text-sm w-full"
+                >
+                  <option value="all">All</option>
+                  <option value="paid">Paid</option>
+                  <option value="partial">Partial</option>
+                  <option value="pending">Pending</option>
+                  <option value="overdue">Overdue</option>
+                </select>
+              </div>
+            </div>
+
+            {feeDateRangeType === "custom" && (
+              <div className="flex gap-4">
+                <div className="flex-1 min-w-[150px]">
+                  <label className="block text-xs text-gray-500 mb-1">
+                    From
+                  </label>
+                  <input
+                    type="date"
+                    value={feeCustomFrom}
+                    onChange={(e) => setFeeCustomFrom(e.target.value)}
+                    className="border border-gray-300 rounded px-2 py-1 text-sm w-full"
+                  />
+                </div>
+                <div className="flex-1 min-w-[150px]">
+                  <label className="block text-xs text-gray-500 mb-1">To</label>
+                  <input
+                    type="date"
+                    value={feeCustomTo}
+                    onChange={(e) => setFeeCustomTo(e.target.value)}
+                    className="border border-gray-300 rounded px-2 py-1 text-sm w-full"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
             {renderSummaryCard(
               "Total Collected",
@@ -1068,7 +1211,7 @@ const TeacherReportsPage: React.FC = () => {
                       fetchAttendanceData();
                       break;
                     case "fee-collection":
-                      generateFeeCollectionData();
+                      fetchFeeCollectionData();
                       break;
                     case "revenue-summary":
                       fetchRevenueSummary();
