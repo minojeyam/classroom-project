@@ -40,11 +40,19 @@ const TeacherReportsPage: React.FC = () => {
   const [overviewCustomFrom, setOverviewCustomFrom] = useState("");
   const [overviewCustomTo, setOverviewCustomTo] = useState("");
   const [overviewSelectedClassId, setOverviewSelectedClassId] = useState("all");
+
   const [feeDateRangeType, setFeeDateRangeType] = useState("this-month");
   const [feeCustomFrom, setFeeCustomFrom] = useState("");
   const [feeCustomTo, setFeeCustomTo] = useState("");
   const [feeSelectedClassId, setFeeSelectedClassId] = useState("all");
   const [feeStatus, setFeeStatus] = useState("all"); // paid, partial, pending, overdue
+
+  const [revenueDateRangeType, setRevenueDateRangeType] =
+    useState("this-month");
+  const [revenueCustomFrom, setRevenueCustomFrom] = useState("");
+  const [revenueCustomTo, setRevenueCustomTo] = useState("");
+  const [revenueClassId, setRevenueClassId] = useState("all");
+  const [revenueSubject, setRevenueSubject] = useState("all");
 
   const fetchClasses = async () => {
     try {
@@ -964,6 +972,74 @@ const TeacherReportsPage: React.FC = () => {
 
       return (
         <>
+          <div className="border rounded p-4 w-full max-w-4xl bg-white shadow-sm mb-6">
+            <h4 className="text-sm font-semibold text-gray-700 mb-4 flex items-center">
+              <Filter className="w-4 h-4 mr-2" /> Filters
+            </h4>
+
+            <div className="flex flex-wrap gap-4 mb-4">
+              <div className="flex-1 min-w-[150px]">
+                <label className="block text-xs text-gray-500 mb-1">
+                  Date Range
+                </label>
+                <select
+                  value={revenueDateRangeType}
+                  onChange={(e) => setRevenueDateRangeType(e.target.value)}
+                  className="border border-gray-300 rounded px-2 py-1 text-sm w-full"
+                >
+                  <option value="this-week">This Week</option>
+                  <option value="this-month">This Month</option>
+                  <option value="this-quarter">This Quarter</option>
+                  <option value="this-year">This Year</option>
+                  <option value="custom">Custom Range</option>
+                </select>
+              </div>
+
+              <div className="flex-1 min-w-[150px]">
+                <label className="block text-xs text-gray-500 mb-1">
+                  Class
+                </label>
+                <select
+                  value={revenueClassId}
+                  onChange={(e) => setRevenueClassId(e.target.value)}
+                  className="border border-gray-300 rounded px-2 py-1 text-sm w-full"
+                >
+                  <option value="all">All Classes</option>
+                  {classes.map((c) => (
+                    <option key={c._id} value={c._id}>
+                      {c.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {revenueDateRangeType === "custom" && (
+              <div className="flex gap-4 mb-4">
+                <div className="flex-1 min-w-[150px]">
+                  <label className="block text-xs text-gray-500 mb-1">
+                    From
+                  </label>
+                  <input
+                    type="date"
+                    value={revenueCustomFrom}
+                    onChange={(e) => setRevenueCustomFrom(e.target.value)}
+                    className="border border-gray-300 rounded px-2 py-1 text-sm w-full"
+                  />
+                </div>
+                <div className="flex-1 min-w-[150px]">
+                  <label className="block text-xs text-gray-500 mb-1">To</label>
+                  <input
+                    type="date"
+                    value={revenueCustomTo}
+                    onChange={(e) => setRevenueCustomTo(e.target.value)}
+                    className="border border-gray-300 rounded px-2 py-1 text-sm w-full"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
             {renderSummaryCard(
               "Current Month",
