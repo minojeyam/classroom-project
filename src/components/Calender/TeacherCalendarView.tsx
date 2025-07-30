@@ -135,16 +135,19 @@ const TeacherCalendarView: React.FC = () => {
 
       if (classesResponse.status === "success") {
         setClassTemplates(classesResponse.data.classes || []);
+      } else {
+        toast.error("Failed to fetch classes");
       }
 
       if (locationsResponse.status === "success") {
         setLocations(locationsResponse.data.locations || []);
+      } else {
+        toast.error("Failed to fetch locations");
       }
 
-      // Fetch scheduled classes (mock data for now)
       await fetchScheduledClasses();
     } catch (err: any) {
-      setError(err.message || "Failed to fetch data");
+      toast.error(err.message || "Failed to fetch data");
     } finally {
       setLoading(false);
     }
@@ -157,13 +160,14 @@ const TeacherCalendarView: React.FC = () => {
       setScheduledClasses(
         response.data.classes.map((cls: any) => ({
           ...cls,
-          id: cls._id ?? cls.id, // fallback if _id is somehow missing
+          id: cls._id ?? cls.id,
           className: cls.classId?.title ?? "Unnamed Class",
           locationName: cls.locationId?.name ?? "Unknown Location",
         }))
       );
     } catch (err: any) {
       console.error("Error fetching scheduled classes:", err);
+      toast.error("Failed to load scheduled classes");
     }
   };
 
