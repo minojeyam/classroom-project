@@ -7,11 +7,16 @@ interface ReportData {
   id: string;
   name: string;
   description: string;
-  category: 'academic' | 'financial' | 'attendance' | 'enrollment' | 'performance';
-  type: 'summary' | 'detailed' | 'analytics';
+  category:
+    | "academic"
+    | "financial"
+    | "attendance"
+    | "enrollment"
+    | "performance";
+  type: "summary" | "detailed" | "analytics";
   lastGenerated: string;
   size: string;
-  format: 'pdf' | 'excel' | 'csv';
+  format: "pdf" | "excel" | "csv";
 }
 
 interface ClassOverviewData {
@@ -33,7 +38,7 @@ interface AttendanceData {
   studentName: string;
   className: string;
   date: string;
-  status: 'present' | 'absent' | 'late' | 'excused';
+  status: "present" | "absent" | "late" | "excused";
   attendanceRate: number;
 }
 
@@ -45,7 +50,7 @@ interface FeeCollectionData {
   paidAmount: number;
   pendingAmount: number;
   lastPaymentDate: string;
-  paymentStatus: 'paid' | 'partial' | 'pending' | 'overdue';
+  paymentStatus: "paid" | "partial" | "pending" | "overdue";
 }
 
 interface EnrollmentData {
@@ -119,7 +124,9 @@ const ReportsPage: React.FC = () => {
 
   
   // Data states
-  const [classOverviewData, setClassOverviewData] = useState<ClassOverviewData[]>([]);
+  const [classOverviewData, setClassOverviewData] = useState<
+    ClassOverviewData[]
+  >([]);
   const [attendanceData, setAttendanceData] = useState<AttendanceData[]>([]);
   const [feeCollectionData, setFeeCollectionData] = useState<FeeCollectionData[]>([]);
   const [feeTotals, setFeeTotals] = useState({
@@ -134,7 +141,7 @@ const ReportsPage: React.FC = () => {
 
   // Filter states
   const [filters, setFilters] = useState({
-    dateRange: 'month',
+    dateRange: "month",
     startDate: new Date().toISOString().slice(0, 7), // YYYY-MM
     endDate: new Date().toISOString().slice(0, 7),
     locationId: 'all',
@@ -159,7 +166,7 @@ const ReportsPage: React.FC = () => {
 
   // UI states
   const [showFilters, setShowFilters] = useState(false);
-  const [chartView, setChartView] = useState<'table' | 'chart'>('table');
+  const [chartView, setChartView] = useState<"table" | "chart">("table");
 
   useEffect(() => {
     fetchReferenceData();
@@ -340,7 +347,7 @@ const ReportsPage: React.FC = () => {
       }
 
     } catch (err: any) {
-      setError(err.message || 'Failed to fetch reference data');
+      setError(err.message || "Failed to fetch reference data");
     }
   };
 
@@ -350,23 +357,23 @@ const ReportsPage: React.FC = () => {
 
       // Mock data generation based on selected report
       switch (selectedReport) {
-        case 'class-overview':
+        case "class-overview":
           await generateClassOverviewData();
           break;
-        case 'attendance':
+        case "attendance":
           await generateAttendanceData();
           break;
-        case 'fee-collection':
+        case "fee-collection":
           await generateFeeCollectionData();
           break;
-        case 'enrollment':
+        case "enrollment":
           await generateEnrollmentData();
           break;
         default:
           break;
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to fetch report data');
+      setError(err.message || "Failed to fetch report data");
     } finally {
       setLoading(false);
     }
@@ -490,7 +497,7 @@ const ReportsPage: React.FC = () => {
         newEnrollments: Math.floor(totalStudents * 0.1),
         activeEnrollments: Math.floor(totalStudents * 0.95),
         completedEnrollments: Math.floor(totalStudents * 0.05),
-        enrollmentTrend: Math.floor(Math.random() * 20) - 10
+        enrollmentTrend: Math.floor(Math.random() * 20) - 10,
       };
     });
 
@@ -505,9 +512,9 @@ const ReportsPage: React.FC = () => {
 
     const blob = new Blob([headers + '\n' + csvData], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
-    a.download = `${filename}-${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `${filename}-${new Date().toISOString().split("T")[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -527,7 +534,7 @@ const ReportsPage: React.FC = () => {
       case 'user-registration':
         return 'User Registration & Approval Report';
       default:
-        return 'Report';
+        return "Report";
     }
   };
 
@@ -536,8 +543,12 @@ const ReportsPage: React.FC = () => {
       return (
         <div className="text-center py-12">
           <BarChart3 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Select a Report</h3>
-          <p className="text-gray-600">Choose a report type from the sidebar to view data</p>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            Select a Report
+          </h3>
+          <p className="text-gray-600">
+            Choose a report type from the sidebar to view data
+          </p>
         </div>
       );
     }
@@ -551,19 +562,19 @@ const ReportsPage: React.FC = () => {
     }
 
     switch (selectedReport) {
-      case 'class-overview':
+      case "class-overview":
         return renderClassOverviewReport();
       // case 'attendance':
       //   return renderAttendanceReport();
       case 'fee-collection':
         return renderFeeCollectionReport();
-      case 'enrollment':
+      case "enrollment":
         return renderEnrollmentReport();
-      case 'revenue-summary':
+      case "revenue-summary":
         return renderRevenueSummaryReport();
-      case 'user-registration':
+      case "user-registration":
         return renderUserRegistrationReport();
-      case 'schedule-summary':
+      case "schedule-summary":
         return renderScheduleSummaryReport();
       default:
         return <div>Report data will be displayed here</div>;
@@ -578,7 +589,9 @@ const ReportsPage: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-blue-600 text-sm font-medium">Total Classes</p>
-              <p className="text-2xl font-bold text-blue-900">{classOverviewData.length}</p>
+              <p className="text-2xl font-bold text-blue-900">
+                {classOverviewData.length}
+              </p>
             </div>
             <BookOpen className="w-8 h-8 text-blue-500" />
           </div>
@@ -586,7 +599,9 @@ const ReportsPage: React.FC = () => {
         <div className="bg-green-50 p-6 rounded-lg">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-green-600 text-sm font-medium">Total Students</p>
+              <p className="text-green-600 text-sm font-medium">
+                Total Students
+              </p>
               <p className="text-2xl font-bold text-green-900">
                 {approvedStudentsCount}
               </p>
@@ -597,9 +612,17 @@ const ReportsPage: React.FC = () => {
         <div className="bg-purple-50 p-6 rounded-lg">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-purple-600 text-sm font-medium">Avg Attendance</p>
+              <p className="text-purple-600 text-sm font-medium">
+                Avg Attendance
+              </p>
               <p className="text-2xl font-bold text-purple-900">
-                {Math.round(classOverviewData.reduce((sum, c) => sum + c.averageAttendance, 0) / classOverviewData.length || 0)}%
+                {Math.round(
+                  classOverviewData.reduce(
+                    (sum, c) => sum + c.averageAttendance,
+                    0
+                  ) / classOverviewData.length || 0
+                )}
+                %
               </p>
             </div>
             <TrendingUp className="w-8 h-8 text-purple-500" />
@@ -608,9 +631,14 @@ const ReportsPage: React.FC = () => {
         <div className="bg-orange-50 p-6 rounded-lg">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-orange-600 text-sm font-medium">Total Revenue</p>
+              <p className="text-orange-600 text-sm font-medium">
+                Total Revenue
+              </p>
               <p className="text-2xl font-bold text-orange-900">
-                ₹{classOverviewData.reduce((sum, c) => sum + c.totalRevenue, 0).toLocaleString()}
+                ₹
+                {classOverviewData
+                  .reduce((sum, c) => sum + c.totalRevenue, 0)
+                  .toLocaleString()}
               </p>
             </div>
             <DollarSign className="w-8 h-8 text-orange-500" />
@@ -620,7 +648,9 @@ const ReportsPage: React.FC = () => {
 
       {/* Chart/Table Toggle */}
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-900">Class Performance Overview</h3>
+        <h3 className="text-lg font-semibold text-gray-900">
+          Class Performance Overview
+        </h3>
         <div className="flex items-center space-x-2">
           <button
             onClick={() => setChartView('table')}
@@ -649,13 +679,27 @@ const ReportsPage: React.FC = () => {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Class</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Teacher</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Students</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Attendance</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Revenue</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pending</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Class
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Teacher
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Location
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Students
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Attendance
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Revenue
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Pending
+                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -663,19 +707,35 @@ const ReportsPage: React.FC = () => {
                   <tr key={classData.classId} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div>
-                        <p className="text-sm font-medium text-gray-900">{classData.className}</p>
-                        <p className="text-sm text-gray-500">{classData.subject} • {classData.level}</p>
+                        <p className="text-sm font-medium text-gray-900">
+                          {classData.className}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          {classData.subject} • {classData.level}
+                        </p>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{classData.teacherName}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{classData.locationName}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {classData.teacherName}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {classData.locationName}
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
-                        <span className="text-sm font-medium text-gray-900">{classData.activeStudents}/{classData.totalStudents}</span>
+                        <span className="text-sm font-medium text-gray-900">
+                          {classData.activeStudents}/{classData.totalStudents}
+                        </span>
                         <div className="ml-2 w-16 bg-gray-200 rounded-full h-2">
                           <div
                             className="bg-blue-500 h-2 rounded-full"
-                            style={{ width: `${(classData.activeStudents / classData.totalStudents) * 100}%` }}
+                            style={{
+                              width: `${
+                                (classData.activeStudents /
+                                  classData.totalStudents) *
+                                100
+                              }%`,
+                            }}
                           ></div>
                         </div>
                       </div>
@@ -703,11 +763,18 @@ const ReportsPage: React.FC = () => {
         <div className="bg-white p-6 rounded-lg border border-gray-200">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div>
-              <h4 className="text-md font-semibold text-gray-900 mb-4">Attendance Rates by Class</h4>
+              <h4 className="text-md font-semibold text-gray-900 mb-4">
+                Attendance Rates by Class
+              </h4>
               <div className="space-y-3">
                 {classOverviewData.map((classData) => (
-                  <div key={classData.classId} className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-700">{classData.className}</span>
+                  <div
+                    key={classData.classId}
+                    className="flex items-center justify-between"
+                  >
+                    <span className="text-sm font-medium text-gray-700">
+                      {classData.className}
+                    </span>
                     <div className="flex items-center space-x-3">
                       <div className="w-32 bg-gray-200 rounded-full h-2">
                         <div
@@ -717,21 +784,34 @@ const ReportsPage: React.FC = () => {
                           style={{ width: `${classData.averageAttendance}%` }}
                         ></div>
                       </div>
-                      <span className="text-sm text-gray-600">{classData.averageAttendance}%</span>
+                      <span className="text-sm text-gray-600">
+                        {classData.averageAttendance}%
+                      </span>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
             <div>
-              <h4 className="text-md font-semibold text-gray-900 mb-4">Revenue by Class</h4>
+              <h4 className="text-md font-semibold text-gray-900 mb-4">
+                Revenue by Class
+              </h4>
               <div className="space-y-3">
                 {classOverviewData.map((classData) => (
-                  <div key={classData.classId} className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-700">{classData.className}</span>
+                  <div
+                    key={classData.classId}
+                    className="flex items-center justify-between"
+                  >
+                    <span className="text-sm font-medium text-gray-700">
+                      {classData.className}
+                    </span>
                     <div className="text-right">
-                      <p className="text-sm font-medium text-green-600">₹{classData.totalRevenue.toLocaleString()}</p>
-                      <p className="text-xs text-orange-600">₹{classData.pendingFees.toLocaleString()} pending</p>
+                      <p className="text-sm font-medium text-green-600">
+                        ₹{classData.totalRevenue.toLocaleString()}
+                      </p>
+                      <p className="text-xs text-orange-600">
+                        ₹{classData.pendingFees.toLocaleString()} pending
+                      </p>
                     </div>
                   </div>
                 ))}
@@ -875,7 +955,9 @@ const ReportsPage: React.FC = () => {
         <div className="bg-green-50 p-6 rounded-lg">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-green-600 text-sm font-medium">Total Collected</p>
+              <p className="text-green-600 text-sm font-medium">
+                Total Collected
+              </p>
               <p className="text-2xl font-bold text-green-900">
                 ₹{feeTotals.totalCollected}
               </p>
@@ -888,7 +970,10 @@ const ReportsPage: React.FC = () => {
             <div>
               <p className="text-orange-600 text-sm font-medium">Pending</p>
               <p className="text-2xl font-bold text-orange-900">
-                ₹{feeCollectionData.reduce((sum, f) => sum + f.pendingAmount, 0).toLocaleString()}
+                ₹
+                {feeCollectionData
+                  .reduce((sum, f) => sum + f.pendingAmount, 0)
+                  .toLocaleString()}
               </p>
             </div>
             <DollarSign className="w-8 h-8 text-orange-500" />
@@ -897,9 +982,17 @@ const ReportsPage: React.FC = () => {
         <div className="bg-blue-50 p-6 rounded-lg">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-blue-600 text-sm font-medium">Collection Rate</p>
+              <p className="text-blue-600 text-sm font-medium">
+                Collection Rate
+              </p>
               <p className="text-2xl font-bold text-blue-900">
-                {Math.round((feeCollectionData.filter(f => f.paymentStatus === 'paid').length / feeCollectionData.length) * 100 || 0)}%
+                {Math.round(
+                  (feeCollectionData.filter((f) => f.paymentStatus === "paid")
+                    .length /
+                    feeCollectionData.length) *
+                    100 || 0
+                )}
+                %
               </p>
             </div>
             <TrendingUp className="w-8 h-8 text-blue-500" />
@@ -910,7 +1003,10 @@ const ReportsPage: React.FC = () => {
             <div>
               <p className="text-red-600 text-sm font-medium">Overdue</p>
               <p className="text-2xl font-bold text-red-900">
-                {feeCollectionData.filter(f => f.paymentStatus === 'overdue').length}
+                {
+                  feeCollectionData.filter((f) => f.paymentStatus === "overdue")
+                    .length
+                }
               </p>
             </div>
             <Users className="w-8 h-8 text-red-500" />
@@ -921,19 +1017,35 @@ const ReportsPage: React.FC = () => {
       {/* Fee Collection Table */}
       <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900">Student-wise Fee Collection</h3>
+          <h3 className="text-lg font-semibold text-gray-900">
+            Student-wise Fee Collection
+          </h3>
         </div>
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Class</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Amount</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Paid Amount</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pending</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Payment</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Student
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Class
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Total Amount
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Paid Amount
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Pending
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Last Payment
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -1000,7 +1112,9 @@ const ReportsPage: React.FC = () => {
         <div className="bg-blue-50 p-6 rounded-lg">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-blue-600 text-sm font-medium">Total Students</p>
+              <p className="text-blue-600 text-sm font-medium">
+                Total Students
+              </p>
               <p className="text-2xl font-bold text-blue-900">
                 {enrollmentData.reduce((sum, e) => sum + e.totalStudents, 0)}
               </p>
@@ -1011,7 +1125,9 @@ const ReportsPage: React.FC = () => {
         <div className="bg-green-50 p-6 rounded-lg">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-green-600 text-sm font-medium">New Enrollments</p>
+              <p className="text-green-600 text-sm font-medium">
+                New Enrollments
+              </p>
               <p className="text-2xl font-bold text-green-900">
                 {enrollmentData.reduce((sum, e) => sum + e.newEnrollments, 0)}
               </p>
@@ -1022,9 +1138,14 @@ const ReportsPage: React.FC = () => {
         <div className="bg-purple-50 p-6 rounded-lg">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-purple-600 text-sm font-medium">Active Students</p>
+              <p className="text-purple-600 text-sm font-medium">
+                Active Students
+              </p>
               <p className="text-2xl font-bold text-purple-900">
-                {enrollmentData.reduce((sum, e) => sum + e.activeEnrollments, 0)}
+                {enrollmentData.reduce(
+                  (sum, e) => sum + e.activeEnrollments,
+                  0
+                )}
               </p>
             </div>
             <Users className="w-8 h-8 text-purple-500" />
@@ -1033,7 +1154,9 @@ const ReportsPage: React.FC = () => {
         <div className="bg-orange-50 p-6 rounded-lg">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-orange-600 text-sm font-medium">Total Classes</p>
+              <p className="text-orange-600 text-sm font-medium">
+                Total Classes
+              </p>
               <p className="text-2xl font-bold text-orange-900">
                 {enrollmentData.reduce((sum, e) => sum + e.totalClasses, 0)}
               </p>
@@ -1046,7 +1169,9 @@ const ReportsPage: React.FC = () => {
       {/* Enrollment by Location */}
       <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900">Enrollment by Location</h3>
+          <h3 className="text-lg font-semibold text-gray-900">
+            Enrollment by Location
+          </h3>
         </div>
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
@@ -1135,7 +1260,9 @@ const ReportsPage: React.FC = () => {
           <div className="bg-green-50 p-6 rounded-lg">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-green-600 text-sm font-medium">Current Month</p>
+                <p className="text-green-600 text-sm font-medium">
+                  Current Month
+                </p>
                 <p className="text-2xl font-bold text-green-900">
                   ₹{user?.role === 'admin'
                     ? revenueSummaryData.reduce((sum: number, item: any) => sum + item.currentMonth, 0).toLocaleString()
@@ -1163,7 +1290,9 @@ const ReportsPage: React.FC = () => {
           <div className="bg-purple-50 p-6 rounded-lg">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-purple-600 text-sm font-medium">Current Quarter</p>
+                <p className="text-purple-600 text-sm font-medium">
+                  Current Quarter
+                </p>
                 <p className="text-2xl font-bold text-purple-900">
                   ₹{user?.role === 'admin'
                     ? revenueSummaryData.reduce((sum: number, item: any) => sum + item.currentQuarter, 0).toLocaleString()
@@ -1177,7 +1306,9 @@ const ReportsPage: React.FC = () => {
           <div className="bg-orange-50 p-6 rounded-lg">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-orange-600 text-sm font-medium">Collection Rate</p>
+                <p className="text-orange-600 text-sm font-medium">
+                  Collection Rate
+                </p>
                 <p className="text-2xl font-bold text-orange-900">
                   {user?.role === 'admin'
                     ? Math.round((revenueSummaryData.reduce((sum: number, item: any) => sum + item.receivedCurrent, 0) /
@@ -1196,7 +1327,9 @@ const ReportsPage: React.FC = () => {
         <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200">
             <h3 className="text-lg font-semibold text-gray-900">
-              {user?.role === 'admin' ? 'Location-wise Revenue Summary' : 'Class-wise Revenue Summary'}
+              {user?.role === "admin"
+                ? "Location-wise Revenue Summary"
+                : "Class-wise Revenue Summary"}
             </h3>
           </div>
           <div className="overflow-x-auto">
@@ -1204,14 +1337,26 @@ const ReportsPage: React.FC = () => {
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    {user?.role === 'admin' ? 'Location' : 'Class'}
+                    {user?.role === "admin" ? "Location" : "Class"}
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Current Month</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Month</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Current Quarter</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Received</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pending</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Collection Rate</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Current Month
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Last Month
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Current Quarter
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Received
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Pending
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Collection Rate
+                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -1220,10 +1365,14 @@ const ReportsPage: React.FC = () => {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div>
                         <p className="font-medium text-gray-900">
-                          {user?.role === 'admin' ? item.locationName : item.className}
+                          {user?.role === "admin"
+                            ? item.locationName
+                            : item.className}
                         </p>
-                        {user?.role === 'teacher' && (
-                          <p className="text-sm text-gray-500">{item.studentCount} students</p>
+                        {user?.role === "teacher" && (
+                          <p className="text-sm text-gray-500">
+                            {item.studentCount} students
+                          </p>
                         )}
                       </div>
                     </td>
@@ -1247,11 +1396,18 @@ const ReportsPage: React.FC = () => {
                         <div className="w-16 bg-gray-200 rounded-full h-2">
                           <div
                             className="bg-green-500 h-2 rounded-full"
-                            style={{ width: `${(item.receivedCurrent / item.currentMonth) * 100}%` }}
+                            style={{
+                              width: `${
+                                (item.receivedCurrent / item.currentMonth) * 100
+                              }%`,
+                            }}
                           ></div>
                         </div>
                         <span className="text-sm font-medium text-gray-900">
-                          {Math.round((item.receivedCurrent / item.currentMonth) * 100)}%
+                          {Math.round(
+                            (item.receivedCurrent / item.currentMonth) * 100
+                          )}
+                          %
                         </span>
                       </div>
                     </td>
@@ -1396,25 +1552,25 @@ const ReportsPage: React.FC = () => {
     // Mock schedule summary data for teachers
     const scheduleSummaryData = [
       {
-        classId: '1',
-        className: 'Advanced Mathematics',
+        classId: "1",
+        className: "Advanced Mathematics",
         totalScheduled: 20,
         completed: 18,
         cancelled: 1,
         upcoming: 1,
         attendanceRate: 94.5,
-        avgStudentsPresent: 23.6
+        avgStudentsPresent: 23.6,
       },
       {
-        classId: '2',
-        className: 'Physics Fundamentals',
+        classId: "2",
+        className: "Physics Fundamentals",
         totalScheduled: 18,
         completed: 16,
         cancelled: 0,
         upcoming: 2,
         attendanceRate: 96.2,
-        avgStudentsPresent: 21.2
-      }
+        avgStudentsPresent: 21.2,
+      },
     ];
 
     return (
@@ -1424,9 +1580,14 @@ const ReportsPage: React.FC = () => {
           <div className="bg-blue-50 p-6 rounded-lg">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-blue-600 text-sm font-medium">Total Scheduled</p>
+                <p className="text-blue-600 text-sm font-medium">
+                  Total Scheduled
+                </p>
                 <p className="text-2xl font-bold text-blue-900">
-                  {scheduleSummaryData.reduce((sum, item) => sum + item.totalScheduled, 0)}
+                  {scheduleSummaryData.reduce(
+                    (sum, item) => sum + item.totalScheduled,
+                    0
+                  )}
                 </p>
               </div>
               <Calendar className="w-8 h-8 text-blue-500" />
@@ -1437,7 +1598,10 @@ const ReportsPage: React.FC = () => {
               <div>
                 <p className="text-green-600 text-sm font-medium">Completed</p>
                 <p className="text-2xl font-bold text-green-900">
-                  {scheduleSummaryData.reduce((sum, item) => sum + item.completed, 0)}
+                  {scheduleSummaryData.reduce(
+                    (sum, item) => sum + item.completed,
+                    0
+                  )}
                 </p>
               </div>
               <CheckCircle className="w-8 h-8 text-green-500" />
@@ -1448,7 +1612,10 @@ const ReportsPage: React.FC = () => {
               <div>
                 <p className="text-red-600 text-sm font-medium">Cancelled</p>
                 <p className="text-2xl font-bold text-red-900">
-                  {scheduleSummaryData.reduce((sum, item) => sum + item.cancelled, 0)}
+                  {scheduleSummaryData.reduce(
+                    (sum, item) => sum + item.cancelled,
+                    0
+                  )}
                 </p>
               </div>
               <AlertCircle className="w-8 h-8 text-red-500" />
@@ -1457,9 +1624,17 @@ const ReportsPage: React.FC = () => {
           <div className="bg-purple-50 p-6 rounded-lg">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-purple-600 text-sm font-medium">Avg Attendance</p>
+                <p className="text-purple-600 text-sm font-medium">
+                  Avg Attendance
+                </p>
                 <p className="text-2xl font-bold text-purple-900">
-                  {Math.round(scheduleSummaryData.reduce((sum, item) => sum + item.attendanceRate, 0) / scheduleSummaryData.length)}%
+                  {Math.round(
+                    scheduleSummaryData.reduce(
+                      (sum, item) => sum + item.attendanceRate,
+                      0
+                    ) / scheduleSummaryData.length
+                  )}
+                  %
                 </p>
               </div>
               <TrendingUp className="w-8 h-8 text-purple-500" />
@@ -1470,26 +1645,44 @@ const ReportsPage: React.FC = () => {
         {/* Schedule Summary Table */}
         <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900">Monthly Class Schedule Summary</h3>
+            <h3 className="text-lg font-semibold text-gray-900">
+              Monthly Class Schedule Summary
+            </h3>
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Class</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Scheduled</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Completed</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cancelled</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Upcoming</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Attendance Rate</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avg Students Present</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Class
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Total Scheduled
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Completed
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Cancelled
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Upcoming
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Attendance Rate
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Avg Students Present
+                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {scheduleSummaryData.map((schedule) => (
                   <tr key={schedule.classId} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <p className="font-medium text-gray-900">{schedule.className}</p>
+                      <p className="font-medium text-gray-900">
+                        {schedule.className}
+                      </p>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {schedule.totalScheduled}
@@ -1511,7 +1704,9 @@ const ReportsPage: React.FC = () => {
                             style={{ width: `${schedule.attendanceRate}%` }}
                           ></div>
                         </div>
-                        <span className="text-sm font-medium text-gray-900">{schedule.attendanceRate}%</span>
+                        <span className="text-sm font-medium text-gray-900">
+                          {schedule.attendanceRate}%
+                        </span>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -1529,7 +1724,7 @@ const ReportsPage: React.FC = () => {
 
   // Get available reports based on user role
   const getAvailableReports = () => {
-    if (user?.role === 'admin') {
+    if (user?.role === "admin") {
       return [
         { id: 'class-overview', name: 'Class Overview Report', icon: BookOpen },
         // { id: 'attendance', name: 'Attendance Report', icon: Users },
@@ -1538,20 +1733,36 @@ const ReportsPage: React.FC = () => {
         { id: 'revenue-summary', name: 'Revenue Summary Report', icon: BarChart3 },
         { id: 'user-registration', name: 'User Registration & Approval Report', icon: FileText }
       ];
-    } else if (user?.role === 'teacher') {
+    } else if (user?.role === "teacher") {
       return [
-        { id: 'class-overview', name: 'Class Overview Report', icon: BookOpen },
-        { id: 'attendance', name: 'Attendance Report - Per Student', icon: Users },
-        { id: 'fee-collection', name: 'Fee Collection Report - Student Wise', icon: DollarSign },
-        { id: 'revenue-summary', name: 'Class-wise Revenue Summary', icon: BarChart3 },
-        { id: 'schedule-summary', name: 'Monthly Class Schedule Summary', icon: Calendar }
+        { id: "class-overview", name: "Class Overview Report", icon: BookOpen },
+        {
+          id: "attendance",
+          name: "Attendance Report - Per Student",
+          icon: Users,
+        },
+        {
+          id: "fee-collection",
+          name: "Fee Collection Report - Student Wise",
+          icon: DollarSign,
+        },
+        {
+          id: "revenue-summary",
+          name: "Class-wise Revenue Summary",
+          icon: BarChart3,
+        },
+        {
+          id: "schedule-summary",
+          name: "Monthly Class Schedule Summary",
+          icon: Calendar,
+        },
       ];
     }
 
     return [
-      { id: 'class-overview', name: 'Class Overview Report', icon: BookOpen },
-      { id: 'attendance', name: 'Attendance Report', icon: Users },
-      { id: 'fee-collection', name: 'Fee Collection Report', icon: DollarSign }
+      { id: "class-overview", name: "Class Overview Report", icon: BookOpen },
+      { id: "attendance", name: "Attendance Report", icon: Users },
+      { id: "fee-collection", name: "Fee Collection Report", icon: DollarSign },
     ];
   };
 
@@ -1562,8 +1773,12 @@ const ReportsPage: React.FC = () => {
       {/* Sidebar */}
       <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
         <div className="p-6 border-b border-gray-200">
-          <h2 className="text-xl font-bold text-gray-900">Reports & Analytics</h2>
-          <p className="text-sm text-gray-600 mt-1">Generate comprehensive reports</p>
+          <h2 className="text-xl font-bold text-gray-900">
+            Reports & Analytics
+          </h2>
+          <p className="text-sm text-gray-600 mt-1">
+            Generate comprehensive reports
+          </p>
         </div>
 
         {/* Report Types */}
@@ -1596,16 +1811,24 @@ const ReportsPage: React.FC = () => {
                 <Filter className="w-4 h-4" />
                 <span>Filters</span>
               </div>
-              {showFilters ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              {showFilters ? (
+                <ChevronUp className="w-4 h-4" />
+              ) : (
+                <ChevronDown className="w-4 h-4" />
+              )}
             </button>
 
             {showFilters && (
               <div className="mt-3 space-y-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Date Range</label>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Date Range
+                  </label>
                   <select
                     value={filters.dateRange}
-                    onChange={(e) => setFilters({ ...filters, dateRange: e.target.value })}
+                    onChange={(e) =>
+                      setFilters({ ...filters, dateRange: e.target.value })
+                    }
                     className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
                   >
                     <option value="week">This Week</option>
@@ -1616,40 +1839,52 @@ const ReportsPage: React.FC = () => {
                   </select>
                 </div>
 
-                {filters.dateRange === 'custom' && (
+                {filters.dateRange === "custom" && (
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">From</label>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        From
+                      </label>
                       <input
                         type="month"
                         value={filters.startDate}
-                        onChange={(e) => setFilters({ ...filters, startDate: e.target.value })}
+                        onChange={(e) =>
+                          setFilters({ ...filters, startDate: e.target.value })
+                        }
                         className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">To</label>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        To
+                      </label>
                       <input
                         type="month"
                         value={filters.endDate}
-                        onChange={(e) => setFilters({ ...filters, endDate: e.target.value })}
+                        onChange={(e) =>
+                          setFilters({ ...filters, endDate: e.target.value })
+                        }
                         className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
                       />
                     </div>
                   </div>
                 )}
 
-                {user?.role === 'admin' && (
+                {user?.role === "admin" && (
                   <>
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Location</label>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Location
+                      </label>
                       <select
                         value={filters.locationId}
-                        onChange={(e) => setFilters({ ...filters, locationId: e.target.value })}
+                        onChange={(e) =>
+                          setFilters({ ...filters, locationId: e.target.value })
+                        }
                         className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
                       >
                         <option value="all">All Locations</option>
-                        {locations.map(location => (
+                        {locations.map((location) => (
                           <option key={location.id} value={location.id}>
                             {location.name}
                           </option>
@@ -1658,14 +1893,18 @@ const ReportsPage: React.FC = () => {
                     </div>
 
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Teacher</label>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Teacher
+                      </label>
                       <select
                         value={filters.teacherId}
-                        onChange={(e) => setFilters({ ...filters, teacherId: e.target.value })}
+                        onChange={(e) =>
+                          setFilters({ ...filters, teacherId: e.target.value })
+                        }
                         className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
                       >
                         <option value="all">All Teachers</option>
-                        {teachers.map(teacher => (
+                        {teachers.map((teacher) => (
                           <option key={teacher.id} value={teacher.id}>
                             {teacher.firstName} {teacher.lastName}
                           </option>
@@ -1676,14 +1915,18 @@ const ReportsPage: React.FC = () => {
                 )}
 
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Class</label>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Class
+                  </label>
                   <select
                     value={filters.classId}
-                    onChange={(e) => setFilters({ ...filters, classId: e.target.value })}
+                    onChange={(e) =>
+                      setFilters({ ...filters, classId: e.target.value })
+                    }
                     className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
                   >
                     <option value="all">All Classes</option>
-                    {classes.map(classItem => (
+                    {classes.map((classItem) => (
                       <option key={classItem._id} value={classItem._id}>
                         {classItem.title}
                       </option>
@@ -1724,12 +1967,16 @@ const ReportsPage: React.FC = () => {
                   </>
                 )}
 
-                {selectedReport === 'fee-collection' && (
+                {selectedReport === "fee-collection" && (
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Payment Status</label>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Payment Status
+                    </label>
                     <select
                       value={filters.status}
-                      onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+                      onChange={(e) =>
+                        setFilters({ ...filters, status: e.target.value })
+                      }
                       className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
                     >
                       <option value="all">All Status</option>
@@ -1753,7 +2000,9 @@ const ReportsPage: React.FC = () => {
           <div className="bg-white border-b border-gray-200 px-6 py-4">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">{getReportTitle()}</h3>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {getReportTitle()}
+                </h3>
                 <p className="text-sm text-gray-600 mt-1">
                   Generated on {new Date().toLocaleDateString()}
                 </p>
@@ -1764,14 +2013,16 @@ const ReportsPage: React.FC = () => {
                   disabled={loading}
                   className="px-3 py-2 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-colors duration-200 flex items-center space-x-2 disabled:opacity-50"
                 >
-                  <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                  <RefreshCw
+                    className={`w-4 h-4 ${loading ? "animate-spin" : ""}`}
+                  />
                   <span>Refresh</span>
                 </button>
                 <button
                   onClick={() => {
                     switch (selectedReport) {
-                      case 'class-overview':
-                        exportReport(classOverviewData, 'class-overview');
+                      case "class-overview":
+                        exportReport(classOverviewData, "class-overview");
                         break;
                       // case 'attendance':
                       //   exportReport(attendanceData, 'attendance-report');
@@ -1779,8 +2030,8 @@ const ReportsPage: React.FC = () => {
                       case 'fee-collection':
                         exportReport(feeCollectionData, 'fee-collection');
                         break;
-                      case 'enrollment':
-                        exportReport(enrollmentData, 'enrollment-report');
+                      case "enrollment":
+                        exportReport(enrollmentData, "enrollment-report");
                         break;
                       case 'revenue-summary':
                         exportReport(locationRevenue, 'revenue-summary');
@@ -1788,8 +2039,8 @@ const ReportsPage: React.FC = () => {
                       case 'user-registration':
                         exportReport(userRegistrations, 'user-registration-report');
                         break;
-                      case 'schedule-summary':
-                        exportReport([], 'schedule-summary');
+                      case "schedule-summary":
+                        exportReport([], "schedule-summary");
                         break;
                     }
                   }}

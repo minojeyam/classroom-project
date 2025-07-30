@@ -17,7 +17,7 @@ const StudentBalanceView: React.FC = () => {
   const balanceStats = [
     {
       title: "Current Balance",
-      value: "₹0",
+      value: "LKR0",
       subtitle: "All fees paid",
       icon: DollarSign,
       color: "green",
@@ -25,7 +25,7 @@ const StudentBalanceView: React.FC = () => {
     },
     {
       title: "Next Payment",
-      value: "₹4,500",
+      value: "LKR4,500",
       subtitle: "Due April 1st",
       icon: Calendar,
       color: "blue",

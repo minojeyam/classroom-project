@@ -17,6 +17,8 @@ import {
 import { classesAPI } from "../../utils/api";
 import { useAuth } from "../../contexts/AuthContext";
 
+import { toast } from "react-toastify";
+
 interface Material {
   id: string;
   title: string;
@@ -79,7 +81,7 @@ const StudentMaterialsView: React.FC = () => {
         throw new Error(response.message || "Failed to fetch classes");
       }
     } catch (err: any) {
-      setError(err.message || "Failed to fetch classes");
+      toast.error(err.message || "Failed to fetch classes");
     } finally {
       setLoading(false);
     }
@@ -96,16 +98,15 @@ const StudentMaterialsView: React.FC = () => {
       }
     } catch (err: any) {
       if (err.response?.status === 401) {
-        setError("Session expired. Please log in again.");
-        handleUnauthorized && handleUnauthorized(); // Trigger logout or token refresh
+        toast.error("Session expired. Please log in again.");
+        handleUnauthorized && handleUnauthorized();
       } else {
-        setError(
+        toast.error(
           err.response?.data?.message ||
             err.message ||
             "Failed to fetch materials"
         );
       }
-      console.error("Fetch materials error:", err.response || err);
     } finally {
       setLoading(false);
     }
@@ -116,15 +117,12 @@ const StudentMaterialsView: React.FC = () => {
       if (material.type === "link" && material.url) {
         window.open(material.url, "_blank");
       } else if (material.url) {
-        // Trigger file download
         const link = document.createElement("a");
         link.href = material.url;
-        link.setAttribute("download", material.fileName || material.title); // Set download attribute
+        link.setAttribute("download", material.fileName || material.title);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-
-        // Update download count in the UI (optional)
         setMaterials((prev) =>
           prev.map((m) =>
             m.id === material.id
@@ -132,11 +130,12 @@ const StudentMaterialsView: React.FC = () => {
               : m
           )
         );
+        toast.success("Download started");
       } else {
         throw new Error("No URL available for download.");
       }
     } catch (err: any) {
-      setError(err.message || "Failed to download material");
+      toast.error(err.message || "Failed to download material");
     }
   };
 

@@ -16,6 +16,7 @@ import feeRoutes from "./routes/fees.js";
 import noticeRoutes from "./routes/notices.js";
 import materialRoutes from "./routes/material.js";
 import scheduleRoutes from "./routes/schedules.js";
+import teacherReportsRoutes from "./routes/teacher-reports.js";
 
 // Import middleware
 import { errorHandler } from "./middleware/errorHandler.js";
@@ -99,6 +100,7 @@ app.use("/api/fees", feeRoutes);
 app.use("/api/notices", noticeRoutes);
 app.use("/api/materials", materialRoutes);
 app.use("/api/schedules", scheduleRoutes);
+app.use("/api/reports", teacherReportsRoutes);
 
 // Root route handler
 app.get("/", (req, res) => {

@@ -108,8 +108,6 @@ const TeacherClassesPage: React.FC = () => {
   const fetchTeacherClasses = async () => {
     try {
       setLoading(true);
-      // const token = localStorage.getItem("accessToken") ?? undefined;
-
       // Fetch classes for the current teacher
       const response = await classesAPI.getClasses();
       if (response.status === "success") {

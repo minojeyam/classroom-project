@@ -10,7 +10,7 @@ import StudentDashboard from "./components/Dashboard/StudentDashboard";
 import ParentDashboard from "./components/Dashboard/ParentDashboard";
 import UsersPage from "./components/Pages/UsersPage";
 import PendingApprovalsPage from "./components/Pages/PendingApprovalsPage";
-import ComingSoonPage from "./components/Pages/ComingSoonPage";
+// import ComingSoonPage from "./components/Pages/ComingSoonPage";
 import LocationsPage from "./components/Pages/LocationsPage";
 import ClassesPage from "./components/Pages/ClassesPage";
 import TeacherClassesPage from "./components/Pages/TeacherClassesPage";
@@ -21,6 +21,7 @@ import AttendancePage from "./components/Pages/AttendancePage";
 import BalancePage from "./components/Pages/BalancePage";
 import MaterialsPage from "./components/Pages/MaterialsPage";
 import CalendarPage from "./components/Pages/CalenderPage";
+import TeacherReport from "./components/Pages/TeacherReportPage";
 
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -40,6 +41,7 @@ const pages = {
   "/teacher-classes": "My Classes",
   "/teacher-fees": "My Class Fees",
   "/balance": "Fees Summary",
+  "/teacher-reports": "TeacherReport",
 };
 
 const AppContent: React.FC = () => {
@@ -98,20 +100,8 @@ const AppContent: React.FC = () => {
         return <NoticeBoardPage />;
       case "/reports":
         return <ReportsPage />;
-      // case "/import":
-      //   return (
-      //     <ComingSoonPage
-      //       feature="Bulk Import/Export"
-      //       description="Import and export data in bulk using CSV files."
-      //     />
-      //   );
-      // case "/settings":
-      //   return (
-      //     <ComingSoonPage
-      //       feature="Settings"
-      //       description="Configure system settings, branding, and preferences."
-      //     />
-      //   );
+      case "/teacher-reports":
+        return <TeacherReport />;
       default:
         return renderDashboard();
     }

@@ -22,6 +22,8 @@ import DataTable from "../Common/DataTable";
 import { classesAPI, usersAPI } from "../../utils/api";
 import { useAuth } from "../../contexts/AuthContext";
 
+import { toast } from "react-toastify";
+
 interface Material {
   id: string;
   title: string;
@@ -95,32 +97,25 @@ const TeacherMaterialsView: React.FC = () => {
       setLoading(true);
       const token = JSON.parse(localStorage.getItem("user") || "{}")?.tokens
         ?.accessToken;
-      if (!token) throw new Error("No access token found");
-
       const response = await fetch(
         `http://localhost:5000/api/classes?teacher=${user?.id}&status=active`,
         {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { Authorization: `Bearer ${token}` },
         }
       );
-
       const result = await response.json();
-
       if (result.status === "success") {
         setClasses(result.data.classes || []);
       } else {
-        throw new Error(result.message || "Failed to fetch classes");
+        throw new Error(result.message);
       }
-    } catch (err: any) {
-      setError(err.message || "Failed to fetch classes");
+    } catch (err) {
+      toast.error(err.message || "Failed to fetch classes");
     } finally {
       setLoading(false);
     }
   };
 
-  // const fetchMaterials = async () => {
   //   try {
   //     setLoading(true);
   //     const token = JSON.parse(localStorage.getItem("user") || "{}")?.tokens
@@ -148,45 +143,29 @@ const TeacherMaterialsView: React.FC = () => {
       setLoading(true);
       const token = JSON.parse(localStorage.getItem("user") || "{}")?.tokens
         ?.accessToken;
-      if (!token) throw new Error("No access token found");
-
       const response = await fetch("http://localhost:5000/api/materials", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
-
       const result = await response.json();
-
       if (result.status === "success") {
-        const normalizedMaterials = (result.data.materials || []).map(
-          (mat: any) => ({
-            ...mat,
-            id: mat._id,
-          })
+        setMaterials(
+          result.data.materials.map((mat) => ({ ...mat, id: mat._id }))
         );
-
-        setMaterials(normalizedMaterials);
       } else {
-        throw new Error(result.message || "Failed to fetch materials");
+        throw new Error(result.message);
       }
-    } catch (err: any) {
-      setError(err.message || "Failed to fetch materials");
+    } catch (err) {
+      toast.error(err.message || "Failed to fetch materials");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
-
     const token = JSON.parse(localStorage.getItem("user") || "{}")?.tokens
       ?.accessToken;
-    if (!token) {
-      setError("No access token found. Please log in again.");
-      return;
-    }
+    if (!token) return toast.error("Please login again.");
 
     const form = new FormData();
     form.append("title", formData.title);
@@ -195,53 +174,38 @@ const TeacherMaterialsView: React.FC = () => {
     form.append("classId", formData.classId);
     form.append("isVisible", String(formData.isVisible));
 
-    if (formData.type === "link") {
-      form.append("url", formData.url);
-    } else if (formData.file) {
-      form.append("file", formData.file);
-    }
+    if (formData.type === "link") form.append("url", formData.url);
+    else if (formData.file) form.append("file", formData.file);
 
     try {
       const isEdit = isEditMode && selectedMaterial;
       const url = isEdit
-        ? `http://localhost:5000/api/materials/${selectedMaterial?.id}`
+        ? `http://localhost:5000/api/materials/${selectedMaterial.id}`
         : "http://localhost:5000/api/materials";
       const method = isEdit ? "PUT" : "POST";
-
       const res = await fetch(url, {
         method,
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
         body: form,
       });
-
       const result = await res.json();
-
       if (result.status === "success") {
         const updated = {
           ...result.data.material,
-          id: result.data.material._id, // Normalize ID for UI
-          className:
-            classes.find((c) => c._id === result.data.material.classId)
-              ?.title || "",
+          id: result.data.material._id,
         };
-
-        if (isEdit) {
-          setMaterials((prev) =>
-            prev.map((m) => (m.id === updated.id ? updated : m))
-          );
-        } else {
-          setMaterials((prev) => [...prev, updated]);
-        }
-
+        setMaterials((prev) =>
+          isEdit
+            ? prev.map((m) => (m.id === updated.id ? updated : m))
+            : [...prev, updated]
+        );
+        toast.success(isEdit ? "Material updated" : "Material uploaded");
         handleCloseModal();
       } else {
-        setError(result.message || "Upload failed");
+        toast.error(result.message || "Upload failed");
       }
-    } catch (err: any) {
-      console.error("Upload error:", err);
-      setError("Failed to upload material.");
+    } catch (err) {
+      toast.error("Failed to upload material");
     }
   };
 
@@ -260,27 +224,27 @@ const TeacherMaterialsView: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this material?")) {
       try {
-        // Mock API call
         await new Promise((resolve) => setTimeout(resolve, 500));
         setMaterials((prev) => prev.filter((m) => m.id !== id));
-      } catch (err: any) {
-        setError(err.message || "Failed to delete material");
+        toast.success("Material deleted successfully");
+      } catch (err) {
+        toast.error("Failed to delete material");
       }
     }
   };
 
-  const handleToggleVisibility = async (id: string) => {
+  const handleToggleVisibility = async (id) => {
     try {
-      // Mock API call
       await new Promise((resolve) => setTimeout(resolve, 500));
       setMaterials((prev) =>
         prev.map((m) => (m.id === id ? { ...m, isVisible: !m.isVisible } : m))
       );
-    } catch (err: any) {
-      setError(err.message || "Failed to update visibility");
+      toast.success("Visibility updated");
+    } catch (err) {
+      toast.error("Failed to update visibility");
     }
   };
 
