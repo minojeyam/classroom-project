@@ -37,3 +37,5 @@ const ComingSoonPage: React.FC<ComingSoonPageProps> = ({ feature, description })
 };
 
 export default ComingSoonPage;
+
+

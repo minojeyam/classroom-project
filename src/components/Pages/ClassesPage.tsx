@@ -156,7 +156,7 @@ const handleDeleteClick = (id: string) => {
         const [classesResponse, locationsResponse, usersResponse] =
           await Promise.all([
             classesAPI.getClasses({}, token),
-            locationsAPI.getLocations(token),
+            locationsAPI.getLocations({},token),
             usersAPI.getUsers({ role: "teacher" }, token),
           ]);
 
@@ -197,7 +197,7 @@ const handleDeleteClick = (id: string) => {
       const [classesResponse, locationsResponse, usersResponse] =
         await Promise.all([
           classesAPI.getClasses({}, token),
-          locationsAPI.getLocations(token),
+          locationsAPI.getLocations({},token),
           usersAPI.getUsers({ role: "teacher" }, token),
         ]);
 
@@ -319,7 +319,7 @@ const handleDeleteClick = (id: string) => {
       const [classesResponse, locationsResponse, usersResponse] =
         await Promise.all([
           classesAPI.getClasses({}, token),
-          locationsAPI.getLocations(token),
+          locationsAPI.getLocations({},token),
           usersAPI.getUsers({ role: "teacher" }, token),
         ]);
 

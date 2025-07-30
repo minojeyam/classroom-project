@@ -19,6 +19,30 @@ router.get("/", auth, async (req, res) => {
   }
 });
 
+
+// GET upcoming notices
+router.get("/upcoming", auth, async (req, res) => {
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // start of today
+
+    const upcomingNotices = await Notice.find({
+      date: { $gte: today }   // only future or today's events
+    }).sort({ date: 1 });     // sort earliest first
+
+    res.json({
+      status: "success",
+      data: { notices: upcomingNotices },
+    });
+  } catch (error) {
+    console.error("Fetch upcoming notices error:", error);
+    res
+      .status(500)
+      .json({ status: "error", message: "Failed to fetch upcoming notices" });
+  }
+});
+
+
 // POST create new notice
 router.post(
   "/",

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, ComponentState } from "react";
 import {
   Plus,
   Edit,
@@ -18,22 +18,28 @@ import {
 import DataTable from "../Common/DataTable";
 import Modal from "../Common/Modal";
 import { useAuth } from "../../contexts/AuthContext";
+import { classesAPI, feesAPI, locationsAPI } from "../../utils/api";
+import { toast } from "react-toastify";
+import ConfirmModal from "../Common/ConfirmModal";
+import axios from "axios";
+
 
 interface FeeStructure {
+  value: any;
   id: string;
   name: string;
   description: string;
   amount: number;
   currency: string;
-  frequency: "monthly" | "semester" | "annual" | "one-time";
+  frequency: "monthly" | "semester" | "annual" | "one-time" | undefined;
   category:
-    | "tuition"
-    | "lab"
-    | "library"
-    | "sports"
-    | "transport"
-    | "exam"
-    | "other";
+  | "tuition"
+  | "lab"
+  | "library"
+  | "sports"
+  | "transport"
+  | "exam"
+  | "other" | undefined;
   applicableClasses: string[];
   status: "active" | "inactive";
   createdAt: string;
@@ -96,8 +102,15 @@ interface StudentPaymentDetail {
   paymentMethod?: string;
 }
 
-const FeesPage: React.FC = () => {
-  const { user } = useAuth();
+interface FeeStructureActionsProps {
+  fee: FeeStructure;
+  onDeleted: () => void; // callback to refresh data after deletion
+  onEdit: (fee: FeeStructure) => void; // callback to open edit modal
+}
+
+const FeesPage: React.FC<FeeStructureActionsProps> = () => {
+
+  useAuth();
   const [activeTab, setActiveTab] = useState("location-overview");
   const [feeStructures, setFeeStructures] = useState<FeeStructure[]>([]);
   const [studentFees, setStudentFees] = useState<StudentFee[]>([]);
@@ -105,261 +118,164 @@ const FeesPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalType, setModalType] = useState<
-    | "fee-structure"
-    | "payment"
-    | "bulk-assign"
-    | "class-details"
-    | "student-payments"
-  >("fee-structure");
+  const [modalType, setModalType] = useState<| "fee-structure" | "edit-fee-structure" | "payment" | "bulk-assign" | "class-details" | "student-payments">("fee-structure");
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [selectedClass, setSelectedClass] = useState<ClassRevenue | null>(null);
-  const [selectedLocation, setSelectedLocation] =
-    useState<LocationRevenue | null>(null);
-  const [formData, setFormData] = useState({
+  const [selectedLocation, setSelectedLocation] = useState<LocationRevenue | null>(null);
+  const [formData, setFormData] = useState<Partial<FeeStructure>>({
+    id: "",
     name: "",
     description: "",
     amount: 0,
     currency: "USD",
-    frequency: "monthly",
-    category: "tuition",
+    frequency: "monthly" as const,
+    category: "tuition" as const, 
     applicableClasses: [],
     status: "active",
   });
 
-  // Filter states
-  const [selectedPeriod, setSelectedPeriod] = useState("current-month");
+
+
+  const [selectedFee, setSelectedFee] = useState<FeeStructure | null>(null);
+  const [deleteState, setDeleteState] = useState<{
+    isOpen: boolean;
+    id: string | null;
+  }>({
+    isOpen: false,
+    id: null,
+  });
+
+  // Get Location
+  const [locations, setLocations] = useState<{ id: string; name: string }[]>([]);
   const [selectedLocationFilter, setSelectedLocationFilter] = useState("all");
+  const [selectedFeeStructure, setSelectedFeeStructure] = useState("");
+  const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
+  const [dueDate, setDueDate] = useState("");
+  const [classes, setClasses] = useState<{ id: string; name: string }[]>([]);
+
+
+  const fetchLocations = async () => {
+    try {
+      const token = localStorage.getItem("accessToken") ?? undefined;
+      const response = await locationsAPI.getLocations({}, token);
+
+      // Extract only id and name
+      const locationList = response.data.locations.map((loc: any) => ({
+        id: loc._id,
+        name: loc.name,
+      }));
+
+      setLocations(locationList);
+    } catch (error) {
+      console.error("Error fetching locations:", error);
+    }
+  };
+
+  // get Classes
+  const fetchClasses = async () => {
+    try {
+      const token = localStorage.getItem("accessToken") ?? undefined;
+      const response = await classesAPI.getClasses({}, token);
+      const classList = response.data.classes.map((cls: any) => ({
+        id: cls._id,
+        name: cls.title,
+      }));
+      setClasses(classList);
+    } catch (error) {
+      console.error("Error fetching classes:", error);
+    }
+  };
 
   useEffect(() => {
     fetchData();
+    fetchLocations();
+    fetchClasses();
   }, []);
+
+
 
   const fetchData = async () => {
     try {
       setLoading(true);
-      // Mock data - replace with actual API calls
-      const mockFeeStructures: FeeStructure[] = [
-        {
-          id: "1",
-          name: "Monthly Tuition Fee",
-          description: "Regular monthly tuition fee for all students",
-          amount: 4500,
-          currency: "INR",
-          frequency: "monthly",
-          category: "tuition",
-          applicableClasses: ["1", "2", "3"],
-          status: "active",
-          createdAt: "2024-01-01T00:00:00.000Z",
-        },
-        {
-          id: "2",
-          name: "Laboratory Fee",
-          description: "Fee for laboratory equipment and materials",
-          amount: 750,
-          currency: "INR",
-          frequency: "semester",
-          category: "lab",
-          applicableClasses: ["2", "3"],
-          status: "active",
-          createdAt: "2024-01-01T00:00:00.000Z",
-        },
-        {
-          id: "3",
-          name: "Annual Sports Fee",
-          description: "Fee for sports activities and equipment",
-          amount: 1200,
-          currency: "INR",
-          frequency: "annual",
-          category: "sports",
-          applicableClasses: ["1", "2", "3"],
-          status: "active",
-          createdAt: "2024-01-01T00:00:00.000Z",
-        },
-      ];
 
-      const mockStudentFees: StudentFee[] = [
-        {
-          id: "1",
-          studentId: "3",
-          studentName: "Alice Johnson",
-          className: "Advanced Mathematics",
-          feeStructureId: "1",
-          feeName: "Monthly Tuition Fee",
-          amount: 4500,
-          dueDate: "2024-04-01",
-          status: "paid",
-          paidAmount: 4500,
-          paidDate: "2024-03-28",
-          paymentMethod: "Card",
-        },
-        {
-          id: "2",
-          studentId: "4",
-          studentName: "Bob Smith",
-          className: "Physics Fundamentals",
-          feeStructureId: "1",
-          feeName: "Monthly Tuition Fee",
-          amount: 4500,
-          dueDate: "2024-04-01",
-          status: "pending",
-          paidAmount: 0,
-        },
-        {
-          id: "3",
-          studentId: "5",
-          studentName: "Carol Davis",
-          className: "Chemistry Lab",
-          feeStructureId: "2",
-          feeName: "Laboratory Fee",
-          amount: 750,
-          dueDate: "2024-03-15",
-          status: "overdue",
-          paidAmount: 0,
-        },
-        {
-          id: "4",
-          studentId: "6",
-          studentName: "David Wilson",
-          className: "Advanced Mathematics",
-          feeStructureId: "1",
-          feeName: "Monthly Tuition Fee",
-          amount: 4500,
-          dueDate: "2024-04-01",
-          status: "partial",
-          paidAmount: 2000,
-          paidDate: "2024-03-25",
-          paymentMethod: "Cash",
-        },
-      ];
+      const token = localStorage.getItem("token") || undefined;
 
-      // Mock location revenue data
-      const mockLocationRevenue: LocationRevenue[] = [
-        {
-          locationId: "1",
-          locationName: "Nelliyadi Campus",
-          totalClasses: 8,
-          totalStudents: 156,
-          monthlyRevenue: 702000,
-          receivedAmount: 658800,
-          pendingAmount: 43200,
-          collectionRate: 93.8,
-          classes: [
-            {
-              classId: "1",
-              className: "Advanced Mathematics",
-              subject: "Mathematics",
-              level: "Grade 10",
-              teacherName: "Teacher User",
-              studentCount: 25,
-              monthlyFee: 4500,
-              totalRevenue: 112500,
-              receivedAmount: 108000,
-              pendingAmount: 4500,
-              collectionRate: 96.0,
-              students: [
-                {
-                  studentId: "5",
-                  studentName: "Alice Johnson",
-                  email: "alice.johnson@student.com",
-                  phoneNumber: "+94 77 234 5678",
-                  parentEmail: "parent.alice@email.com",
-                  monthlyFee: 4500,
-                  paidAmount: 4500,
-                  pendingAmount: 0,
-                  lastPaymentDate: "2024-03-01",
-                  paymentStatus: "paid",
-                  paymentMethod: "Card",
-                },
-                {
-                  studentId: "7",
-                  studentName: "Carol Davis",
-                  email: "carol.davis@student.com",
-                  phoneNumber: "+94 77 456 7890",
-                  parentEmail: "parent.carol@email.com",
-                  monthlyFee: 4500,
-                  paidAmount: 0,
-                  pendingAmount: 4500,
-                  paymentStatus: "pending",
-                  paymentMethod: undefined,
-                },
-              ],
-            },
-            {
-              classId: "3",
-              className: "Chemistry Lab",
-              subject: "Chemistry",
-              level: "Grade 11",
-              teacherName: "Teacher User",
-              studentCount: 18,
-              monthlyFee: 6000,
-              totalRevenue: 108000,
-              receivedAmount: 102000,
-              pendingAmount: 6000,
-              collectionRate: 94.4,
-              students: [
-                {
-                  studentId: "9",
-                  studentName: "Emma Brown",
-                  email: "emma.brown@student.com",
-                  phoneNumber: "+94 77 678 9012",
-                  parentEmail: "parent.emma@email.com",
-                  monthlyFee: 6000,
-                  paidAmount: 6000,
-                  pendingAmount: 0,
-                  lastPaymentDate: "2024-03-02",
-                  paymentStatus: "paid",
-                  paymentMethod: "Bank Transfer",
-                },
-              ],
-            },
-          ],
-        },
-        {
-          locationId: "2",
-          locationName: "Chavakacheri Campus",
-          totalClasses: 6,
-          totalStudents: 124,
-          monthlyRevenue: 558000,
-          receivedAmount: 520200,
-          pendingAmount: 37800,
-          collectionRate: 93.2,
-          classes: [
-            {
-              classId: "2",
-              className: "Physics Fundamentals",
-              subject: "Physics",
-              level: "Grade 9",
-              teacherName: "Teacher User",
-              studentCount: 22,
-              monthlyFee: 5200,
-              totalRevenue: 114400,
-              receivedAmount: 109200,
-              pendingAmount: 5200,
-              collectionRate: 95.5,
-              students: [
-                {
-                  studentId: "6",
-                  studentName: "Bob Smith",
-                  email: "bob.smith@student.com",
-                  phoneNumber: "+94 77 345 6789",
-                  parentEmail: "parent.bob@email.com",
-                  monthlyFee: 5200,
-                  paidAmount: 2600,
-                  pendingAmount: 2600,
-                  lastPaymentDate: "2024-02-28",
-                  paymentStatus: "partial",
-                  paymentMethod: "Cash",
-                },
-              ],
-            },
-          ],
-        },
-      ];
+      // ---- 1) Fetch Fee Structures ----
+      const feeResponse = await feesAPI.getStructures(token);
+      if (feeResponse.status !== "success") {
+        throw new Error(feeResponse.message || "Failed to fetch fee structures");
+      }
+      const mappedStructures: FeeStructure[] = feeResponse.data.map((item: any) => ({
+        id: item._id,
+        name: item.name,
+        description: item.description,
+        amount: item.amount,
+        currency: item.currency,
+        frequency: item.frequency,
+        category: item.category,
+        applicableClasses: item.applicableClasses?.map((cls: any) => cls.title),
+        status: item.status,
+        createdAt: item.createdAt,
+      }));
+      setFeeStructures(mappedStructures);
 
-      setFeeStructures(mockFeeStructures);
-      setStudentFees(mockStudentFees);
-      setLocationRevenue(mockLocationRevenue);
+      console.log(mappedStructures, "fee items")
+
+      // ---- 2) Fetch Student Fees ----
+      const studentFeeResponse = await feesAPI.getStudentFees(token);
+      if (studentFeeResponse.status !== "success") {
+        throw new Error(studentFeeResponse.message || "Failed to fetch student fees");
+      }
+      const mappedStudentFees: StudentFee[] = studentFeeResponse.data.map((item: any) => ({
+        id: item._id,
+        studentId: item.studentId?._id,
+        studentName: item.studentId?.name,
+        className: item.studentId?.className,
+        feeStructureId: item.feeStructureId?._id,
+        feeName: item.feeStructureId?.name,
+        amount: item.amount ?? item.feeStructureId?.amount,
+        dueDate: item.dueDate,
+        status: item.status,
+        paidAmount: item.paidAmount,
+        paidDate: item.paidDate,
+        paymentMethod: item.paymentMethod,
+        notes: item.notes,
+      }));
+      setStudentFees(mappedStudentFees);
+
+      // ---- 3) Fetch Location Revenue ----
+      const locationResponse = await feesAPI.getLocationFromClasses(token);
+      if (locationResponse.status !== "success") {
+        throw new Error(locationResponse.message || "Failed to fetch location revenue");
+      }
+      const mappedLocationRevenue: LocationRevenue[] = locationResponse.data.locations.map(
+        (loc: any) => ({
+          locationId: loc.location,
+          locationName: loc.location,
+          totalClasses: loc.totalClasses,
+          totalStudents: 0, // <-- No student count in API response (you can extend API if needed)
+          monthlyRevenue: loc.totalFee,
+          receivedAmount: loc.totalFee, // assuming full collected (adjust logic as needed)
+          pendingAmount: 0, // no pending info in API
+          collectionRate: 100, // no breakdown in API → default 100%
+          classes: loc.classes.map((cls: any) => ({
+            classId: cls.classId,
+            className: cls.title,
+            subject: "", // no subject in API
+            level: "", // no level in API
+            teacherName: "", // no teacher in API
+            studentCount: 0, // not provided
+            monthlyFee: cls.feeTotal,
+            totalRevenue: cls.feeTotal,
+            receivedAmount: cls.feeTotal,
+            pendingAmount: 0,
+            collectionRate: 100,
+            students: [], // no detailed students in API response
+          })),
+        })
+      );
+      setLocationRevenue(mappedLocationRevenue);
+
     } catch (err: any) {
       setError(err.message || "Failed to fetch data");
     } finally {
@@ -367,17 +283,95 @@ const FeesPage: React.FC = () => {
     }
   };
 
+  const handleOpenDelete = (id: string) => {
+    console.log("Deleting Fee Structure ID:", id);  // <-- print ID
+    setDeleteState({ isOpen: true, id });
+  };
+
+
+  const handleDelete = async () => {
+    if (!deleteState.id) {
+      toast.error("Invalid Fee ID");
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem("token") || undefined;
+      console.log("Deleting Fee Structure ID:", deleteState.id);
+
+      await feesAPI.deleteStructure(deleteState.id, token);
+
+      toast.success("Fee structure deleted successfully");
+      setDeleteState({ isOpen: false, id: null });
+
+      await fetchData(); // <-- directly refresh after delete
+    } catch (error: any) {
+      console.error("Delete error:", error);
+      toast.error(error.message || "Failed to delete fee structure");
+    }
+  };
+
+
+  const handleBulkAssign = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!selectedFeeStructure) {
+      toast.error("Please select a fee structure");
+      return;
+    }
+    if (selectedClasses.length === 0) {
+      toast.error("Please select at least one class");
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem("accessToken") ?? undefined;
+      await axios.post(
+        `/api/fees/structures/${selectedFeeStructure}/bulk-assign`,
+        {
+          classIds: selectedClasses,
+          dueDate,
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      toast.success("Fee assigned successfully");
+      handleCloseModal();
+
+      // reset form
+      setSelectedClasses([]);
+      setSelectedFeeStructure("");
+      setDueDate("");
+    } catch (error) {
+      console.error("Bulk assign error:", error);
+      toast.error("Failed to assign fee");
+    }
+  };
+
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      // Mock API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const token = localStorage.getItem("token") || undefined;
+      const response = await feesAPI.createStructure(formData, token);
+
+      if (response.status !== "success") {
+        throw new Error(response.message || "Failed to save fee structure");
+      }
+
+      toast.success("Fee structure created successfully!");
+
       await fetchData();
       handleCloseModal();
     } catch (err: any) {
+      toast.error(err.message || "Failed to save fee structure"); // optional error toast
       setError(err.message || "Failed to save fee structure");
     }
   };
+
+
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
@@ -451,15 +445,14 @@ const FeesPage: React.FC = () => {
       sortable: true,
       render: (value: string) => (
         <span
-          className={`px-2 py-1 rounded-full text-xs font-medium ${
-            value === "monthly"
-              ? "bg-blue-100 text-blue-800"
-              : value === "semester"
+          className={`px-2 py-1 rounded-full text-xs font-medium ${value === "monthly"
+            ? "bg-blue-100 text-blue-800"
+            : value === "semester"
               ? "bg-green-100 text-green-800"
               : value === "annual"
-              ? "bg-purple-100 text-purple-800"
-              : "bg-gray-100 text-gray-800"
-          }`}
+                ? "bg-purple-100 text-purple-800"
+                : "bg-gray-100 text-gray-800"
+            }`}
         >
           {value.charAt(0).toUpperCase() + value.slice(1)}
         </span>
@@ -479,11 +472,10 @@ const FeesPage: React.FC = () => {
       sortable: true,
       render: (value: string) => (
         <span
-          className={`px-2 py-1 rounded-full text-xs font-medium ${
-            value === "active"
-              ? "bg-green-100 text-green-800"
-              : "bg-gray-100 text-gray-800"
-          }`}
+          className={`px-2 py-1 rounded-full text-xs font-medium ${value === "active"
+            ? "bg-green-100 text-green-800"
+            : "bg-gray-100 text-gray-800"
+            }`}
         >
           {value.charAt(0).toUpperCase() + value.slice(1)}
         </span>
@@ -494,10 +486,18 @@ const FeesPage: React.FC = () => {
       label: "Actions",
       render: (value: any, row: FeeStructure) => (
         <div className="flex items-center space-x-2">
-          <button className="text-blue-600 hover:text-blue-800 transition-colors duration-200">
+          <button className="text-blue-600 hover:text-blue-800 transition-colors duration-200"
+            onClick={() => {
+              setSelectedFee(row);
+              setFormData(row);           // prefill
+              setModalType("edit-fee-structure");
+              setIsModalOpen(true);
+            }}>
             <Edit className="w-4 h-4" />
           </button>
-          <button className="text-red-600 hover:text-red-800 transition-colors duration-200">
+          <button className="text-red-600 hover:text-red-800 transition-colors duration-200"
+            onClick={() => handleOpenDelete(row?.id)}
+          >
             <Trash2 className="w-4 h-4" />
           </button>
         </div>
@@ -547,15 +547,14 @@ const FeesPage: React.FC = () => {
       sortable: true,
       render: (value: string) => (
         <span
-          className={`px-2 py-1 rounded-full text-xs font-medium ${
-            value === "paid"
-              ? "bg-green-100 text-green-800"
-              : value === "pending"
+          className={`px-2 py-1 rounded-full text-xs font-medium ${value === "paid"
+            ? "bg-green-100 text-green-800"
+            : value === "pending"
               ? "bg-yellow-100 text-yellow-800"
               : value === "overdue"
-              ? "bg-red-100 text-red-800"
-              : "bg-orange-100 text-orange-800"
-          }`}
+                ? "bg-red-100 text-red-800"
+                : "bg-orange-100 text-orange-800"
+            }`}
         >
           {value.charAt(0).toUpperCase() + value.slice(1)}
         </span>
@@ -609,7 +608,7 @@ const FeesPage: React.FC = () => {
     overallCollectionRate:
       locationRevenue.length > 0
         ? locationRevenue.reduce((sum, loc) => sum + loc.collectionRate, 0) /
-          locationRevenue.length
+        locationRevenue.length
         : 0,
   };
 
@@ -634,7 +633,7 @@ const FeesPage: React.FC = () => {
           </p>
         </div>
         <div className="flex items-center space-x-3">
-          <select
+          {/* <select
             value={selectedPeriod}
             onChange={(e) => setSelectedPeriod(e.target.value)}
             className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
@@ -645,14 +644,16 @@ const FeesPage: React.FC = () => {
             <option value="last-quarter">Last Quarter</option>
           </select>
           <select
-            value={selectedLocationFilter}
-            onChange={(e) => setSelectedLocationFilter(e.target.value)}
+            
             className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
           >
             <option value="all">All Locations</option>
-            <option value="1">Nelliyadi Campus</option>
-            <option value="2">Chavakacheri Campus</option>
-          </select>
+            {locations.map((loc) => (
+              <option key={loc.id} value={loc.id}>
+                {loc.name}
+              </option>
+            ))}
+          </select> */}
           <button
             onClick={() => {
               setModalType("bulk-assign");
@@ -773,31 +774,28 @@ const FeesPage: React.FC = () => {
           <nav className="flex space-x-8 px-6">
             <button
               onClick={() => setActiveTab("location-overview")}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === "location-overview"
-                  ? "border-teal-500 text-teal-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700"
-              }`}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === "location-overview"
+                ? "border-teal-500 text-teal-600"
+                : "border-transparent text-gray-500 hover:text-gray-700"
+                }`}
             >
               Location Overview
             </button>
             <button
               onClick={() => setActiveTab("structures")}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === "structures"
-                  ? "border-teal-500 text-teal-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700"
-              }`}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === "structures"
+                ? "border-teal-500 text-teal-600"
+                : "border-transparent text-gray-500 hover:text-gray-700"
+                }`}
             >
               Fee Structures
             </button>
             <button
               onClick={() => setActiveTab("payments")}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === "payments"
-                  ? "border-teal-500 text-teal-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700"
-              }`}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === "payments"
+                ? "border-teal-500 text-teal-600"
+                : "border-transparent text-gray-500 hover:text-gray-700"
+                }`}
             >
               Student Payments
             </button>
@@ -974,13 +972,15 @@ const FeesPage: React.FC = () => {
         title={
           modalType === "fee-structure"
             ? "Add Fee Structure"
-            : modalType === "payment"
-            ? "Record Payment"
-            : modalType === "bulk-assign"
-            ? "Bulk Assign Fees"
-            : modalType === "class-details"
-            ? `Class Details - ${selectedClass?.className}`
-            : "Student Payment Details"
+            : modalType === "edit-fee-structure"
+              ? `Edit Fee Structure - ${selectedFee?.name ?? ""}`
+              : modalType === "payment"
+                ? "Record Payment"
+                : modalType === "bulk-assign"
+                  ? "Bulk Assign Fees"
+                  : modalType === "class-details"
+                    ? `Class Details - ${selectedClass?.className}`
+                    : "Student Payment Details"
         }
         size={
           modalType === "class-details" || modalType === "student-payments"
@@ -1262,7 +1262,7 @@ const FeesPage: React.FC = () => {
                 <select
                   value={formData.category}
                   onChange={(e) =>
-                    setFormData({ ...formData, category: e.target.value })
+                    setFormData({ ...formData, category: e.target.value as FeeStructure["category"],})
                   }
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
                 >
@@ -1336,7 +1336,7 @@ const FeesPage: React.FC = () => {
                 <select
                   value={formData.frequency}
                   onChange={(e) =>
-                    setFormData({ ...formData, frequency: e.target.value })
+                    setFormData({ ...formData, frequency: e.target.value as FeeStructure["frequency"],})
                   }
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
                 >
@@ -1365,6 +1365,165 @@ const FeesPage: React.FC = () => {
             </div>
           </form>
         )}
+
+        {modalType === "edit-fee-structure" && (
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              try {
+                const token = localStorage.getItem("accessToken") ?? undefined;
+
+                const payload = {
+                  name: formData.name,
+                  description: formData.description,
+                  amount: formData.amount,
+                  currency: formData.currency,
+                  frequency: formData.frequency as "monthly" | "semester" | "annual" | "one-time",
+                  category: formData.category,
+                  applicableClasses: formData.applicableClasses,
+                  status: formData.status,
+                };
+
+                await feesAPI.updateStructure(formData.id, payload, token);
+                toast.success("Fee structure updated successfully");
+                await fetchData();
+                handleCloseModal();
+              } catch (error) {
+                console.error("Error updating fee structure:", error);
+                alert("Failed to update fee structure");
+              }
+            }}
+            className="space-y-4"
+          >
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Fee Name
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Category
+                </label>
+                <select
+                  value={formData.category}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      category: e.target.value as FeeStructure["category"],
+                    })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
+                >
+                  <option value="tuition">Tuition</option>
+                  <option value="lab">Laboratory</option>
+                  <option value="library">Library</option>
+                  <option value="sports">Sports</option>
+                  <option value="transport">Transport</option>
+                  <option value="exam">Examination</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Description
+              </label>
+              <textarea
+                value={formData.description}
+                onChange={(e) =>
+                  setFormData({ ...formData, description: e.target.value })
+                }
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Amount
+                </label>
+                <input
+                  type="number"
+                  required
+                  min="0"
+                  step="0.01"
+                  value={formData.amount}
+                  onChange={(e) =>
+                    setFormData({ ...formData, amount: parseFloat(e.target.value) })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Currency
+                </label>
+                <select
+                  value={formData.currency}
+                  onChange={(e) =>
+                    setFormData({ ...formData, currency: e.target.value })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
+                >
+                  <option value="LKR">LKR (Sri Lankan Rupee)</option>
+                  <option value="USD">USD</option>
+                  <option value="EUR">EUR</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Frequency
+                </label>
+                <select
+                  value={formData.frequency}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      frequency: e.target.value as
+                        | "monthly"
+                        | "semester"
+                        | "annual"
+                        | "one-time",
+                    })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
+                >
+                  <option value="monthly">Monthly</option>
+                  <option value="semester">Semester</option>
+                  <option value="annual">Annual</option>
+                  <option value="one-time">One-time</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end space-x-3 pt-4">
+              <button
+                type="button"
+                onClick={handleCloseModal}
+                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors duration-200"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700 transition-colors duration-200"
+              >
+                Update Fee Structure
+              </button>
+            </div>
+          </form>
+        )}
+
 
         {modalType === "payment" && selectedItem && (
           <div className="space-y-4">
@@ -1451,12 +1610,18 @@ const FeesPage: React.FC = () => {
         )}
 
         {modalType === "bulk-assign" && (
-          <div className="space-y-4">
+          <form onSubmit={handleBulkAssign} className="space-y-4">
+            {/* Select Fee Structure */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Select Fee Structure
               </label>
-              <select className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500">
+              <select
+                value={selectedFeeStructure}
+                onChange={(e) => setSelectedFeeStructure(e.target.value)}
+                required
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
+              >
                 <option value="">Choose fee structure</option>
                 {feeStructures.map((fee) => (
                   <option key={fee.id} value={fee.id}>
@@ -1466,37 +1631,49 @@ const FeesPage: React.FC = () => {
               </select>
             </div>
 
+            {/* Select Classes */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Select Classes
               </label>
               <div className="space-y-2 max-h-40 overflow-y-auto border border-gray-300 rounded-md p-3">
-                <label className="flex items-center">
-                  <input type="checkbox" className="mr-2" />
-                  <span className="text-sm">Advanced Mathematics</span>
-                </label>
-                <label className="flex items-center">
-                  <input type="checkbox" className="mr-2" />
-                  <span className="text-sm">Physics Fundamentals</span>
-                </label>
-                <label className="flex items-center">
-                  <input type="checkbox" className="mr-2" />
-                  <span className="text-sm">Chemistry Lab</span>
-                </label>
+                {classes.map((cls) => (
+                  <label key={cls.id} className="flex items-center">
+                    <input
+                      type="checkbox"
+                      className="mr-2"
+                      checked={selectedClasses.includes(cls.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedClasses([...selectedClasses, cls.id]);
+                        } else {
+                          setSelectedClasses(
+                            selectedClasses.filter((id) => id !== cls.id)
+                          );
+                        }
+                      }}
+                    />
+                    <span className="text-sm">{cls.name}</span>
+                  </label>
+                ))}
               </div>
             </div>
 
+            {/* Due Date */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Due Date
               </label>
               <input
                 type="date"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
                 required
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
               />
             </div>
 
+            {/* Action Buttons */}
             <div className="flex items-center justify-end space-x-3 pt-4">
               <button
                 type="button"
@@ -1512,9 +1689,24 @@ const FeesPage: React.FC = () => {
                 Assign Fees
               </button>
             </div>
-          </div>
+          </form>
         )}
+
+
+
       </Modal>
+
+      {/* Confirmation Modal */}
+      <ConfirmModal
+        isOpen={deleteState.isOpen}
+        onClose={() => setDeleteState({ isOpen: false, id: null })}
+        onConfirm={handleDelete}
+        title="Delete Fee Structure"
+        message="Are you sure you want to delete this fee structure?  This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+      />
+
     </div>
   );
 };

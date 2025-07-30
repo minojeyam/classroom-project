@@ -5,6 +5,54 @@ import { auth, authorize } from "../middleware/auth.js";
 
 const router = express.Router();
 
+
+router.get("/approved-students", auth, authorize(["admin", "teacher"]), async (req, res) => {
+  try {
+    const { page = 1, limit = 10, search } = req.query;
+
+    const query = { role: "student", status: "active" };
+    if (search) {
+      query.$or = [
+        { firstName: { $regex: search, $options: "i" } },
+        { lastName: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    // fetch students
+    const users = await User.find(query)
+      .populate("locationId", "name address")
+      .populate("classIds", "title level")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    // total count of approved students
+    const total = await User.countDocuments(query);
+
+    res.json({
+      status: "success",
+      data: {
+        totalApprovedStudents: total, 
+        users,
+        pagination: {
+          currentPage: parseInt(page),
+          totalPages: Math.ceil(total / parseInt(limit)),
+          totalUsers: total,
+          hasNext: skip + users.length < total,
+          hasPrev: parseInt(page) > 1,
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Get approved students error:", error);
+    res.status(500).json({ status: "error", message: "Internal server error" });
+  }
+});
+
+
 // @route   GET /api/users
 // @desc    Get all users (admin or teacher)
 // @access  Private
@@ -96,6 +144,9 @@ router.get("/:id", auth, async (req, res) => {
     res.status(500).json({ status: "error", message: "Internal server error" });
   }
 });
+
+
+
 
 // @route   PUT /api/users/:id/approve
 // @desc    Approve pending or rejected user (admin only)
@@ -432,5 +483,9 @@ router.get("/stats/pending-approvals", auth, authorize(["admin"]), async (req, r
     res.status(500).json({ status: "error", message: "Internal server error" });
   }
 });
+
+
+
+
 
 export default router;

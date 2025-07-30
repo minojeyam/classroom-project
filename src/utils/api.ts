@@ -8,7 +8,7 @@ export const getAuthHeader = () => {
 
 // LOCATIONS
 export const locationsAPI = {
-  getLocations: async (p0: {}, token: string | undefined) => {
+  getLocations: async ({}, token: string | undefined) => {
     const res = await API.get("/locations", {
       headers: {
         Authorization: `Bearer ${token}`
@@ -138,6 +138,17 @@ export const classesAPI = {
 
 // USERS
 export const usersAPI = {
+
+
+  getApprovedStudents: async (params = {}, token?: string | undefined) => {
+    const res = await API.get("/users/approved-students", {
+      params,
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    return res.data;
+  },
+  
+
   getUsers: async (params = {}, token?: string) => {
     const res = await API.get("/users", {
       params,
@@ -197,6 +208,12 @@ export const noticesAPI = {
     return res.data;
   },
 
+  // new API to fetch only upcoming notices
+  getUpcomingNotices: async () => {
+    const res = await API.get("/notices/upcoming");
+    return res.data; 
+  },
+
   createNotice: async (data: any) => {
     const res = await API.post("/notices", data);
     return res.data;
@@ -219,13 +236,96 @@ export const noticesAPI = {
 };
 
 // FEES
+// export const feesAPI = {
+//   getStudentFees: async () => {
+//     const res = await API.get("/fees/student", {
+//       headers: getAuthHeader(),
+//     });
+//     return res.data.data;
+//   },
+// };
+
 export const feesAPI = {
-  getStudentFees: async () => {
-    const res = await API.get("/fees/student", {
-      headers: getAuthHeader(),
+  // Get all fee structures
+  getStructures: async (token?: string | undefined) => {
+    const res = await API.get("/fees/structures", {
+      headers: { Authorization: `Bearer ${token}` },
     });
-    return res.data.data;
+    return res.data;
   },
+
+  // Create fee structure
+  createStructure: async (data: any, token?: string) => {
+    const res = await API.post("/fees/structures", data, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+  },
+
+  updateStructure: async (id: any, data: any, token?: string) => {
+    const res = await API.put(`/fees/structures/${id}`, data, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+  },
+
+  deleteStructure: async (id: string, token?: string | undefined) => {
+    const res = await API.delete(`/fees/structures/${id}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+  },
+
+  // Get student fee records
+  getStudentFees: async (token?: string) => {
+    const res = await API.get("/fees/student", {  
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+  },
+
+  // Pay a student fee
+  payStudentFee: async (id: string, data: any, token?: string) => {
+    const res = await API.patch(`/fees/student/${id}/pay`, data, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+  },
+
+  // Assign fees in bulk
+  assignFees: async (data: any, token?: string) => {
+    const res = await API.post("/fees/assign", data, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+  },
+
+  // Get class fee overview (existing)
+  getClassOverview: async (token?: string) => {
+    const res = await API.get("/fees/class-overview", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+  },
+
+  // **New**: Get class fee summary (with filters)
+  getClassSummary: async (params: { startDate: string; endDate: string }, token?: string) => {
+    const res = await API.get("/fees/class-summary", {
+      headers: { Authorization: `Bearer ${token}` },
+      params,
+    });
+    return res.data;
+  },
+
+  // **NEW**: Get location-based fee summary from classes
+  getLocationFromClasses: async (token?: string) => {
+    const res = await API.get("/fees/location-from-classes", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+  },
+
+
 };
 
 // MATERIALS
@@ -314,3 +414,63 @@ export const schedulesAPI = {
     return res.data;
   },
 };
+
+
+// Attendace 
+export const attendanceAPI = {
+  // Mark or update attendance
+  mark: async (data: Record<string, any>, token?: string) => {
+    const res = await API.post("/attendance", data, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
+    return res.data;
+  },
+
+  // Get attendance records for a specific class & date
+  getRecords: async (filters: Record<string, any>, token?: string) => {
+    const res = await API.get("/attendance", {
+      params: filters,
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    return res.data;
+  },
+
+  // Get class-wise attendance summary
+  getClassSummary: async (params: Record<string, any>, token?: string) => {
+    const res = await API.get("/attendance/class-summary", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      params,
+    });
+    return res.data;
+  },
+
+  // Get student's own summary
+  getStudentSummary: async (token?: string) => {
+    const res = await API.get("/attendance/student-summary", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    return res.data;
+  },
+
+  // Teacher's overview (attendance rate)
+  getTeacherOverview: async (token?: string) => {
+    const res = await API.get("/attendance/teacher/overview", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    return res.data;
+  },
+};
+
+
+

@@ -10,76 +10,113 @@ import {
   Calendar,
 } from "lucide-react";
 import StatsCard from "./StatsCard";
-import { usersAPI } from "../../utils/api";
-import { classesAPI } from "../../utils/api";
-import { locationsAPI } from "../../utils/api";
+import { noticesAPI, usersAPI, classesAPI, locationsAPI } from "../../utils/api";
+import {
+  LineChart,
+  Line,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
+interface Notice {
+  _id: string;
+  title: string;
+  description: string;
+  date: string;
+  type?: string;
+}
 
 const AdminDashboard: React.FC = () => {
   const [overview, setOverview] = useState<any>(null);
-  const [classOverview, setClassOverview] = useState<any>(null)
-  const [locationOverview, setLocationOverview] = useState<any>(null)
+  const [classOverview, setClassOverview] = useState<any>(null);
+  const [locationOverview, setLocationOverview] = useState<any>(null);
+  const [pendingAprovals, setPendingAprovales] = useState<any>(null);
+  const [notices, setNotices] = useState<Notice[]>([]);
   const [loading, setLoading] = useState(true);
-  const [pendingAprovals, setPendingAprovales] = useState<any>(null)
-   
-  // Get Overview 
+
+  // Fetch data
   useEffect(() => {
     const fetchOverview = async () => {
       try {
         setLoading(true);
-  
+
         const [userResponse, classesResponse, locationsResponse, pendingAprovals] = await Promise.all([
           usersAPI.getStatusOverview(),
           classesAPI.classOverview(),
           locationsAPI.locationOverview(),
           usersAPI.getPendingApprovals()
         ]);
-  
+
         setOverview(userResponse.data);
         setClassOverview(classesResponse.data);
         setLocationOverview(locationsResponse.data);
-        setPendingAprovales(pendingAprovals.data)
-  
-        console.log(pendingAprovals.data.monthly.trend?.value, "pending aprovals");
-        console.log(locationsResponse.data);
-  
+        setPendingAprovales(pendingAprovals.data);
+
       } catch (error) {
         console.error("Error fetching overview:", error);
       } finally {
         setLoading(false);
       }
     };
-  
+
     fetchOverview();
+    fetchNotices();
   }, []);
-  
+
+  const fetchNotices = async () => {
+    try {
+      const data = await noticesAPI.getNotices();
+      const upcoming = (data || []).filter((notice: any) => {
+        const noticeDate = new Date(notice.date);
+        return noticeDate >= new Date();
+      });
+      upcoming.sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      setNotices(upcoming);
+    } catch (err: any) {
+      console.error(err.message || "Failed to fetch notices");
+    }
+  };
+
+
+  const [chartData, setChartData] = useState([
+    { month: "Jan", revenue: 32000 },
+    { month: "Feb", revenue: 40000 },
+    { month: "Mar", revenue: 38000 },
+    { month: "Apr", revenue: 42000 },
+    { month: "May", revenue: 45000 },
+    { month: "Jun", revenue: 48250 },
+  ]);
+
   if (loading) return <p>Loading...</p>;
   if (!overview) return <p>No data available</p>;
 
-
-
-  // Number of classes
+  // Dashboard cards with mini chart data
   const stats = [
-  
     {
       title: "Total Students",
       value: overview.students.count || 0,
       icon: Users,
       color: "teal" as const,
       trend: { value: overview.students.trend.value || 0, isPositive: overview.students.trend.value >= 0 },
+      chartData: [{ value: 4 }, { value: 6 }, { value: 8 }, { value: overview.students.count || 0 }],
     },
     {
       title: "Total Teachers",
-      value: overview.teachers.count || 0      ,
+      value: overview.teachers.count || 0,
       icon: UserCheck,
       color: "coral" as const,
       trend: { value: overview.teachers.trend.value || 0, isPositive: overview.teachers.trend.value >= 0 },
+      chartData: [{ value: 1 }, { value: 1 }, { value: 2 }, { value: overview.teachers.count || 0 }],
     },
     {
       title: "Total Classes",
-      value: classOverview.totalClasses ,
+      value: classOverview.totalClasses || 0,
       icon: BookOpen,
       color: "green" as const,
-      trend: { value: classOverview.percentageChange, isPositive: classOverview.percentageChange >= 0 },
+      trend: { value: classOverview.percentageChange || 0, isPositive: classOverview.percentageChange >= 0 },
+      chartData: [{ value: 2 }, { value: 3 }, { value: 4 }, { value: classOverview.totalClasses || 0 }],
     },
     {
       title: "Locations",
@@ -87,6 +124,7 @@ const AdminDashboard: React.FC = () => {
       icon: MapPin,
       color: "purple" as const,
       trend: { value: locationOverview.trends.activeLocations.value, isPositive: locationOverview.trends.activeLocations.value >= 0 },
+      chartData: [{ value: 1 }, { value: 2 }, { value: 3 }, { value: locationOverview.stats.totalLocations || 0 }],
     },
     {
       title: "Monthly Revenue",
@@ -94,6 +132,7 @@ const AdminDashboard: React.FC = () => {
       icon: DollarSign,
       color: "blue" as const,
       trend: { value: 15, isPositive: true },
+      chartData: [{ value: 40000 }, { value: 42000 }, { value: 45000 }, { value: 48250 }],
     },
     {
       title: "Attendance Rate",
@@ -101,13 +140,15 @@ const AdminDashboard: React.FC = () => {
       icon: TrendingUp,
       color: "green" as const,
       trend: { value: 2, isPositive: true },
+      chartData: [{ value: 90 }, { value: 92 }, { value: 94 }, { value: 94.2 }],
     },
     {
       title: "Pending Approvals",
       value: pendingAprovals.totalPending,
       icon: AlertCircle,
-      color: "orange" as const,
-      trend: { value: pendingAprovals.monthly.trend?.value, isPositive: pendingAprovals.monthly.trend?.value >= 0 },
+      color: "orange" as const, 
+      trend: { value: pendingAprovals.monthly.trend?.value || 0, isPositive: pendingAprovals.monthly.trend?.value >= 0 },
+      chartData: [{ value: 1 }, { value: 2 }, { value: 2 }, { value: pendingAprovals.totalPending }],
     },
     {
       title: "Overdue Payments",
@@ -115,147 +156,50 @@ const AdminDashboard: React.FC = () => {
       icon: Calendar,
       color: "coral" as const,
       trend: { value: -5, isPositive: false },
+      chartData: [{ value: 15000 }, { value: 14000 }, { value: 13000 }, { value: 12450 }],
     },
   ];
 
-  const recentActivities = [
-    {
-      id: 1,
-      type: "approval",
-      message: "New teacher registration pending approval",
-      time: "5 min ago",
-    },
-    {
-      id: 2,
-      type: "payment",
-      message: "Payment received from John Doe",
-      time: "10 min ago",
-    },
-    {
-      id: 3,
-      type: "class",
-      message: 'New class "Advanced Mathematics" created',
-      time: "20 min ago",
-    },
-    {
-      id: 4,
-      type: "location",
-      message: "Downtown location capacity updated",
-      time: "35 min ago",
-    },
-    {
-      id: 5,
-      type: "attendance",
-      message: "Attendance marked for Class 7A",
-      time: "1 hour ago",
-    },
-  ];
+  // const recentActivities = [
+  //   { id: 1, message: "New teacher registration pending approval", time: "5 min ago" },
+  //   { id: 2, message: "Payment received from John Doe", time: "10 min ago" },
+  //   { id: 3, message: 'New class "Advanced Mathematics" created', time: "20 min ago" },
+  //   { id: 4, message: "Downtown location capacity updated", time: "35 min ago" },
+  //   { id: 5, message: "Attendance marked for Class 7A", time: "1 hour ago" },
+  // ];
+
+
 
   return (
     <div className="space-y-6">
+      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat, index) => (
           <StatsCard key={index} {...stat} />
         ))}
       </div>
 
-
-
-      {/* <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">
-          Quick Actions
-        </h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <button className="p-4 bg-teal-50 rounded-lg hover:bg-teal-100 transition-colors duration-200">
-            <Users className="w-8 h-8 text-teal-600 mb-2" />
-            <p className="text-sm font-medium text-gray-900">Add New User</p>
-          </button>
-          <button className="p-4 bg-coral-50 rounded-lg hover:bg-red-100 transition-colors duration-200">
-            <BookOpen className="w-8 h-8 text-red-500 mb-2" />
-            <p className="text-sm font-medium text-gray-900">Create Class</p>
-          </button>
-          <button className="p-4 bg-green-50 rounded-lg hover:bg-green-100 transition-colors duration-200">
-            <MapPin className="w-8 h-8 text-green-600 mb-2" />
-            <p className="text-sm font-medium text-gray-900">Add Location</p>
-          </button>
-          <button className="p-4 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors duration-200">
-            <TrendingUp className="w-8 h-8 text-purple-600 mb-2" />
-            <p className="text-sm font-medium text-gray-900">View Reports</p>
-          </button>
-        </div>
-      </div> */}
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">
-              Recent Activities
-            </h3>
-            <button className="text-teal-600 hover:text-teal-700 text-sm font-medium">
-              View All
-            </button>
-          </div>
-          <div className="space-y-4">
-            {recentActivities.map((activity) => (
-              <div key={activity.id} className="flex items-start space-x-3">
-                <div className="w-2 h-2 bg-teal-500 rounded-full mt-2"></div>
-                <div className="flex-1">
-                  <p className="text-sm text-gray-900">{activity.message}</p>
-                  <p className="text-xs text-gray-500 mt-1">{activity.time}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">
-              Upcoming Events
-            </h3>
-            <button className="text-teal-600 hover:text-teal-700 text-sm font-medium">
-              View Calendar
-            </button>
-          </div>
-          <div className="space-y-4">
-            <div className="flex items-center space-x-3 p-3 bg-teal-50 rounded-lg">
-              <div className="w-12 h-12 bg-teal-500 rounded-lg flex items-center justify-center">
-                <Calendar className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-900">
-                  Parent-Teacher Meeting
-                </p>
-                <p className="text-xs text-gray-500">Tomorrow at 2:00 PM</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-3 p-3 bg-orange-50 rounded-lg">
-              <div className="w-12 h-12 bg-orange-500 rounded-lg flex items-center justify-center">
-                <BookOpen className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-900">
-                  Mid-term Exams
-                </p>
-                <p className="text-xs text-gray-500">Starting March 15</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-3 p-3 bg-green-50 rounded-lg">
-              <div className="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center">
-                <Users className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-900">
-                  New Student Orientation
-                </p>
-                <p className="text-xs text-gray-500">March 20</p>
-              </div>
-            </div>
-          </div>
-        </div>
+      <div className="space-y-6">
+      {/* Chart Section */}
+      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Revenue Trend</h3>
+        <ResponsiveContainer width="100%" height={350}>
+          <LineChart data={chartData}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="month" />
+            <YAxis />
+            <Tooltip />
+            <Line type="monotone" dataKey="revenue" stroke="#14b8a6" strokeWidth={2} />
+          </LineChart>
+        </ResponsiveContainer>
       </div>
+    </div>
     </div>
   );
 };
 
 export default AdminDashboard;
+
+
+
+

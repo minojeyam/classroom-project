@@ -119,4 +119,66 @@ router.get("/student-summary", auth, async (req, res) => {
   }
 });
 
+
+
+
+// GET /api/attendance/class-summary
+router.get("/class-summary", auth, async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+
+    const dateFilter = {};
+    if (startDate && endDate) {
+      dateFilter.date = { $gte: startDate, $lte: endDate };
+    }
+
+    // Aggregate attendance by class
+    const summary = await Attendance.aggregate([
+      { $match: dateFilter },
+      {
+        $group: {
+          _id: { classId: "$classId", status: "$status" },
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    // Format result
+    const classSummary = {};
+    summary.forEach((item) => {
+      const classId = item._id.classId.toString();
+      if (!classSummary[classId]) {
+        classSummary[classId] = {
+          classId,
+          totalMarked: 0,
+          presentCount: 0,
+          absentCount: 0,
+          lateCount: 0
+        };
+      }
+      classSummary[classId].totalMarked += item.count;
+      if (item._id.status === "present") classSummary[classId].presentCount += item.count;
+      if (item._id.status === "absent") classSummary[classId].absentCount += item.count;
+      if (item._id.status === "late") classSummary[classId].lateCount += item.count;
+    });
+
+    // Calculate attendance rate
+    const result = Object.values(classSummary).map((cls) => ({
+      ...cls,
+      attendanceRate:
+        cls.totalMarked === 0
+          ? 0
+          : parseFloat(((cls.presentCount / cls.totalMarked) * 100).toFixed(1)),
+    }));
+
+    res.json({ status: "success", data: result });
+  } catch (error) {
+    console.error("Class summary error:", error);
+    res.status(500).json({ status: "error", message: "Internal server error" });
+  }
+});
+
+
+
+
 export default router;
