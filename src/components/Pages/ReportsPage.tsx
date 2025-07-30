@@ -149,7 +149,6 @@ const ReportsPage: React.FC = () => {
   const [classes, setClasses] = useState<any[]>([]);
   const [teachers, setTeachers] = useState<any[]>([]);
   const [students, setStudents] = useState<any[]>([]);
-  const [approvedStudents, setApprovedStudents] = useState([]);
   const [approvedStudentsCount, setApprovedStudentsCount] = useState(0);
   const [attendanceSummary, setAttendanceSummary] = useState<any[]>([]);
   const [locationRevenue, setLocationRevenue] = useState<LocationRevenue[]>([]);
