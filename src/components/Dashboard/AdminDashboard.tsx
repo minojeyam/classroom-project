@@ -10,7 +10,7 @@ import {
   Calendar,
 } from "lucide-react";
 import StatsCard from "./StatsCard";
-import { noticesAPI, usersAPI, classesAPI, locationsAPI } from "../../utils/api";
+import { noticesAPI, usersAPI, classesAPI, locationsAPI, feesAPI } from "../../utils/api";
 import {
   LineChart,
   Line,
@@ -28,6 +28,18 @@ interface Notice {
   type?: string;
 }
 
+interface LocationRevenue {
+  locationId: string;
+  locationName: string;
+  totalClasses: number;
+  totalStudents: number;
+  monthlyRevenue: number;
+  receivedAmount: number;
+  pendingAmount: number;
+  collectionRate: number;
+  // classes: ClassRevenue[];
+}
+
 const AdminDashboard: React.FC = () => {
   const [overview, setOverview] = useState<any>(null);
   const [classOverview, setClassOverview] = useState<any>(null);
@@ -35,7 +47,9 @@ const AdminDashboard: React.FC = () => {
   const [pendingAprovals, setPendingAprovales] = useState<any>(null);
   const [notices, setNotices] = useState<Notice[]>([]);
   const [loading, setLoading] = useState(true);
-
+  const [locations, setLocations] = useState<any[]>([]);
+  const [locationRevenue, setLocationRevenue] = useState<LocationRevenue[]>([]);
+  
   // Fetch data
   useEffect(() => {
     const fetchOverview = async () => {
@@ -63,6 +77,7 @@ const AdminDashboard: React.FC = () => {
 
     fetchOverview();
     fetchNotices();
+    fetchLocations()
   }, []);
 
   const fetchNotices = async () => {
@@ -79,6 +94,57 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
+  const fetchLocations = async () => {
+    const token = localStorage.getItem("token") || undefined;
+    try {
+      const locationResponse = await feesAPI.getLocationFromClasses(token);
+  
+      if (locationResponse.status !== "success") {
+        throw new Error(locationResponse.message || "Failed to fetch location revenue");
+      }
+  
+      // Get total revenue directly from response
+      const totalRevenue = locationResponse.data.overall?.totalFee ?? 0;
+  
+      // Map location details
+      const mappedLocationRevenue: LocationRevenue[] = locationResponse.data.locations.map(
+        (loc: any) => ({
+          locationId: loc.location,
+          locationName: loc.location,
+          totalClasses: loc.totalClasses,
+          totalStudents: 0,
+          monthlyRevenue: loc.totalFee,
+          receivedAmount: loc.totalFee,
+          pendingAmount: 0,
+          collectionRate: 100,
+          classes: loc.classes.map((cls: any) => ({
+            classId: cls.classId,
+            className: cls.title,
+            subject: "",
+            level: "",
+            teacherName: "",
+            studentCount: 0,
+            monthlyFee: cls.feeTotal,
+            totalRevenue: cls.feeTotal,
+            receivedAmount: cls.feeTotal,
+            pendingAmount: 0,
+            collectionRate: 100,
+            students: [],
+          })),
+        })
+      );
+  
+      // set state
+      setLocationRevenue(mappedLocationRevenue);
+  
+      // store or log total revenue
+      console.log("Total Revenue:", totalRevenue);
+  
+    } catch (error) {
+      console.error("Error fetching locations:", error);
+    }
+  };
+  
 
   const [chartData, setChartData] = useState([
     { month: "Jan", revenue: 32000 },
@@ -166,7 +232,7 @@ const AdminDashboard: React.FC = () => {
   //   { id: 3, message: 'New class "Advanced Mathematics" created', time: "20 min ago" },
   //   { id: 4, message: "Downtown location capacity updated", time: "35 min ago" },
   //   { id: 5, message: "Attendance marked for Class 7A", time: "1 hour ago" },
-  // ];
+  // ]; 
 
 
 

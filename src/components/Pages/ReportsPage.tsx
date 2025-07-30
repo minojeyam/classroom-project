@@ -68,20 +68,6 @@ interface FeeTotals {
   overdueCount: number;
 }
 
-interface ClassRevenue {
-  classId: string;
-  className: string;
-  subject: string;
-  level: string;
-  teacherName: string;
-  studentCount: number;
-  monthlyFee: number;
-  totalRevenue: number;
-  receivedAmount: number;
-  pendingAmount: number;
-  collectionRate: number;
-  students: StudentPaymentDetail[];
-}
 
 interface StudentPaymentDetail {
   studentId: string;
@@ -107,6 +93,20 @@ interface LocationRevenue {
   pendingAmount: number;
   collectionRate: number;
   classes: ClassRevenue[];
+}
+interface ClassRevenue {
+  classId: string;
+  className: string;
+  subject: string;
+  level: string;
+  teacherName: string;
+  studentCount: number;
+  monthlyFee: number;
+  totalRevenue: number;
+  receivedAmount: number;
+  pendingAmount: number;
+  collectionRate: number;
+  students: StudentPaymentDetail[];
 }
 
 
