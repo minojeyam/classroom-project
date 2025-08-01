@@ -11,8 +11,8 @@ export const locationsAPI = {
   getLocations: async ({}, token: string | undefined) => {
     const res = await API.get("/locations", {
       headers: {
-        Authorization: `Bearer ${token}`
-      }
+        Authorization: `Bearer ${token}`,
+      },
     });
     return res.data;
   },
@@ -32,8 +32,6 @@ export const locationsAPI = {
     return res.data;
   },
 
-
-
   /** ✅ NEW: Get Location Status Overview */
   locationOverview: async (token?: string) => {
     const res = await API.get("/locations/stats/overview", {
@@ -41,16 +39,10 @@ export const locationsAPI = {
     });
     return res.data;
   },
-
 };
 
 // CLASSES
 export const classesAPI = {
-  // getClasses: async (params = {}) => {
-  //   const res = await API.get("/classes", { params });
-  //   return res.data;
-  // },
-
   getClasses: async (params = {}, token: string | undefined) => {
     const res = await API.get("/classes", {
       params,
@@ -60,7 +52,6 @@ export const classesAPI = {
     });
     return res.data;
   },
-
 
   // getClassById: async (id: string) => {
   //   const res = await API.get(`/classes/${id}`);
@@ -76,8 +67,6 @@ export const classesAPI = {
     return res.data;
   },
 
-
-
   // createClass: async (data: any) => {
   //   const res = await API.post("/classes", data);
   //   return res.data;
@@ -87,9 +76,9 @@ export const classesAPI = {
     const res = await API.post(`/classes`, data, {
       headers: {
         Authorization: `Bearer ${token}`,
-      }
+      },
     });
-    return res.data
+    return res.data;
   },
 
   // updateClass: async (id: string, data: any) => {
@@ -106,12 +95,11 @@ export const classesAPI = {
     return res.data;
   },
 
-
   deleteClass: async (id: string, token: string) => {
     const res = await API.delete(`/classes/${id}`, {
       headers: {
-        Authorization: `Brearer ${token}`
-      }
+        Authorization: `Brearer ${token}`,
+      },
     });
     return res.data;
   },
@@ -138,8 +126,6 @@ export const classesAPI = {
 
 // USERS
 export const usersAPI = {
-
-
   getApprovedStudents: async (params = {}, token?: string | undefined) => {
     const res = await API.get("/users/approved-students", {
       params,
@@ -147,7 +133,6 @@ export const usersAPI = {
     });
     return res.data;
   },
-  
 
   getUsers: async (params = {}, token?: string) => {
     const res = await API.get("/users", {
@@ -190,7 +175,6 @@ export const usersAPI = {
     return res.data;
   },
 
-
   /** NEW: Get Pending Approvals Stats */
   getPendingApprovals: async (token?: string) => {
     const res = await API.get("/users/stats/pending-approvals", {
@@ -198,7 +182,6 @@ export const usersAPI = {
     });
     return res.data;
   },
-
 };
 
 // NOTICES
@@ -211,7 +194,7 @@ export const noticesAPI = {
   // new API to fetch only upcoming notices
   getUpcomingNotices: async () => {
     const res = await API.get("/notices/upcoming");
-    return res.data; 
+    return res.data;
   },
 
   createNotice: async (data: any) => {
@@ -236,15 +219,6 @@ export const noticesAPI = {
 };
 
 // FEES
-// export const feesAPI = {
-//   getStudentFees: async () => {
-//     const res = await API.get("/fees/student", {
-//       headers: getAuthHeader(),
-//     });
-//     return res.data.data;
-//   },
-// };
-
 export const feesAPI = {
   // Get all fee structures
   getStructures: async (token?: string | undefined) => {
@@ -278,7 +252,7 @@ export const feesAPI = {
 
   // Get student fee records
   getStudentFees: async (token?: string) => {
-    const res = await API.get("/fees/student", {  
+    const res = await API.get("/fees/student", {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;
@@ -309,7 +283,10 @@ export const feesAPI = {
   },
 
   // **New**: Get class fee summary (with filters)
-  getClassSummary: async (params: { startDate: string; endDate: string }, token?: string) => {
+  getClassSummary: async (
+    params: { startDate: string; endDate: string },
+    token?: string
+  ) => {
     const res = await API.get("/fees/class-summary", {
       headers: { Authorization: `Bearer ${token}` },
       params,
@@ -324,8 +301,6 @@ export const feesAPI = {
     });
     return res.data;
   },
-
-
 };
 
 // MATERIALS
@@ -371,8 +346,8 @@ export const materials = {
 
 // SCHDULE CLASS
 export const schedulesAPI = {
-  create: async (data: Record<string, any> ,token?: string | undefined) => {
-    const res = await API.post("/schedules", data,  {
+  create: async (data: Record<string, any>, token?: string | undefined) => {
+    const res = await API.post("/schedules", data, {
       headers: {
         // ...getAuthHeader(),
         Authorization: `Bearer ${token}`,
@@ -382,7 +357,10 @@ export const schedulesAPI = {
     return res.data;
   },
 
-  getAll: async (params: Record<string, any> = {}, token?: string | undefined ) => {
+  getAll: async (
+    params: Record<string, any> = {},
+    token?: string | undefined
+  ) => {
     const res = await API.get("/schedules", {
       headers: {
         // ...getAuthHeader(),
@@ -393,7 +371,11 @@ export const schedulesAPI = {
     return res.data;
   },
 
-  update: async (id: string, data: Record<string, any>, token?: string | undefined  ) => {
+  update: async (
+    id: string,
+    data: Record<string, any>,
+    token?: string | undefined
+  ) => {
     const res = await API.put(`/schedules/${id}`, data, {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -404,7 +386,7 @@ export const schedulesAPI = {
     return res.data;
   },
 
-  delete: async (id: string, token?: string | undefined ) => {
+  delete: async (id: string, token?: string | undefined) => {
     const res = await API.delete(`/schedules/${id}`, {
       headers: {
         // ...getAuthHeader(),
@@ -415,8 +397,7 @@ export const schedulesAPI = {
   },
 };
 
-
-// Attendace 
+// Attendace
 export const attendanceAPI = {
   // Mark or update attendance
   mark: async (data: Record<string, any>, token?: string) => {
@@ -471,8 +452,3 @@ export const attendanceAPI = {
     return res.data;
   },
 };
-
-
-
-
-

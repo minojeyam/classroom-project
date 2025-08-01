@@ -635,7 +635,7 @@ const ReportsPage: React.FC = () => {
                 Total Revenue
               </p>
               <p className="text-2xl font-bold text-orange-900">
-                ₹
+                LKR
                 {classOverviewData
                   .reduce((sum, c) => sum + c.totalRevenue, 0)
                   .toLocaleString()}

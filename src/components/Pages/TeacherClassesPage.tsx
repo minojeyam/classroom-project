@@ -649,80 +649,33 @@ const TeacherClassesPage: React.FC = () => {
                       </div>
                     </div>
                   )}
-                </div>
-              </div>
+                  <div className="space-y-3">
+                    {selectedStudent.enrollmentDate && (
+                      <div className="flex items-center space-x-3">
+                        <Calendar className="w-4 h-4 text-gray-400" />
+                        <div>
+                          <p className="text-sm text-gray-600">
+                            Enrollment Date
+                          </p>
+                          <p className="font-medium text-gray-900">
+                            {new Date(
+                              selectedStudent.enrollmentDate
+                            ).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                    )}
 
-              {/* Academic Information */}
-              <div className="space-y-4">
-                <h4 className="font-semibold text-gray-900 flex items-center space-x-2">
-                  <GraduationCap className="w-5 h-5" />
-                  <span>Academic Information</span>
-                </h4>
-
-                <div className="space-y-3">
-                  {selectedStudent.enrollmentDate && (
                     <div className="flex items-center space-x-3">
                       <Calendar className="w-4 h-4 text-gray-400" />
                       <div>
-                        <p className="text-sm text-gray-600">Enrollment Date</p>
+                        <p className="text-sm text-gray-600">Joined</p>
                         <p className="font-medium text-gray-900">
                           {new Date(
-                            selectedStudent.enrollmentDate
+                            selectedStudent.createdAt
                           ).toLocaleDateString()}
                         </p>
                       </div>
-                    </div>
-                  )}
-
-                  {selectedStudent.attendanceRate && (
-                    <div className="flex items-center space-x-3">
-                      <TrendingUp className="w-4 h-4 text-gray-400" />
-                      <div>
-                        <p className="text-sm text-gray-600">Attendance Rate</p>
-                        <div className="flex items-center space-x-2">
-                          <p className="font-medium text-gray-900">
-                            {selectedStudent.attendanceRate}%
-                          </p>
-                          <div className="w-16 bg-gray-200 rounded-full h-2">
-                            <div
-                              className={`h-2 rounded-full ${
-                                selectedStudent.attendanceRate >= 90
-                                  ? "bg-green-500"
-                                  : selectedStudent.attendanceRate >= 75
-                                  ? "bg-yellow-500"
-                                  : "bg-red-500"
-                              }`}
-                              style={{
-                                width: `${selectedStudent.attendanceRate}%`,
-                              }}
-                            ></div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {selectedStudent.lastGrade && (
-                    <div className="flex items-center space-x-3">
-                      <Award className="w-4 h-4 text-gray-400" />
-                      <div>
-                        <p className="text-sm text-gray-600">Last Grade</p>
-                        <p className="font-medium text-gray-900">
-                          {selectedStudent.lastGrade}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="flex items-center space-x-3">
-                    <Calendar className="w-4 h-4 text-gray-400" />
-                    <div>
-                      <p className="text-sm text-gray-600">Joined</p>
-                      <p className="font-medium text-gray-900">
-                        {new Date(
-                          selectedStudent.createdAt
-                        ).toLocaleDateString()}
-                      </p>
                     </div>
                   </div>
                 </div>
@@ -743,10 +696,10 @@ const TeacherClassesPage: React.FC = () => {
                   <Phone className="w-4 h-4" />
                   <span>Contact Parent</span>
                 </button>
-                <button className="px-4 py-2 bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 transition-colors duration-200 flex items-center space-x-2">
+                {/* <button className="px-4 py-2 bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 transition-colors duration-200 flex items-center space-x-2">
                   <Award className="w-4 h-4" />
                   <span>View Grades</span>
-                </button>
+                </button> */}
               </div>
             </div>
           </div>

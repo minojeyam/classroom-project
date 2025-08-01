@@ -15,8 +15,6 @@ const BalancePage: React.FC = () => {
         return <TeacherBalanceView />;
       case "student":
         return <StudentBalanceView />;
-      case "parent":
-        return <StudentBalanceView />; // Parents see student-like view for their children
       default:
         return (
           <div className="flex items-center justify-center h-64">

@@ -99,6 +99,13 @@ router.get("/class-overview", async (req, res) => {
           (sum, r) => sum + ((r.amount || 0) - (r.paidAmount || 0)),
           0
         );
+        const paidCount = feeRecords.filter((r) => r.status === "paid").length;
+        const partialCount = feeRecords.filter(
+          (r) => r.status === "partial"
+        ).length;
+        const pendingCount = feeRecords.filter(
+          (r) => r.status === "pending"
+        ).length;
 
         return {
           classId: c._id,
@@ -110,8 +117,18 @@ router.get("/class-overview", async (req, res) => {
           totalStudents: c.currentEnrollment,
           activeStudents: studentIds.length,
           averageAttendance,
-          totalRevenue,
-          pendingFees,
+          totalExpectedRevenue: feeRecords.reduce(
+            (sum, r) => sum + (r.amount || 0),
+            0
+          ),
+          collectedAmount: feeRecords.reduce(
+            (sum, r) => sum + (r.paidAmount || 0),
+            0
+          ),
+          paidCount,
+          partialCount,
+          pendingCount,
+          currency: c.monthlyFee?.currency || "LKR",
         };
       })
     );

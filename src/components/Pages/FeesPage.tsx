@@ -90,13 +90,13 @@ const classColumns = [
     key: "totalExpectedRevenue",
     label: "Expected Revenue",
     render: (value: number, classItem: ClassFeeOverview) =>
-      `${classItem.currency} ${value.toFixed(2)}`,
+      `${classItem.currency} ${value?.toFixed(2)}`,
   },
   {
     key: "collectedAmount",
     label: "Collected Amount",
     render: (value: number, classItem: ClassFeeOverview) =>
-      `${classItem.currency} ${value.toFixed(2)}`,
+      `${classItem.currency} ${value?.toFixed(2)}`,
   },
   {
     key: "paymentStatus",
@@ -187,7 +187,7 @@ const FeesPage: React.FC = () => {
           axiosInstance.get("/api/classes", {
             headers: { Authorization: `Bearer ${accessToken}` },
           }),
-          axiosInstance.get("/api/fees/class-overview", {
+          axiosInstance.get("/api/reports/class-overview", {
             headers: { Authorization: `Bearer ${accessToken}` },
           }),
         ]);

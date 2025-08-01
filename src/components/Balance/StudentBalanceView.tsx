@@ -249,7 +249,7 @@ const StudentBalanceView: React.FC = () => {
                       {payment.description}
                     </h4>
                     <span className="text-lg font-bold text-gray-900">
-                      ₹{payment.amount}
+                      LKR{payment.amount}
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
@@ -293,7 +293,7 @@ const StudentBalanceView: React.FC = () => {
                     <p className="text-sm text-gray-500">{fee.frequency}</p>
                   </div>
                   <span className="font-medium text-gray-900">
-                    ₹{fee.amount}
+                    LKR{fee.amount}
                   </span>
                 </div>
               ))}
@@ -303,7 +303,9 @@ const StudentBalanceView: React.FC = () => {
                 <span className="font-semibold text-gray-900">
                   Monthly Total
                 </span>
-                <span className="font-bold text-lg text-teal-600">₹5,500</span>
+                <span className="font-bold text-lg text-teal-600">
+                  LKR5,500
+                </span>
               </div>
             </div>
           </div>
@@ -413,7 +415,7 @@ const StudentBalanceView: React.FC = () => {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    ₹{payment.amount}
+                    {payment.amount}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {new Date(payment.dueDate).toLocaleDateString()}
