@@ -605,7 +605,11 @@ router.get("/stats/overview", auth, authorize(["admin"]), async (req, res) => {
 
     // Current month range
     const startOfCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const endOfCurrentMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const endOfCurrentMonth = new Date(
+      now.getFullYear(),
+      now.getMonth() + 1,
+      1
+    );
 
     // Previous month range
     const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
@@ -652,8 +656,51 @@ router.get("/stats/overview", auth, authorize(["admin"]), async (req, res) => {
   }
 });
 
+// @route   PATCH /api/classes/:classId/students/:studentId/inactivate
+// @desc    Mark student as inactive in class
+// @access  Private (Admin, Teacher)
+router.patch(
+  "/:classId/students/:studentId/inactivate",
+  auth,
+  authorize(["admin", "teacher"]),
+  async (req, res) => {
+    try {
+      const { classId, studentId } = req.params;
+      const classDoc = await Class.findById(classId);
+      if (!classDoc)
+        return res
+          .status(404)
+          .json({ status: "error", message: "Class not found" });
 
+      const studentEntry = classDoc.enrolledStudents.find(
+        (enrollment) => enrollment.studentId.toString() === studentId
+      );
 
+      if (!studentEntry || studentEntry.status === "inactive") {
+        return res
+          .status(400)
+          .json({
+            status: "error",
+            message: "Student not found or already inactive",
+          });
+      }
 
+      studentEntry.status = "inactive";
+      classDoc.currentEnrollment -= 1;
+      await classDoc.save();
+
+      res.json({
+        status: "success",
+        message: "Student marked as inactive",
+        data: classDoc,
+      });
+    } catch (error) {
+      console.error("Mark inactive error:", error);
+      res
+        .status(500)
+        .json({ status: "error", message: "Internal server error" });
+    }
+  }
+);
 
 export default router;

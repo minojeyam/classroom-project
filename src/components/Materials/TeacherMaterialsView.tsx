@@ -143,14 +143,27 @@ const TeacherMaterialsView: React.FC = () => {
       setLoading(true);
       const token = JSON.parse(localStorage.getItem("user") || "{}")?.tokens
         ?.accessToken;
+
       const response = await fetch("http://localhost:5000/api/materials", {
         headers: { Authorization: `Bearer ${token}` },
       });
       const result = await response.json();
+
       if (result.status === "success") {
-        setMaterials(
-          result.data.materials.map((mat) => ({ ...mat, id: mat._id }))
-        );
+        const enriched = result.data.materials.map((mat) => {
+          const classId =
+            typeof mat.classId === "object" ? mat.classId._id : mat.classId;
+          const classInfo = classes.find((c) => c._id === classId);
+          return {
+            ...mat,
+            id: mat._id,
+            classTitle: classInfo?.title || "Unknown Class",
+            classLevel: classInfo?.level || "-",
+            classSubject: classInfo?.subject || "-",
+          };
+        });
+
+        setMaterials(enriched);
       } else {
         throw new Error(result.message);
       }
@@ -227,24 +240,58 @@ const TeacherMaterialsView: React.FC = () => {
   const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this material?")) {
       try {
-        await new Promise((resolve) => setTimeout(resolve, 500));
-        setMaterials((prev) => prev.filter((m) => m.id !== id));
-        toast.success("Material deleted successfully");
+        const token = JSON.parse(localStorage.getItem("user") || "{}")?.tokens
+          ?.accessToken;
+        const res = await fetch(`http://localhost:5000/api/materials/${id}`, {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        const result = await res.json();
+
+        if (res.ok && result.status === "success") {
+          setMaterials((prev) => prev.filter((m) => m.id !== id));
+          toast.success("Material deleted successfully");
+        } else {
+          throw new Error(result.message || "Delete failed");
+        }
       } catch (err) {
-        toast.error("Failed to delete material");
+        toast.error(err.message || "Failed to delete material");
       }
     }
   };
 
   const handleToggleVisibility = async (id) => {
     try {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      setMaterials((prev) =>
-        prev.map((m) => (m.id === id ? { ...m, isVisible: !m.isVisible } : m))
-      );
-      toast.success("Visibility updated");
+      const token = JSON.parse(localStorage.getItem("user") || "{}")?.tokens
+        ?.accessToken;
+      const updated = materials.find((m) => m.id === id);
+      if (!updated) return;
+
+      const res = await fetch(`http://localhost:5000/api/materials/${id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+          fetchMaterials,
+        },
+        body: JSON.stringify({ isVisible: !updated.isVisible }),
+      });
+
+      const result = await res.json();
+
+      if (res.ok && result.status === "success") {
+        setMaterials((prev) =>
+          prev.map((m) => (m.id === id ? { ...m, isVisible: !m.isVisible } : m))
+        );
+        toast.success("Visibility updated");
+      } else {
+        throw new Error(result.message || "Update failed");
+      }
     } catch (err) {
-      toast.error("Failed to update visibility");
+      toast.error(err.message || "Failed to update visibility");
     }
   };
 
@@ -353,11 +400,16 @@ const TeacherMaterialsView: React.FC = () => {
       ),
     },
     {
-      key: "className",
+      key: "classDetails",
       label: "Class",
-      sortable: true,
-      render: (value: string) => (
-        <span className="text-sm font-medium text-gray-900">{value}</span>
+      sortable: false,
+      render: (_: any, row: Material) => (
+        <div className="text-sm font-medium text-gray-900">
+          {row.classTitle}
+          <div className="text-xs text-gray-500">
+            {row.classLevel} – {row.classSubject}
+          </div>
+        </div>
       ),
     },
     {
@@ -368,17 +420,6 @@ const TeacherMaterialsView: React.FC = () => {
         <span className="text-sm text-gray-900">
           {new Date(value).toLocaleDateString()}
         </span>
-      ),
-    },
-    {
-      key: "downloadCount",
-      label: "Downloads",
-      sortable: true,
-      render: (value: number) => (
-        <div className="flex items-center space-x-1">
-          <Download className="w-4 h-4 text-gray-400" />
-          <span className="text-sm font-medium text-gray-900">{value}</span>
-        </div>
       ),
     },
     {
