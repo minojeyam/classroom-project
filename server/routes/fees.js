@@ -16,7 +16,10 @@ const router = express.Router();
 // @route   GET /api/fees/structures
 // @desc    Get all fee structures
 // @access  Private (Admin)
-router.get( "/structures", auth, authorize(["admin", "teacher"]),
+router.get(
+  "/structures",
+  auth,
+  authorize(["admin", "teacher"]),
   async (req, res) => {
     try {
       const structures = await FeeStructure.find().populate(
@@ -36,7 +39,10 @@ router.get( "/structures", auth, authorize(["admin", "teacher"]),
 // @route   POST /api/fees/structures
 // @desc    Create a new fee structure
 // @access  Private (Admin)
-router.post( "/structures", auth,authorize(["admin", "teacher"]),
+router.post(
+  "/structures",
+  auth,
+  authorize(["admin", "teacher"]),
   [
     body("name")
       .notEmpty()
@@ -79,7 +85,6 @@ router.post( "/structures", auth,authorize(["admin", "teacher"]),
     }
   }
 );
-
 
 // @route GET /api/reports/class-overview
 router.get("/class-overview", async (req, res) => {
@@ -147,7 +152,9 @@ router.get("/class-overview", async (req, res) => {
         }
         const attendanceRecords = await Attendance.find(attendanceQuery);
         const totalRecords = attendanceRecords.length;
-        const presentRecords = attendanceRecords.filter((a) => a.status === "present").length;
+        const presentRecords = attendanceRecords.filter(
+          (a) => a.status === "present"
+        ).length;
         const averageAttendance = totalRecords
           ? Math.round((presentRecords / totalRecords) * 100)
           : 0;
@@ -158,7 +165,10 @@ router.get("/class-overview", async (req, res) => {
           feeQuery.createdAt = { $gte: startDate, $lte: endDate };
         }
         const feeRecords = await StudentFee.find(feeQuery);
-        const totalRevenue = feeRecords.reduce((sum, r) => sum + (r.paidAmount || 0), 0);
+        const totalRevenue = feeRecords.reduce(
+          (sum, r) => sum + (r.paidAmount || 0),
+          0
+        );
         const pendingFees = feeRecords.reduce(
           (sum, r) => sum + ((r.amount || 0) - (r.paidAmount || 0)),
           0
@@ -183,7 +193,9 @@ router.get("/class-overview", async (req, res) => {
     res.json({ status: "success", data });
   } catch (err) {
     console.error("Class overview error:", err);
-    res.status(500).json({ status: "error", message: "Failed to fetch class overview" });
+    res
+      .status(500)
+      .json({ status: "error", message: "Failed to fetch class overview" });
   }
 });
 
@@ -227,7 +239,9 @@ router.put(
     try {
       const fee = await FeeStructure.findById(req.params.id);
       if (!fee) {
-        return res.status(404).json({ status: "error", message: "Fee structure not found" });
+        return res
+          .status(404)
+          .json({ status: "error", message: "Fee structure not found" });
       }
 
       // Update fields
@@ -245,11 +259,12 @@ router.put(
       res.json({ status: "success", data: fee });
     } catch (error) {
       console.error("Update fee structure error:", error);
-      res.status(500).json({ status: "error", message: "Internal server error" });
+      res
+        .status(500)
+        .json({ status: "error", message: "Internal server error" });
     }
   }
 );
-
 
 // @route   DELETE /api/fees/structures/:id
 // @desc    Delete a fee structure by ID
@@ -262,17 +277,20 @@ router.delete(
     try {
       const fee = await FeeStructure.findById(req.params.id);
       if (!fee) {
-        return res.status(404).json({ status: "error", message: "Fee structure not found" });
+        return res
+          .status(404)
+          .json({ status: "error", message: "Fee structure not found" });
       }
       await fee.deleteOne();
       res.json({ status: "success", message: "Fee structure deleted" });
     } catch (error) {
       console.error("Delete fee structure error:", error);
-      res.status(500).json({ status: "error", message: "Internal server error" });
+      res
+        .status(500)
+        .json({ status: "error", message: "Internal server error" });
     }
   }
 );
-
 
 // =======================
 // Student Fee Records
@@ -289,14 +307,20 @@ router.get(
     try {
       const records = await StudentFee.find()
         .populate({ path: "studentId", select: "firstName lastName" })
-        .populate({ path: "classId", select: "title locationId", populate: { path: "locationId", select: "name" } })
+        .populate({
+          path: "classId",
+          select: "title locationId",
+          populate: { path: "locationId", select: "name" },
+        })
         .populate("feeStructureId", "name");
 
       // Map response
       const data = records.map((r) => ({
         id: r._id,
         studentId: r.studentId?._id,
-        studentName: `${r.studentId?.firstName || ""} ${r.studentId?.lastName || ""}`,
+        studentName: `${r.studentId?.firstName || ""} ${
+          r.studentId?.lastName || ""
+        }`,
         className: r.classId?.title || "",
         locationId: r.classId?.locationId?._id || null,
         locationName: r.classId?.locationId?.name || "",
@@ -323,25 +347,29 @@ router.get(
           };
         }
         acc[curr.locationId].totalRevenue += curr.paidAmount || 0;
-        acc[curr.locationId].totalPending += (curr.amount || 0) - (curr.paidAmount || 0);
+        acc[curr.locationId].totalPending +=
+          (curr.amount || 0) - (curr.paidAmount || 0);
         return acc;
       }, {});
 
       res.json({
         status: "success",
         data,
-        locationRevenue: Object.entries(locationRevenue).map(([locationId, values]) => ({
-          locationId,
-          ...values,
-        })),
+        locationRevenue: Object.entries(locationRevenue).map(
+          ([locationId, values]) => ({
+            locationId,
+            ...values,
+          })
+        ),
       });
     } catch (error) {
       console.error("Get student fees error:", error);
-      res.status(500).json({ status: "error", message: "Internal server error" });
+      res
+        .status(500)
+        .json({ status: "error", message: "Internal server error" });
     }
   }
 );
-
 
 // @route   PATCH /api/fees/student/:id/pay
 // @desc    Record a payment for a student
@@ -508,109 +536,6 @@ router.delete(
   }
 );
 
-
-// @route   GET /api/fees/class-overview
-// @desc    Get fee overview for all classes with revenue growth & collection %
-// router.get(
-//   "/class-overview",
-//   auth,
-//   authorize(["admin", "teacher"]),
-//   async (req, res) => {
-//     try {
-//       const classes = await Class.find().select(
-//         "title enrolledStudents monthlyFee"
-//       );
-
-//       const feeRecords = await StudentFee.find()
-//         .populate("classId", "title")
-//         .populate("feeStructureId", "category");
-
-//       // ---------- Date ranges ----------
-//       const now = new Date();
-//       const startOfCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-//       const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-//       const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
-
-//       const currentMonthFees = feeRecords.filter(
-//         (fee) => fee.paidDate && fee.paidDate >= startOfCurrentMonth
-//       );
-//       const lastMonthFees = feeRecords.filter(
-//         (fee) => fee.paidDate && fee.paidDate >= startOfLastMonth && fee.paidDate <= endOfLastMonth
-//       );
-
-//       const currentMonthRevenue = currentMonthFees.reduce(
-//         (sum, record) => sum + (record.paidAmount || 0),
-//         0
-//       );
-//       const previousMonthRevenue = lastMonthFees.reduce(
-//         (sum, record) => sum + (record.paidAmount || 0),
-//         0
-//       );
-
-//       const feeIncreasePercentage =
-//         previousMonthRevenue > 0
-//           ? ((currentMonthRevenue - previousMonthRevenue) / previousMonthRevenue) * 100
-//           : 0;
-
-//       // ---------- Per-Class Overview ----------
-//       const overview = classes.map((classItem) => {
-//         const classFeeRecords = feeRecords.filter(
-//           (record) => record.classId?._id.toString() === classItem._id.toString()
-//         );
-
-//         const totalStudents = classItem.enrolledStudents.length;
-//         const totalExpectedRevenue = classFeeRecords.reduce(
-//           (sum, record) => sum + record.amount,
-//           0
-//         );
-//         const collectedAmount = classFeeRecords.reduce(
-//           (sum, record) => sum + (record.paidAmount || 0),
-//           0
-//         );
-
-//         const collectionPercentage =
-//           totalExpectedRevenue > 0
-//             ? (collectedAmount / totalExpectedRevenue) * 100
-//             : 0;
-
-//         const paidCount = classFeeRecords.filter((r) => r.status === "paid").length;
-//         const partialCount = classFeeRecords.filter((r) => r.status === "partial").length;
-//         const pendingCount = classFeeRecords.filter((r) => r.status === "pending").length;
-
-//         return {
-//           classId: classItem._id,
-//           className: classItem.title,
-//           totalStudents,
-//           totalExpectedRevenue,
-//           collectedAmount,
-//           collectionPercentage,
-//           paidCount,
-//           partialCount,
-//           pendingCount,
-//           currency: classItem.monthlyFee?.currency || "LKR"
-//         };
-//       });
-
-//       res.json({
-//         status: "success",
-//         data: {
-//           overview,
-//           monthlyRevenue: {
-//             currentMonthRevenue,
-//             previousMonthRevenue,
-//             feeIncreasePercentage
-//           }
-//         }
-//       });
-//     } catch (error) {
-//       console.error("Get class fee overview error:", error);
-//       res.status(500).json({ status: "error", message: "Internal server error" });
-//     }
-//   }
-// );
-
-
-
 // @route   GET /api/fees/class-summary
 // @desc    Get summarized fee details for each class within a date range
 router.get(
@@ -668,16 +593,16 @@ router.get(
       });
     } catch (error) {
       console.error("Class summary error:", error);
-      res.status(500).json({ status: "error", message: "Internal server error" });
+      res
+        .status(500)
+        .json({ status: "error", message: "Internal server error" });
     }
   }
 );
 
-
 // @route   GET /api/fees/location-from-classes
 // @desc    Get total fee amounts grouped by location (based on class fees)
 // @access  Private (Admin, Teacher)
-
 
 router.get(
   "/location-from-classes",
@@ -737,7 +662,9 @@ router.get(
       });
     } catch (error) {
       console.error("Location fee summary error:", error);
-      res.status(500).json({ status: "error", message: "Internal server error" });
+      res
+        .status(500)
+        .json({ status: "error", message: "Internal server error" });
     }
   }
 );
@@ -789,7 +716,34 @@ router.post(
   }
 );
 
+// @route   GET /api/fees/summary
+// @desc    Get summary of fees for logged-in student
+// @access  Private (Student)
+router.get("/summary", auth, authorize(["student"]), async (req, res) => {
+  try {
+    const studentId = req.user.id;
 
+    // Fetch student's fee records
+    const records = await StudentFee.find({ studentId });
 
+    const totalFees = records.reduce((sum, r) => sum + (r.amount || 0), 0);
+    const totalPaid = records.reduce((sum, r) => sum + (r.paidAmount || 0), 0);
+    const totalPending = totalFees - totalPaid;
+
+    res.json({
+      status: "success",
+      data: {
+        totalFees,
+        totalPaid,
+        totalPending,
+        currency: records[0]?.currency || "LKR",
+        recordCount: records.length,
+      },
+    });
+  } catch (error) {
+    console.error("Fee summary error:", error);
+    res.status(500).json({ status: "error", message: "Internal server error" });
+  }
+});
 
 export default router;

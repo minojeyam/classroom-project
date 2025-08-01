@@ -8,6 +8,7 @@ import {
   AlertCircle,
   Calendar,
   Users,
+  GraduationCap,
   Send,
 } from "lucide-react";
 import DataTable from "../Common/DataTable";
@@ -87,7 +88,7 @@ const NoticeBoardPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     console.log("Submitting payload:", formData);
-  
+
     try {
       const payload = {
         ...formData,
@@ -97,8 +98,12 @@ const NoticeBoardPage: React.FC = () => {
           ? new Date(formData.expiresAt).toISOString()
           : undefined,
       };
-  
-      if (isEditMode && selectedNotice && (selectedNotice.id || selectedNotice._id)) {
+
+      if (
+        isEditMode &&
+        selectedNotice &&
+        (selectedNotice.id || selectedNotice._id)
+      ) {
         await axiosInstance.put(
           `/notices/${selectedNotice.id || selectedNotice._id}`,
           payload
@@ -108,11 +113,12 @@ const NoticeBoardPage: React.FC = () => {
         await axiosInstance.post("/notices", payload);
         toast.success("Notice created successfully!");
       }
-  
+
       fetchNotices();
       handleCloseModal();
     } catch (err: any) {
-      const errorMessage = err.response?.data?.message || "Failed to save notice";
+      const errorMessage =
+        err.response?.data?.message || "Failed to save notice";
       setError(errorMessage);
       toast.error(errorMessage);
       console.error("Error details:", err.response?.data);
@@ -143,8 +149,6 @@ const NoticeBoardPage: React.FC = () => {
     });
     setIsEditMode(true);
     setIsModalOpen(true);
-  
-   
   };
 
   const handleDelete = async (id: string) => {
@@ -359,13 +363,13 @@ const NoticeBoardPage: React.FC = () => {
       label: "Actions",
       render: (_: any, row: Notice) => (
         <div className="flex items-center space-x-2">
-           <button
-        onClick={() => handleEdit(row)}
-        className="text-yellow-600 hover:text-yellow-800 transition-colors duration-200"
-        title="Edit"
-      >
-        <Edit className="w-4 h-4" /> {/* use lucide-react Edit icon */}
-      </button>
+          <button
+            onClick={() => handleEdit(row)}
+            className="text-yellow-600 hover:text-yellow-800 transition-colors duration-200"
+            title="Edit"
+          >
+            <Edit className="w-4 h-4" /> {/* use lucide-react Edit icon */}
+          </button>
           <button
             onClick={() => handleAcknowledge(row.id || row._id || "")}
             className="text-blue-600 hover:text-blue-800 transition-colors duration-200"
@@ -381,7 +385,6 @@ const NoticeBoardPage: React.FC = () => {
           >
             <Trash2 className="w-4 h-4" />
           </button>
-          
         </div>
       ),
     },
@@ -475,27 +478,19 @@ const NoticeBoardPage: React.FC = () => {
           </div>
         </div>
 
+        {/* Academic Notices */}
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">
-                Avg. Engagement
+                Academic Notices
               </p>
               <p className="text-2xl font-bold text-gray-900 mt-2">
-                {notices.length === 0
-                  ? "0%"
-                  : Math.round(
-                      notices.reduce((acc, n) => {
-                        const engagement = n.totalTargetUsers
-                          ? (n.viewCount / n.totalTargetUsers) * 100
-                          : 0; // Avoid division by zero or undefined
-                        return acc + engagement;
-                      }, 0) / notices.length
-                    ) + "%"}
+                {notices.filter((n) => n.type === "academic").length}
               </p>
             </div>
             <div className="w-12 h-12 bg-purple-500 rounded-lg flex items-center justify-center">
-              <Users className="w-6 h-6 text-white" />
+              <GraduationCap className="w-6 h-6 text-white" />
             </div>
           </div>
         </div>

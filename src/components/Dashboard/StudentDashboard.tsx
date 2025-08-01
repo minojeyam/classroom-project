@@ -64,7 +64,7 @@ const StudentDashboard: React.FC = () => {
         });
         const data = await res.json();
         if (data.status === "success") {
-          setFeesDue(data.data.totalOutstanding || "$0");
+          setFeesDue(data.data.totalOutstanding || "LKR 0");
         }
       } catch (err) {
         console.error("Failed to fetch fees:", err);
