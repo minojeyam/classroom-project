@@ -186,12 +186,12 @@ const UsersPage: React.FC = () => {
             <span className="text-sm text-gray-600">Total Users: </span>
             <span className="font-semibold text-gray-900">{users.length}</span>
           </div>
-          <div className="bg-white px-4 py-2 rounded-lg border border-gray-200">
+          {/* <div className="bg-white px-4 py-2 rounded-lg border border-gray-200">
             <span className="text-sm text-gray-600">Pending Approval: </span>
             <span className="font-semibold text-orange-600">
               {users.filter((u) => u.status === "pending").length}
             </span>
-          </div>
+          </div> */}
         </div>
       </div>
 

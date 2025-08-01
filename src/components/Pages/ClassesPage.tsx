@@ -369,6 +369,7 @@ const handleDeleteClick = (id: string) => {
         JSON.parse(localStorage.getItem("user") || "{}")?.tokens?.accessToken ??
         "";
       await classesAPI.deleteClass(confirmDelete.classId, token);
+      toast.success("Delete successfully!")
       await fetchData();
     } catch (err: any) {
       setError(err.message || "Failed to delete class");
@@ -493,7 +494,7 @@ const handleDeleteClick = (id: string) => {
               {row.fees.slice(0, 2).map((fee, index) => (
                 <div key={index} className="text-sm">
                   <span className="font-medium text-gray-900">
-                    LKR{fee.amount}
+                    ₹{fee.amount}
                   </span>
                   <span className="text-gray-500 ml-1">({fee.frequency})</span>
                 </div>

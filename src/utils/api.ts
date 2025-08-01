@@ -228,6 +228,8 @@ export const feesAPI = {
     return res.data;
   },
 
+
+
   // Create fee structure
   createStructure: async (data: any, token?: string) => {
     const res = await API.post("/fees/structures", data, {

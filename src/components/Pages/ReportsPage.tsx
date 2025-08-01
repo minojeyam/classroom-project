@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Download, Filter, Calendar, TrendingUp, Users, DollarSign, BookOpen, BarChart3, PieChart, FileText, Eye, RefreshCw, ChevronDown, ChevronUp, CheckCircle, Clock, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { classesAPI, usersAPI, locationsAPI, attendanceAPI, feesAPI } from '../../utils/api';
-
+import * as XLSX from "xlsx";
 interface ReportData {
   id: string;
   name: string;
@@ -171,6 +171,7 @@ const ReportsPage: React.FC = () => {
   useEffect(() => {
     fetchReferenceData();
     fetchUserRegistrations();
+    fetchApprovedStudents()
   }, []);
 
 
@@ -193,7 +194,7 @@ const ReportsPage: React.FC = () => {
     const fetchFeeCollectionData = async () => {
       try {
         const token = localStorage.getItem("token") || undefined;
-        const response = await feesAPI.getStructures(token); // <-- Your API call
+        const response = await feesAPI.getStudentFees(token); // <-- Your API call
     
         if (response.status === "success") {
           // ---- Map response data ----
@@ -262,6 +263,7 @@ const ReportsPage: React.FC = () => {
       }
     };
 
+    
   const fetchLocations = async () => {
     const token = localStorage.getItem("token") || undefined;
     try {
@@ -484,7 +486,7 @@ const ReportsPage: React.FC = () => {
   };
 
   const generateEnrollmentData = async () => {
-    // Mock enrollment data 
+   
     const mockData: EnrollmentData[] = locations.map(location => {
       const locationClasses = classes.filter(c => c.locationId._id === location.id);
       const totalStudents = locationClasses.reduce((sum, c) => sum + c.currentEnrollment, 0);
@@ -506,18 +508,27 @@ const ReportsPage: React.FC = () => {
 
   const exportReport = (data: any[], filename: string) => {
     if (!data.length) return;
-
-    const headers = Object.keys(data[0]).join(',');
-    const csvData = data.map(row => Object.values(row).join(',')).join('\n');
-
-    const blob = new Blob([headers + '\n' + csvData], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${filename}-${new Date().toISOString().split("T")[0]}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+  
+    // Convert JSON data to worksheet
+    const worksheet = XLSX.utils.json_to_sheet(data);
+  
+    // Auto-adjust column widths based on content
+    const columnWidths = Object.keys(data[0]).map((key) => ({
+      wch: Math.max(
+        key.length,
+        ...data.map((row) => (row[key] ? row[key].toString().length : 0))
+      ) + 2,
+    }));
+    worksheet['!cols'] = columnWidths;
+  
+    // Create workbook and append worksheet
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Report");
+  
+    // Export the Excel file
+    XLSX.writeFile(workbook, `${filename}-${new Date().toISOString().split("T")[0]}.xlsx`);
   };
+  
 
   const getReportTitle = () => {
     switch (selectedReport) {
@@ -581,6 +592,25 @@ const ReportsPage: React.FC = () => {
     }
   };
 
+
+
+
+  const fetchApprovedStudents = async () => {
+    try {
+      const token = localStorage.getItem('accessToken') ?? undefined;
+      const response = await usersAPI.getApprovedStudents({}, token);
+  
+      if (response.status === 'success') {
+        const approvedStudents = response.data.users || [];
+        console.log("Approved Students Count:", approvedStudents.length);
+        setApprovedStudentsCount(approvedStudents.length);
+        setStudents(approvedStudents);
+      }
+    } catch (error) {
+      console.error("Error fetching approved students", error);
+    }
+  };
+  
   const renderClassOverviewReport = () => (
     <div className="space-y-6">
       {/* Summary Cards */}

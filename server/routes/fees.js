@@ -81,6 +81,112 @@ router.post( "/structures", auth,authorize(["admin", "teacher"]),
 );
 
 
+// @route GET /api/reports/class-overview
+router.get("/class-overview", async (req, res) => {
+  try {
+    const { classId, range, from, to } = req.query;
+
+    let classesQuery = {};
+    // If the logged-in user is a teacher → filter by teacherId
+    if (req.user.role === "teacher") {
+      classesQuery.teacherId = req.user.id;
+    }
+    // Admin → no restriction (all classes)
+
+    const allClasses = await Class.find(classesQuery)
+      .populate("locationId", "name")
+      .populate("teacherId", "firstName lastName");
+
+    let filteredClasses = allClasses;
+    if (classId && classId !== "all") {
+      filteredClasses = allClasses.filter((c) => c._id.toString() === classId);
+    }
+
+    // ---- Date Filtering Logic (same as before) ----
+    let startDate, endDate;
+    if (from && to) {
+      startDate = new Date(from);
+      endDate = new Date(to);
+    } else if (range) {
+      const now = new Date();
+      switch (range) {
+        case "this-week": {
+          const first = now.getDate() - now.getDay();
+          startDate = new Date(now.setDate(first));
+          endDate = new Date(now.setDate(first + 6));
+          break;
+        }
+        case "this-month":
+          startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+          endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+          break;
+        case "this-quarter": {
+          const q = Math.floor((now.getMonth() + 3) / 3);
+          startDate = new Date(now.getFullYear(), (q - 1) * 3, 1);
+          endDate = new Date(now.getFullYear(), q * 3, 0);
+          break;
+        }
+        case "this-year":
+          startDate = new Date(now.getFullYear(), 0, 1);
+          endDate = new Date(now.getFullYear(), 11, 31);
+          break;
+      }
+    }
+
+    const data = await Promise.all(
+      filteredClasses.map(async (c) => {
+        const studentIds = c.enrolledStudents.map((s) => s.studentId);
+
+        // Attendance
+        const attendanceQuery = { classId: c._id };
+        if (startDate && endDate) {
+          attendanceQuery.date = {
+            $gte: startDate.toISOString().split("T")[0],
+            $lte: endDate.toISOString().split("T")[0],
+          };
+        }
+        const attendanceRecords = await Attendance.find(attendanceQuery);
+        const totalRecords = attendanceRecords.length;
+        const presentRecords = attendanceRecords.filter((a) => a.status === "present").length;
+        const averageAttendance = totalRecords
+          ? Math.round((presentRecords / totalRecords) * 100)
+          : 0;
+
+        // Fees
+        const feeQuery = { classId: c._id };
+        if (startDate && endDate) {
+          feeQuery.createdAt = { $gte: startDate, $lte: endDate };
+        }
+        const feeRecords = await StudentFee.find(feeQuery);
+        const totalRevenue = feeRecords.reduce((sum, r) => sum + (r.paidAmount || 0), 0);
+        const pendingFees = feeRecords.reduce(
+          (sum, r) => sum + ((r.amount || 0) - (r.paidAmount || 0)),
+          0
+        );
+
+        return {
+          classId: c._id,
+          className: c.title,
+          subject: c.subject,
+          level: c.level,
+          teacherName: `${c.teacherId.firstName} ${c.teacherId.lastName}`,
+          locationName: c.locationId.name,
+          totalStudents: c.currentEnrollment,
+          activeStudents: studentIds.length,
+          averageAttendance,
+          totalRevenue,
+          pendingFees,
+        };
+      })
+    );
+
+    res.json({ status: "success", data });
+  } catch (err) {
+    console.error("Class overview error:", err);
+    res.status(500).json({ status: "error", message: "Failed to fetch class overview" });
+  }
+});
+
 // @route   PUT /api/fees/structures/:id
 // @desc    Update a fee structure by ID
 // @access  Private (Admin, Teacher)
@@ -173,7 +279,7 @@ router.delete(
 // =======================
 
 // @route   GET /api/fees/student
-// @desc    Get all student fee records
+// @desc    Get all student fee records including location-based revenue
 // @access  Private (Admin)
 router.get(
   "/student",
@@ -182,38 +288,60 @@ router.get(
   async (req, res) => {
     try {
       const records = await StudentFee.find()
-        .populate("studentId", "firstName lastName")
-        .populate("classId", "title")
+        .populate({ path: "studentId", select: "firstName lastName" })
+        .populate({ path: "classId", select: "title locationId", populate: { path: "locationId", select: "name" } })
         .populate("feeStructureId", "name");
+
+      // Map response
+      const data = records.map((r) => ({
+        id: r._id,
+        studentId: r.studentId?._id,
+        studentName: `${r.studentId?.firstName || ""} ${r.studentId?.lastName || ""}`,
+        className: r.classId?.title || "",
+        locationId: r.classId?.locationId?._id || null,
+        locationName: r.classId?.locationId?.name || "",
+        feeStructureId: r.feeStructureId?._id,
+        feeName: r.feeStructureId?.name || "",
+        amount: r.amount,
+        dueDate: r.dueDate,
+        status: r.status,
+        paidAmount: r.paidAmount,
+        paidDate: r.paidDate,
+        paymentMethod: r.paymentMethod,
+        notes: r.notes,
+        currency: r.currency,
+      }));
+
+      // Calculate location-based revenue
+      const locationRevenue = data.reduce((acc, curr) => {
+        if (!curr.locationId) return acc;
+        if (!acc[curr.locationId]) {
+          acc[curr.locationId] = {
+            locationName: curr.locationName,
+            totalRevenue: 0,
+            totalPending: 0,
+          };
+        }
+        acc[curr.locationId].totalRevenue += curr.paidAmount || 0;
+        acc[curr.locationId].totalPending += (curr.amount || 0) - (curr.paidAmount || 0);
+        return acc;
+      }, {});
+
       res.json({
         status: "success",
-        data: records.map((r) => ({
-          id: r._id,
-          studentId: r.studentId?._id,
-          studentName: `${r.studentId?.firstName || ""} ${
-            r.studentId?.lastName || ""
-          }`,
-          className: r.classId?.title || "",
-          feeStructureId: r.feeStructureId?._id,
-          feeName: r.feeStructureId?.name || "",
-          amount: r.amount,
-          dueDate: r.dueDate,
-          status: r.status,
-          paidAmount: r.paidAmount,
-          paidDate: r.paidDate,
-          paymentMethod: r.paymentMethod,
-          notes: r.notes,
-          currency: r.currency,
+        data,
+        locationRevenue: Object.entries(locationRevenue).map(([locationId, values]) => ({
+          locationId,
+          ...values,
         })),
       });
     } catch (error) {
       console.error("Get student fees error:", error);
-      res
-        .status(500)
-        .json({ status: "error", message: "Internal server error" });
+      res.status(500).json({ status: "error", message: "Internal server error" });
     }
   }
 );
+
 
 // @route   PATCH /api/fees/student/:id/pay
 // @desc    Record a payment for a student

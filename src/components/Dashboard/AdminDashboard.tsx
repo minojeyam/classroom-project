@@ -8,9 +8,11 @@ import {
   AlertCircle,
   TrendingUp,
   Calendar,
+  BarChart as LucideBarChart,
 } from "lucide-react";
 import StatsCard from "./StatsCard";
 import { noticesAPI, usersAPI, classesAPI, locationsAPI, feesAPI } from "../../utils/api";
+
 import {
   LineChart,
   Line,
@@ -19,7 +21,10 @@ import {
   YAxis,
   Tooltip,
   ResponsiveContainer,
+  Bar,
+  BarChart,
 } from "recharts";
+
 interface Notice {
   _id: string;
   title: string;
@@ -28,46 +33,49 @@ interface Notice {
   type?: string;
 }
 
-interface LocationRevenue {
-  locationId: string;
-  locationName: string;
-  totalClasses: number;
-  totalStudents: number;
-  monthlyRevenue: number;
-  receivedAmount: number;
-  pendingAmount: number;
-  collectionRate: number;
-  // classes: ClassRevenue[];
+interface LocationFee {
+  location: string;
+  totalFee: number | string;
 }
 
 const AdminDashboard: React.FC = () => {
   const [overview, setOverview] = useState<any>(null);
   const [classOverview, setClassOverview] = useState<any>(null);
   const [locationOverview, setLocationOverview] = useState<any>(null);
-  const [pendingAprovals, setPendingAprovales] = useState<any>(null);
+  const [pendingApprovals, setPendingApprovals] = useState<any>(null);
   const [notices, setNotices] = useState<Notice[]>([]);
   const [loading, setLoading] = useState(true);
-  const [locations, setLocations] = useState<any[]>([]);
-  const [locationRevenue, setLocationRevenue] = useState<LocationRevenue[]>([]);
-  
-  // Fetch data
+  const [locations, setLocations] = useState<any>(null);
+  const [chartData, setChartData] = useState<{ name: string; revenue: number }[]>([]);
+
   useEffect(() => {
     const fetchOverview = async () => {
       try {
         setLoading(true);
 
-        const [userResponse, classesResponse, locationsResponse, pendingAprovals] = await Promise.all([
+        const [userResponse, classesResponse, locationsResponse, pendingApprovalsResponse, locationBasedRevenue] = await Promise.all([
           usersAPI.getStatusOverview(),
           classesAPI.classOverview(),
           locationsAPI.locationOverview(),
-          usersAPI.getPendingApprovals()
+          usersAPI.getPendingApprovals(),
+          feesAPI.getLocationFromClasses(),
         ]);
 
         setOverview(userResponse.data);
         setClassOverview(classesResponse.data);
         setLocationOverview(locationsResponse.data);
-        setPendingAprovales(pendingAprovals.data);
+        setPendingApprovals(pendingApprovalsResponse.data);
+        setLocations(locationBasedRevenue.data);
 
+        if (locationBasedRevenue.data?.locations && Array.isArray(locationBasedRevenue.data.locations)) {
+          const preparedChartData = locationBasedRevenue.data.locations.map((loc: LocationFee) => ({
+            name: loc.location,
+            revenue: Number(loc.totalFee) || 0,
+          }));
+          setChartData(preparedChartData);
+        } else {
+          setChartData([]);
+        }
       } catch (error) {
         console.error("Error fetching overview:", error);
       } finally {
@@ -75,126 +83,63 @@ const AdminDashboard: React.FC = () => {
       }
     };
 
+    const fetchNotices = async () => {
+      try {
+        const data = await noticesAPI.getNotices();
+        const upcoming = (data || []).filter((notice: any) => {
+          const noticeDate = new Date(notice.date);
+          return noticeDate >= new Date();
+        });
+        upcoming.sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        setNotices(upcoming);
+      } catch (err: any) {
+        console.error(err.message || "Failed to fetch notices");
+      }
+    };
+
     fetchOverview();
     fetchNotices();
-    fetchLocations()
   }, []);
-
-  const fetchNotices = async () => {
-    try {
-      const data = await noticesAPI.getNotices();
-      const upcoming = (data || []).filter((notice: any) => {
-        const noticeDate = new Date(notice.date);
-        return noticeDate >= new Date();
-      });
-      upcoming.sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
-      setNotices(upcoming);
-    } catch (err: any) {
-      console.error(err.message || "Failed to fetch notices");
-    }
-  };
-
-  const fetchLocations = async () => {
-    const token = localStorage.getItem("token") || undefined;
-    try {
-      const locationResponse = await feesAPI.getLocationFromClasses(token);
-  
-      if (locationResponse.status !== "success") {
-        throw new Error(locationResponse.message || "Failed to fetch location revenue");
-      }
-  
-      // Get total revenue directly from response
-      const totalRevenue = locationResponse.data.overall?.totalFee ?? 0;
-  
-      // Map location details
-      const mappedLocationRevenue: LocationRevenue[] = locationResponse.data.locations.map(
-        (loc: any) => ({
-          locationId: loc.location,
-          locationName: loc.location,
-          totalClasses: loc.totalClasses,
-          totalStudents: 0,
-          monthlyRevenue: loc.totalFee,
-          receivedAmount: loc.totalFee,
-          pendingAmount: 0,
-          collectionRate: 100,
-          classes: loc.classes.map((cls: any) => ({
-            classId: cls.classId,
-            className: cls.title,
-            subject: "",
-            level: "",
-            teacherName: "",
-            studentCount: 0,
-            monthlyFee: cls.feeTotal,
-            totalRevenue: cls.feeTotal,
-            receivedAmount: cls.feeTotal,
-            pendingAmount: 0,
-            collectionRate: 100,
-            students: [],
-          })),
-        })
-      );
-  
-      // set state
-      setLocationRevenue(mappedLocationRevenue);
-  
-      // store or log total revenue
-      console.log("Total Revenue:", totalRevenue);
-  
-    } catch (error) {
-      console.error("Error fetching locations:", error);
-    }
-  };
-  
-
-  const [chartData, setChartData] = useState([
-    { month: "Jan", revenue: 32000 },
-    { month: "Feb", revenue: 40000 },
-    { month: "Mar", revenue: 38000 },
-    { month: "Apr", revenue: 42000 },
-    { month: "May", revenue: 45000 },
-    { month: "Jun", revenue: 48250 },
-  ]);
 
   if (loading) return <p>Loading...</p>;
   if (!overview) return <p>No data available</p>;
 
-  // Dashboard cards with mini chart data
   const stats = [
     {
       title: "Total Students",
-      value: overview.students.count || 0,
+      value: overview.students?.count || 0,
       icon: Users,
       color: "teal" as const,
-      trend: { value: overview.students.trend.value || 0, isPositive: overview.students.trend.value >= 0 },
-      chartData: [{ value: 4 }, { value: 6 }, { value: 8 }, { value: overview.students.count || 0 }],
+      trend: { value: overview.students?.trend?.value || 0, isPositive: (overview.students?.trend?.value ?? 0) >= 0 },
+      chartData: [{ value: 4 }, { value: 6 }, { value: 8 }, { value: overview.students?.count || 0 }],
     },
     {
       title: "Total Teachers",
-      value: overview.teachers.count || 0,
+      value: overview.teachers?.count || 0,
       icon: UserCheck,
       color: "coral" as const,
-      trend: { value: overview.teachers.trend.value || 0, isPositive: overview.teachers.trend.value >= 0 },
-      chartData: [{ value: 1 }, { value: 1 }, { value: 2 }, { value: overview.teachers.count || 0 }],
+      trend: { value: overview.teachers?.trend?.value || 0, isPositive: (overview.teachers?.trend?.value ?? 0) >= 0 },
+      chartData: [{ value: 1 }, { value: 1 }, { value: 2 }, { value: overview.teachers?.count || 0 }],
     },
     {
       title: "Total Classes",
-      value: classOverview.totalClasses || 0,
+      value: classOverview?.totalClasses || 0,
       icon: BookOpen,
       color: "green" as const,
-      trend: { value: classOverview.percentageChange || 0, isPositive: classOverview.percentageChange >= 0 },
-      chartData: [{ value: 2 }, { value: 3 }, { value: 4 }, { value: classOverview.totalClasses || 0 }],
+      trend: { value: classOverview?.percentageChange || 0, isPositive: (classOverview?.percentageChange ?? 0) >= 0 },
+      chartData: [{ value: 2 }, { value: 3 }, { value: 4 }, { value: classOverview?.totalClasses || 0 }],
     },
     {
       title: "Locations",
-      value: locationOverview.stats.totalLocations || 0,
+      value: locationOverview?.stats?.totalLocations || 0,
       icon: MapPin,
       color: "purple" as const,
-      trend: { value: locationOverview.trends.activeLocations.value, isPositive: locationOverview.trends.activeLocations.value >= 0 },
-      chartData: [{ value: 1 }, { value: 2 }, { value: 3 }, { value: locationOverview.stats.totalLocations || 0 }],
+      trend: { value: locationOverview?.trends?.activeLocations?.value || 0, isPositive: (locationOverview?.trends?.activeLocations?.value ?? 0) >= 0 },
+      chartData: [{ value: 1 }, { value: 2 }, { value: 3 }, { value: locationOverview?.stats?.totalLocations || 0 }],
     },
     {
       title: "Monthly Revenue",
-      value: "$48,250",
+      value: `LKR ${locations?.overall?.totalFee || 0}`,
       icon: DollarSign,
       color: "blue" as const,
       trend: { value: 15, isPositive: true },
@@ -210,11 +155,11 @@ const AdminDashboard: React.FC = () => {
     },
     {
       title: "Pending Approvals",
-      value: pendingAprovals.totalPending,
+      value: pendingApprovals?.totalPending || 0,
       icon: AlertCircle,
-      color: "orange" as const, 
-      trend: { value: pendingAprovals.monthly.trend?.value || 0, isPositive: pendingAprovals.monthly.trend?.value >= 0 },
-      chartData: [{ value: 1 }, { value: 2 }, { value: 2 }, { value: pendingAprovals.totalPending }],
+      color: "orange" as const,
+      trend: { value: pendingApprovals?.monthly?.trend?.value || 0, isPositive: (pendingApprovals?.monthly?.trend?.value ?? 0) >= 0 },
+      chartData: [{ value: 1 }, { value: 2 }, { value: 2 }, { value: pendingApprovals?.totalPending || 0 }],
     },
     {
       title: "Overdue Payments",
@@ -226,16 +171,6 @@ const AdminDashboard: React.FC = () => {
     },
   ];
 
-  // const recentActivities = [
-  //   { id: 1, message: "New teacher registration pending approval", time: "5 min ago" },
-  //   { id: 2, message: "Payment received from John Doe", time: "10 min ago" },
-  //   { id: 3, message: 'New class "Advanced Mathematics" created', time: "20 min ago" },
-  //   { id: 4, message: "Downtown location capacity updated", time: "35 min ago" },
-  //   { id: 5, message: "Attendance marked for Class 7A", time: "1 hour ago" },
-  // ]; 
-
-
-
   return (
     <div className="space-y-6">
       {/* Stats Cards */}
@@ -246,26 +181,27 @@ const AdminDashboard: React.FC = () => {
       </div>
 
       <div className="space-y-6">
-      {/* Chart Section */}
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Revenue Trend</h3>
-        <ResponsiveContainer width="100%" height={350}>
-          <LineChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="month" />
-            <YAxis />
-            <Tooltip />
-            <Line type="monotone" dataKey="revenue" stroke="#14b8a6" strokeWidth={2} />
-          </LineChart>
-        </ResponsiveContainer>
+        {/* Chart Section */}
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Revenue Trend</h3>
+          <Users /> {/* just render the icon */}
+          {chartData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" />
+                <YAxis />
+                <Tooltip />
+                <Bar dataKey="revenue" fill="#8884d8" />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <p>No revenue data available.</p>
+          )}
+        </div>
       </div>
-    </div>
     </div>
   );
 };
 
 export default AdminDashboard;
-
-
-
-
