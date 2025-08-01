@@ -641,10 +641,10 @@ const TeacherReportsPage: React.FC = () => {
                         {c.averageAttendance}%
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600">
-                        LKR{c.totalRevenue.toLocaleString()}
+                        LKR{(c.totalRevenue ?? 0).toLocaleString()}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-orange-600">
-                        LKR{c.pendingFees.toLocaleString()}
+                        LKR{(c.pendingFees ?? 0).toLocaleString()}
                       </td>
                     </tr>
                   ))}

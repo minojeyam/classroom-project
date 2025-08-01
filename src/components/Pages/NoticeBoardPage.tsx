@@ -363,13 +363,27 @@ const NoticeBoardPage: React.FC = () => {
       label: "Actions",
       render: (_: any, row: Notice) => (
         <div className="flex items-center space-x-2">
-          <button
-            onClick={() => handleEdit(row)}
-            className="text-yellow-600 hover:text-yellow-800 transition-colors duration-200"
-            title="Edit"
-          >
-            <Edit className="w-4 h-4" /> {/* use lucide-react Edit icon */}
-          </button>
+          {/* Only show Edit/Delete if NOT student */}
+          {user?.role !== "student" && (
+            <>
+              <button
+                onClick={() => handleEdit(row)}
+                className="text-yellow-600 hover:text-yellow-800 transition-colors duration-200"
+                title="Edit"
+              >
+                <Edit className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => handleDelete(row.id || row._id || "")}
+                className="text-red-600 hover:text-red-800 transition-colors duration-200"
+                title="Delete"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </>
+          )}
+
+          {/* Acknowledge button - visible to all roles */}
           <button
             onClick={() => handleAcknowledge(row.id || row._id || "")}
             className="text-blue-600 hover:text-blue-800 transition-colors duration-200"
@@ -377,13 +391,6 @@ const NoticeBoardPage: React.FC = () => {
             title="Mark as Seen"
           >
             <Eye className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => handleDelete(row.id || row._id || "")}
-            className="text-red-600 hover:text-red-800 transition-colors duration-200"
-            title="Delete"
-          >
-            <Trash2 className="w-4 h-4" />
           </button>
         </div>
       ),
