@@ -7,53 +7,42 @@ import StudentFee from "../models/StudentFee.js";
 import ScheduledClass from "../models/ScheduledClass.js";
 
 const router = express.Router();
-
-// Middleware for teacher-only access
 router.use(auth, authorize(["admin"]));
 
-// @route GET /api/reports/class-overview
+// Class Overview
 router.get("/class-overview", async (req, res) => {
   try {
     const { classId, range, from, to } = req.query;
 
-    // Step 1: Get teacher's class list
-    const teacherClasses = await Class.find({ teacherId: req.user.id })
+    const classes = await Class.find()
       .populate("locationId", "name")
       .populate("teacherId", "firstName lastName");
 
-    let filteredClasses = teacherClasses;
-
+    let filteredClasses = classes;
     if (classId && classId !== "all") {
-      filteredClasses = teacherClasses.filter(
-        (c) => c._id.toString() === classId
-      );
+      filteredClasses = classes.filter((c) => c._id.toString() === classId);
     }
 
-    // Step 2: Handle date filtering
     let startDate, endDate;
-
     if (from && to) {
       startDate = new Date(from);
       endDate = new Date(to);
     } else if (range) {
       const now = new Date();
       switch (range) {
-        case "this-week": {
-          const first = now.getDate() - now.getDay();
-          startDate = new Date(now.setDate(first));
-          endDate = new Date(now.setDate(first + 6));
+        case "this-week":
+          startDate = new Date(now.setDate(now.getDate() - now.getDay()));
+          endDate = new Date(now.setDate(startDate.getDate() + 6));
           break;
-        }
         case "this-month":
           startDate = new Date(now.getFullYear(), now.getMonth(), 1);
           endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
           break;
-        case "this-quarter": {
+        case "this-quarter":
           const q = Math.floor((now.getMonth() + 3) / 3);
           startDate = new Date(now.getFullYear(), (q - 1) * 3, 1);
           endDate = new Date(now.getFullYear(), q * 3, 0);
           break;
-        }
         case "this-year":
           startDate = new Date(now.getFullYear(), 0, 1);
           endDate = new Date(now.getFullYear(), 11, 31);
@@ -65,7 +54,6 @@ router.get("/class-overview", async (req, res) => {
       filteredClasses.map(async (c) => {
         const studentIds = c.enrolledStudents.map((s) => s.studentId);
 
-        // Filter attendance by date
         const attendanceQuery = { classId: c._id };
         if (startDate && endDate) {
           attendanceQuery.date = {
@@ -83,14 +71,12 @@ router.get("/class-overview", async (req, res) => {
           ? Math.round((presentRecords / totalRecords) * 100)
           : 0;
 
-        // Filter fee records by date
         const feeQuery = { classId: c._id };
         if (startDate && endDate) {
           feeQuery.createdAt = { $gte: startDate, $lte: endDate };
         }
 
         const feeRecords = await StudentFee.find(feeQuery);
-
         const totalRevenue = feeRecords.reduce(
           (sum, r) => sum + (r.paidAmount || 0),
           0
@@ -125,49 +111,42 @@ router.get("/class-overview", async (req, res) => {
   }
 });
 
-// @route GET /api/reports/attendance
+// Attendance
 router.get("/attendance", async (req, res) => {
   try {
     const { classId, from, to, range } = req.query;
 
-    const classes = await Class.find({ teacherId: req.user.id });
-    const teacherClassIds = classes.map((c) => c._id.toString());
+    const classes = await Class.find();
+    const classIds = classes.map((c) => c._id.toString());
 
-    // Filter logic
     const query = {
-      classId:
-        classId && classId !== "all" ? classId : { $in: teacherClassIds },
+      classId: classId && classId !== "all" ? classId : { $in: classIds },
     };
 
+    let start, end;
     if (from && to) {
       query.date = { $gte: from, $lte: to };
     } else if (range) {
       const now = new Date();
-      let start, end;
-
       switch (range) {
         case "this-week":
-          const today = now.getDay(); // 0 = Sun
-          start = new Date(now);
-          start.setDate(now.getDate() - today);
-          end = new Date(start);
-          end.setDate(start.getDate() + 6);
+          start = new Date(now.setDate(now.getDate() - now.getDay()));
+          end = new Date(now.setDate(start.getDate() + 6));
           break;
         case "this-month":
           start = new Date(now.getFullYear(), now.getMonth(), 1);
           end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
           break;
         case "this-quarter":
-          const quarter = Math.floor((now.getMonth() + 3) / 3);
-          start = new Date(now.getFullYear(), (quarter - 1) * 3, 1);
-          end = new Date(now.getFullYear(), quarter * 3, 0);
+          const q = Math.floor((now.getMonth() + 3) / 3);
+          start = new Date(now.getFullYear(), (q - 1) * 3, 1);
+          end = new Date(now.getFullYear(), q * 3, 0);
           break;
         case "this-year":
           start = new Date(now.getFullYear(), 0, 1);
           end = new Date(now.getFullYear(), 11, 31);
           break;
       }
-
       if (start && end) {
         query.date = {
           $gte: start.toISOString().split("T")[0],
@@ -180,7 +159,6 @@ router.get("/attendance", async (req, res) => {
       .populate("studentId", "firstName lastName")
       .populate("classId", "title");
 
-    // Map to structure
     const data = records.map((record) => {
       const studentRecords = records.filter(
         (r) =>
@@ -213,46 +191,74 @@ router.get("/attendance", async (req, res) => {
   }
 });
 
-// @route GET /api/reports/fee-collection
+// Fee Collection
 router.get("/fee-collection", async (req, res) => {
+  console.log("🎯 Hitting /api/reports/fee-collection");
   try {
-    const { classId, status, from, to, range } = req.query;
+    if (!req.user) {
+      console.warn("⛔ No authenticated user found in request");
+      return res.status(401).json({
+        status: "error",
+        message: "Unauthorized access",
+      });
+    }
 
-    // Step 1: Get teacher's class list
-    const classes = await Class.find({ teacherId: req.user.id });
-    const teacherClassIds = classes.map((c) => c._id.toString());
+    console.log("👤 Authenticated User:", req.user);
 
-    // Step 2: Build query
+    const { classId, status, from, to, range, location, teacher } = req.query;
+    console.log("📦 Query Params:", req.query);
+
+    let allClasses = await Class.find()
+      .populate("locationId")
+      .populate("teacherId");
+
+    if (!allClasses || allClasses.length === 0) {
+      console.warn("⚠️ No classes found in the database.");
+      return res.json({ status: "success", data: [] });
+    }
+
+    // Filter by location
+    if (location && location !== "all") {
+      allClasses = allClasses.filter(
+        (c) => c.locationId?._id?.toString() === location
+      );
+    }
+
+    // Filter by teacher
+    if (teacher && teacher !== "all") {
+      allClasses = allClasses.filter(
+        (c) => c.teacherId?._id?.toString() === teacher
+      );
+    }
+
+    const classIds = allClasses.map((c) => c._id.toString());
+
+    // Build query
     const query = {
-      classId:
-        classId && classId !== "all" ? classId : { $in: teacherClassIds },
+      classId: classId && classId !== "all" ? classId : { $in: classIds },
     };
 
-    // Step 3: Add date filter
+    // Handle date range
     let startDate, endDate;
-
     if (from && to) {
       startDate = new Date(from);
       endDate = new Date(to);
     } else if (range) {
       const now = new Date();
       switch (range) {
-        case "this-week": {
-          const first = now.getDate() - now.getDay();
-          startDate = new Date(now.setDate(first));
-          endDate = new Date(now.setDate(first + 6));
+        case "this-week":
+          startDate = new Date(now.setDate(now.getDate() - now.getDay()));
+          endDate = new Date(now.setDate(startDate.getDate() + 6));
           break;
-        }
         case "this-month":
           startDate = new Date(now.getFullYear(), now.getMonth(), 1);
           endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
           break;
-        case "this-quarter": {
+        case "this-quarter":
           const q = Math.floor((now.getMonth() + 3) / 3);
           startDate = new Date(now.getFullYear(), (q - 1) * 3, 1);
           endDate = new Date(now.getFullYear(), q * 3, 0);
           break;
-        }
         case "this-year":
           startDate = new Date(now.getFullYear(), 0, 1);
           endDate = new Date(now.getFullYear(), 11, 31);
@@ -264,14 +270,16 @@ router.get("/fee-collection", async (req, res) => {
       query.createdAt = { $gte: startDate, $lte: endDate };
     }
 
+    // Filter by payment status
     if (status && status !== "all") {
       query.status = status;
     }
 
-    // Step 4: Fetch fees
     const fees = await StudentFee.find(query)
       .populate("studentId", "firstName lastName")
       .populate("classId", "title");
+
+    console.log(`📊 Found ${fees.length} fee records.`);
 
     const data = fees.map((fee) => {
       const total = fee.amount;
@@ -287,7 +295,7 @@ router.get("/fee-collection", async (req, res) => {
       return {
         studentId: fee.studentId._id,
         studentName: `${fee.studentId.firstName} ${fee.studentId.lastName}`,
-        className: fee.classId.title,
+        className: fee.classId?.title || "Unknown",
         totalAmount: total,
         paidAmount: paid,
         pendingAmount: pending,
@@ -298,31 +306,40 @@ router.get("/fee-collection", async (req, res) => {
       };
     });
 
+    console.log("✅ Sending fee collection data:", data.length, "entries");
+
     res.json({ status: "success", data });
   } catch (err) {
-    console.error("Fee collection error:", err);
+    console.error("🔥 Fee collection route error:", err.message, err.stack);
     res
       .status(500)
       .json({ status: "error", message: "Failed to fetch fee data" });
   }
 });
 
-// @route GET /api/reports/schedule-summary
-router.get("/schedule-summary", async (req, res) => {
+// Student Enrollment Report
+router.get("/student-enrollment", async (req, res) => {
   try {
-    const { classId, range, from, to } = req.query;
+    const { range, from, to, location, teacher, classId } = req.query;
 
-    const teacherClasses = await Class.find({ teacherId: req.user.id });
+    let classes = await Class.find()
+      .populate("locationId")
+      .populate("teacherId");
 
-    let filteredClasses = teacherClasses;
-
-    if (classId && classId !== "all") {
-      filteredClasses = filteredClasses.filter(
-        (c) => c._id.toString() === classId
+    if (location && location !== "all") {
+      classes = classes.filter(
+        (c) => c.locationId?._id?.toString() === location
       );
     }
 
-    // Handle date range
+    if (teacher && teacher !== "all") {
+      classes = classes.filter((c) => c.teacherId?._id?.toString() === teacher);
+    }
+
+    if (classId && classId !== "all") {
+      classes = classes.filter((c) => c._id.toString() === classId);
+    }
+
     let startDate, endDate;
     if (from && to) {
       startDate = new Date(from);
@@ -330,12 +347,87 @@ router.get("/schedule-summary", async (req, res) => {
     } else if (range) {
       const now = new Date();
       switch (range) {
-        case "this-week": {
-          const first = now.getDate() - now.getDay();
-          startDate = new Date(now.setDate(first));
-          endDate = new Date(now.setDate(first + 6));
+        case "this-week":
+          startDate = new Date(now.setDate(now.getDate() - now.getDay()));
+          endDate = new Date(now.setDate(startDate.getDate() + 6));
           break;
-        }
+        case "this-month":
+          startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+          endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+          break;
+        case "this-quarter":
+          const q = Math.floor((now.getMonth() + 3) / 3);
+          startDate = new Date(now.getFullYear(), (q - 1) * 3, 1);
+          endDate = new Date(now.getFullYear(), q * 3, 0);
+          break;
+        case "this-year":
+          startDate = new Date(now.getFullYear(), 0, 1);
+          endDate = new Date(now.getFullYear(), 11, 31);
+          break;
+      }
+    }
+
+    const result = [];
+    for (const loc of [...new Set(classes.map((c) => c.locationId?.name))]) {
+      const locClasses = classes.filter((c) => c.locationId?.name === loc);
+      let totalStudents = 0;
+      let active = 0;
+
+      for (const cl of locClasses) {
+        const filteredStudents = cl.enrolledStudents.filter((s) => {
+          const enrolledAt = new Date(s.enrollmentDate);
+          return (
+            (!startDate || enrolledAt >= startDate) &&
+            (!endDate || enrolledAt <= endDate)
+          );
+        });
+
+        totalStudents += filteredStudents.length;
+        active += filteredStudents.filter((s) => s.status === "active").length;
+      }
+
+      result.push({
+        location: loc,
+        classes: locClasses.length,
+        totalStudents,
+        active,
+      });
+    }
+
+    res.json({ status: "success", data: result });
+  } catch (err) {
+    console.error("Student enrollment error:", err);
+    res.status(500).json({
+      status: "error",
+      message: "Failed to fetch student enrollment data",
+    });
+  }
+});
+
+// Schedule Summary
+router.get("/schedule-summary", async (req, res) => {
+  try {
+    const { classId, range, from, to } = req.query;
+    const classes = await Class.find();
+    let filteredClasses = classes;
+
+    if (classId && classId !== "all") {
+      filteredClasses = filteredClasses.filter(
+        (c) => c._id.toString() === classId
+      );
+    }
+
+    let startDate, endDate;
+    if (from && to) {
+      startDate = new Date(from);
+      endDate = new Date(to);
+    } else if (range) {
+      const now = new Date();
+      switch (range) {
+        case "this-week":
+          startDate = new Date(now.setDate(now.getDate() - now.getDay()));
+          endDate = new Date(now.setDate(startDate.getDate() + 6));
+          break;
         case "this-month":
           startDate = new Date(now.getFullYear(), now.getMonth(), 1);
           endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
@@ -374,7 +466,6 @@ router.get("/schedule-summary", async (req, res) => {
           (s) => s.status === "scheduled"
         ).length;
 
-        // Attendance per scheduled class
         const classAttendance = await Attendance.find({
           classId: c._id,
           ...(startDate && endDate
@@ -391,12 +482,10 @@ router.get("/schedule-summary", async (req, res) => {
         const presentCount = classAttendance.filter(
           (a) => a.status === "present"
         ).length;
-
         const attendanceRate =
           totalAttendance > 0
             ? Math.round((presentCount / totalAttendance) * 100)
             : 0;
-
         const avgStudentsPresent =
           total > 0 ? Math.round(presentCount / total) : 0;
 
@@ -421,28 +510,22 @@ router.get("/schedule-summary", async (req, res) => {
   }
 });
 
-// @route GET /api/reports/revenue-summary
+// Revenue Summary
 router.get("/revenue-summary", async (req, res) => {
   try {
     const { classId, subject, range, from, to } = req.query;
+    let filteredClasses = await Class.find();
 
-    // Fetch all teacher's classes
-    const allClasses = await Class.find({ teacherId: req.user.id });
-
-    // Filter by classId
-    let filteredClasses = allClasses;
     if (classId && classId !== "all") {
       filteredClasses = filteredClasses.filter(
         (c) => c._id.toString() === classId
       );
     }
 
-    // Filter by subject
     if (subject && subject !== "all") {
       filteredClasses = filteredClasses.filter((c) => c.subject === subject);
     }
 
-    // Date filtering
     let startDate, endDate;
     if (from && to) {
       startDate = new Date(from);
@@ -451,9 +534,8 @@ router.get("/revenue-summary", async (req, res) => {
       const now = new Date();
       switch (range) {
         case "this-week":
-          const first = now.getDate() - now.getDay();
-          startDate = new Date(now.setDate(first));
-          endDate = new Date(now.setDate(first + 6));
+          startDate = new Date(now.setDate(now.getDate() - now.getDay()));
+          endDate = new Date(now.setDate(startDate.getDate() + 6));
           break;
         case "this-month":
           startDate = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -473,17 +555,12 @@ router.get("/revenue-summary", async (req, res) => {
 
     const data = await Promise.all(
       filteredClasses.map(async (c) => {
-        const classId = c._id;
-
-        // Build query for student fees
-        const feeQuery = { classId };
+        const feeQuery = { classId: c._id };
         if (startDate && endDate) {
           feeQuery.createdAt = { $gte: startDate, $lte: endDate };
         }
 
-        const StudentFee = (await import("../models/StudentFee.js")).default;
         const fees = await StudentFee.find(feeQuery);
-
         const currentMonth = fees.reduce((sum, f) => sum + (f.amount || 0), 0);
         const received = fees.reduce((sum, f) => sum + (f.paidAmount || 0), 0);
         const pending = currentMonth - received;
@@ -493,8 +570,6 @@ router.get("/revenue-summary", async (req, res) => {
           subject: c.subject,
           students: c.currentEnrollment,
           currentMonth,
-          lastMonth: 0, // you can implement if needed
-          currentQuarter: 0, // you can implement if needed
           received,
           pending,
         };

@@ -17,7 +17,7 @@ import noticeRoutes from "./routes/notices.js";
 import materialRoutes from "./routes/material.js";
 import scheduleRoutes from "./routes/schedules.js";
 import teacherReportsRoutes from "./routes/teacher-reports.js";
-import adminReports from "./routes/admin-report.js"
+import adminReports from "./routes/admin-report.js";
 
 // Import middleware
 import { errorHandler } from "./middleware/errorHandler.js";
@@ -28,7 +28,7 @@ import { notFound } from "./middleware/notFound.js";
 dotenv.config();
 
 const app = express();
-const PORT =  5000;
+const PORT = 5000;
 
 // Security middleware
 app.use(helmet());
@@ -102,7 +102,7 @@ app.use("/api/notices", noticeRoutes);
 app.use("/api/materials", materialRoutes);
 app.use("/api/schedules", scheduleRoutes);
 app.use("/api/reports", teacherReportsRoutes);
-app.use("api/reports", adminReports)
+app.use("/api/reports/admin", adminReports);
 
 // Root route handler
 app.get("/", (req, res) => {

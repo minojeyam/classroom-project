@@ -228,8 +228,6 @@ export const feesAPI = {
     return res.data;
   },
 
-
-
   // Create fee structure
   createStructure: async (data: any, token?: string) => {
     const res = await API.post("/fees/structures", data, {
@@ -284,7 +282,7 @@ export const feesAPI = {
     return res.data;
   },
 
-  // **New**: Get class fee summary (with filters)
+  // Get class fee summary (with filters)
   getClassSummary: async (
     params: { startDate: string; endDate: string },
     token?: string
@@ -296,10 +294,67 @@ export const feesAPI = {
     return res.data;
   },
 
-  // **NEW**: Get location-based fee summary from classes
+  // Get location-based fee summary from classes
   getLocationFromClasses: async (token?: string) => {
     const res = await API.get("/fees/location-from-classes", {
       headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+  },
+
+  // Get fee collection report for admin with filters
+  getAdminFeeCollectionReport: async (token?: string, params = {}) => {
+    const res = await API.get("/reports/fee-collection", {
+      headers: { Authorization: `Bearer ${token}` },
+      params,
+    });
+    return res.data;
+  },
+};
+
+// ADMIN
+export const adminReportAPI = {
+  // ✅Fee Collection Report
+  getAdminFeeCollectionReport: async (token?: string, params = {}) => {
+    const res = await API.get("/reports/admin/fee-collection", {
+      headers: { Authorization: `Bearer ${token}` },
+      params,
+    });
+    return res.data;
+  },
+
+  // Class Overview Report
+  getAdminClassOverviewReport: async (token?: string, params = {}) => {
+    const res = await API.get("/reports/admin/class-overview", {
+      headers: { Authorization: `Bearer ${token}` },
+      params,
+    });
+    return res.data;
+  },
+
+  // Student Enrollment Report
+  getAdminStudentEnrollmentReport: async (token?: string, params = {}) => {
+    const res = await API.get("/reports/admin/student-enrollment", {
+      headers: { Authorization: `Bearer ${token}` },
+      params,
+    });
+    return res.data;
+  },
+
+  // Schedule Summary Report
+  getAdminScheduleSummaryReport: async (token?: string, params = {}) => {
+    const res = await API.get("/reports/admin/schedule-summary", {
+      headers: { Authorization: `Bearer ${token}` },
+      params,
+    });
+    return res.data;
+  },
+
+  // Revenue Summary Report
+  getAdminRevenueSummaryReport: async (token?: string, params = {}) => {
+    const res = await API.get("/reports/admin/revenue-summary", {
+      headers: { Authorization: `Bearer ${token}` },
+      params,
     });
     return res.data;
   },

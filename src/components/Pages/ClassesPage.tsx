@@ -69,7 +69,6 @@ export interface Class {
   endDate: string; // ISO string
 }
 
-
 interface FormData {
   title: string;
   level: string;
@@ -121,16 +120,15 @@ const ClassesPage: React.FC = () => {
     startDate: "",
     endDate: "",
   });
-// confirmation Model 
-const [confirmDelete, setConfirmDelete] = useState<{
-  isOpen: boolean;
-  classId: string | null;
-}>({ isOpen: false, classId: null });
+  // confirmation Model
+  const [confirmDelete, setConfirmDelete] = useState<{
+    isOpen: boolean;
+    classId: string | null;
+  }>({ isOpen: false, classId: null });
 
-const handleDeleteClick = (id: string) => {
-  setConfirmDelete({ isOpen: true, classId: id });
-};
-
+  const handleDeleteClick = (id: string) => {
+    setConfirmDelete({ isOpen: true, classId: id });
+  };
 
   // Extract unique grades from classes for filter
   const uniqueGrades = [...new Set(classes.map((c) => c.level))].sort();
@@ -156,7 +154,7 @@ const handleDeleteClick = (id: string) => {
         const [classesResponse, locationsResponse, usersResponse] =
           await Promise.all([
             classesAPI.getClasses({}, token),
-            locationsAPI.getLocations({},token),
+            locationsAPI.getLocations({}, token),
             usersAPI.getUsers({ role: "teacher" }, token),
           ]);
 
@@ -197,7 +195,7 @@ const handleDeleteClick = (id: string) => {
       const [classesResponse, locationsResponse, usersResponse] =
         await Promise.all([
           classesAPI.getClasses({}, token),
-          locationsAPI.getLocations({},token),
+          locationsAPI.getLocations({}, token),
           usersAPI.getUsers({ role: "teacher" }, token),
         ]);
 
@@ -248,15 +246,19 @@ const handleDeleteClick = (id: string) => {
         return;
       }
 
-      const token = JSON.parse(localStorage.getItem("user") || "{}")?.tokens?.accessToken ?? "";
+      const token =
+        JSON.parse(localStorage.getItem("user") || "{}")?.tokens?.accessToken ??
+        "";
 
       const classData = {
-        ...formData, currency: "LKR", schedule: {
+        ...formData,
+        currency: "LKR",
+        schedule: {
           dayOfWeek: formData.dayOfWeek,
           startTime: formData.startTime,
           endTime: formData.endTime,
-          duration: calculateDuration(formData.startTime, formData.endTime)
-        }
+          duration: calculateDuration(formData.startTime, formData.endTime),
+        },
       };
 
       if (isEditMode && selectedClass) {
@@ -274,7 +276,6 @@ const handleDeleteClick = (id: string) => {
       toast.error(err.response?.data?.message || "Failed to save class");
     }
   };
-
 
   const calculateDuration = (startTime: string, endTime: string): number => {
     const start = new Date(`2000-01-01T${startTime}:00`);
@@ -319,7 +320,7 @@ const handleDeleteClick = (id: string) => {
       const [classesResponse, locationsResponse, usersResponse] =
         await Promise.all([
           classesAPI.getClasses({}, token),
-          locationsAPI.getLocations({},token),
+          locationsAPI.getLocations({}, token),
           usersAPI.getUsers({ role: "teacher" }, token),
         ]);
 
@@ -363,13 +364,13 @@ const handleDeleteClick = (id: string) => {
 
   const handleConfirmDelete = async () => {
     if (!confirmDelete.classId) return;
-  
+
     try {
       const token =
         JSON.parse(localStorage.getItem("user") || "{}")?.tokens?.accessToken ??
         "";
       await classesAPI.deleteClass(confirmDelete.classId, token);
-      toast.success("Delete successfully!")
+      toast.success("Delete successfully!");
       await fetchData();
     } catch (err: any) {
       setError(err.message || "Failed to delete class");
@@ -494,7 +495,7 @@ const handleDeleteClick = (id: string) => {
               {row.fees.slice(0, 2).map((fee, index) => (
                 <div key={index} className="text-sm">
                   <span className="font-medium text-gray-900">
-                    ₹{fee.amount}
+                    LKR {fee.amount}
                   </span>
                   <span className="text-gray-500 ml-1">({fee.frequency})</span>
                 </div>
@@ -517,14 +518,15 @@ const handleDeleteClick = (id: string) => {
       sortable: true,
       render: (value: string) => (
         <span
-          className={`px-2 py-1 rounded-full text-xs font-medium ${value === "active"
+          className={`px-2 py-1 rounded-full text-xs font-medium ${
+            value === "active"
               ? "bg-green-100 text-green-800"
               : value === "inactive"
-                ? "bg-gray-100 text-gray-800"
-                : value === "completed"
-                  ? "bg-blue-100 text-blue-800"
-                  : "bg-red-100 text-red-800"
-            }`}
+              ? "bg-gray-100 text-gray-800"
+              : value === "completed"
+              ? "bg-blue-100 text-blue-800"
+              : "bg-red-100 text-red-800"
+          }`}
         >
           {value.charAt(0).toUpperCase() + value.slice(1)}
         </span>
@@ -563,10 +565,11 @@ const handleDeleteClick = (id: string) => {
         <button
           onClick={() => handleOpenAssignModal(row._id)}
           disabled={row.status === "inactive"}
-          className={`px-3 py-1 rounded text-sm ${row.status === "inactive"
+          className={`px-3 py-1 rounded text-sm ${
+            row.status === "inactive"
               ? "bg-gray-400 text-white cursor-not-allowed"
               : "bg-teal-600 text-white hover:bg-teal-700"
-            }`}
+          }`}
         >
           Assign
         </button>
@@ -762,7 +765,14 @@ const handleDeleteClick = (id: string) => {
               <select
                 value={formData.status}
                 onChange={(e) =>
-                  setFormData({ ...formData, status: e.target.value as "active" | "inactive" | "completed" | "cancelled" })
+                  setFormData({
+                    ...formData,
+                    status: e.target.value as
+                      | "active"
+                      | "inactive"
+                      | "completed"
+                      | "cancelled",
+                  })
                 }
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
@@ -1111,18 +1121,15 @@ const handleDeleteClick = (id: string) => {
         </form>
       </Modal>
       <ConfirmModal
-  isOpen={confirmDelete.isOpen}
-  onClose={() => setConfirmDelete({ isOpen: false, classId: null })}
-  onConfirm={handleConfirmDelete}
-  title="Delete Class"
-  message="Are you sure you want to delete this class? This action cannot be undone."
-  confirmText="Delete"
-  cancelText="Cancel"
-/>
+        isOpen={confirmDelete.isOpen}
+        onClose={() => setConfirmDelete({ isOpen: false, classId: null })}
+        onConfirm={handleConfirmDelete}
+        title="Delete Class"
+        message="Are you sure you want to delete this class? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+      />
     </div>
-
-
-
   );
 };
 

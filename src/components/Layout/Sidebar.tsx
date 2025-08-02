@@ -103,7 +103,7 @@ const sidebarItems: SidebarItem[] = [
     icon: <MessageSquare className="w-5 h-5" />,
     label: "Notice Board",
     href: "/notices",
-    roles: ["admin", "teacher", "student", "parent"],
+    roles: ["admin", "teacher", "student"],
   },
   {
     icon: <BarChart3 className="w-5 h-5" />,

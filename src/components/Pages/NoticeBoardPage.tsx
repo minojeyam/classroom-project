@@ -295,33 +295,33 @@ const NoticeBoardPage: React.FC = () => {
         </div>
       ),
     },
-    {
-      key: "engagement",
-      label: "Engagement",
-      render: (_: any, row: Notice) => (
-        <div className="text-sm">
-          <div className="flex items-center space-x-2 mb-1">
-            <Eye className="w-4 h-4 text-gray-400" />
-            <span className="text-gray-900">{row.viewCount} views</span>
-          </div>
-          {row.requiresAcknowledgment && (
-            <div className="flex items-center space-x-2">
-              <Users className="w-4 h-4 text-gray-400" />
-              <span className="text-gray-900">
-                {row.acknowledgmentCount}/{row.totalTargetUsers} ack.
-              </span>
-              <button
-                onClick={() => handleAcknowledge(row.id || row._id || "")}
-                className="text-blue-600 hover:text-blue-800 ml-2"
-                disabled={row.acknowledgmentCount >= row.totalTargetUsers}
-              >
-                <Send className="w-4 h-4" />
-              </button>
-            </div>
-          )}
-        </div>
-      ),
-    },
+    // {
+    //   key: "engagement",
+    //   label: "Engagement",
+    //   render: (_: any, row: Notice) => (
+    //     <div className="text-sm">
+    //       <div className="flex items-center space-x-2 mb-1">
+    //         <Eye className="w-4 h-4 text-gray-400" />
+    //         <span className="text-gray-900">{row.viewCount} views</span>
+    //       </div>
+    //       {row.requiresAcknowledgment && (
+    //         <div className="flex items-center space-x-2">
+    //           <Users className="w-4 h-4 text-gray-400" />
+    //           <span className="text-gray-900">
+    //             {row.acknowledgmentCount}/{row.totalTargetUsers} ack.
+    //           </span>
+    //           <button
+    //             onClick={() => handleAcknowledge(row.id || row._id || "")}
+    //             className="text-blue-600 hover:text-blue-800 ml-2"
+    //             disabled={row.acknowledgmentCount >= row.totalTargetUsers}
+    //           >
+    //             <Send className="w-4 h-4" />
+    //           </button>
+    //         </div>
+    //       )}
+    //     </div>
+    //   ),
+    // },
     {
       key: "createdAt",
       label: "Created",
