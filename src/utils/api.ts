@@ -324,6 +324,13 @@ export const feesAPI = {
     });
     return res.data;
   },
+
+  getLocationRevenueDetails: async (token?: string) => {
+    const res = await API.get("/fees/location-revenue-details", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+  },
 };
 
 // ADMIN

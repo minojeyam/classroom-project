@@ -258,7 +258,7 @@ const FeesPage: React.FC<FeeStructureActionsProps> = () => {
       setStudentFees(mappedStudentFees);
 
       // ---- 3) Fetch Location Revenue ----
-      const locationResponse = await feesAPI.getLocationFromClasses(token);
+      const locationResponse = await feesAPI.getLocationRevenueDetails(token);
       if (locationResponse.status !== "success") {
         throw new Error(
           locationResponse.message || "Failed to fetch location revenue"
@@ -266,29 +266,33 @@ const FeesPage: React.FC<FeeStructureActionsProps> = () => {
       }
       const mappedLocationRevenue: LocationRevenue[] =
         locationResponse.data.locations.map((loc: any) => ({
-          locationId: loc.location,
-          locationName: loc.location,
+          locationId: loc.locationName, // fallback
+          locationName: loc.locationName,
           totalClasses: loc.totalClasses,
-          totalStudents: 0, // <-- No student count in API response (you can extend API if needed)
+          totalStudents: loc.classes.reduce(
+            (sum: number, c: any) => sum + (c.studentCount || 0),
+            0
+          ),
           monthlyRevenue: loc.totalFee,
-          receivedAmount: loc.totalFee, // assuming full collected (adjust logic as needed)
-          pendingAmount: 0, // no pending info in API
-          collectionRate: 100, // no breakdown in API → default 100%
+          receivedAmount: loc.totalFee,
+          pendingAmount: 0,
+          collectionRate: 100,
           classes: loc.classes.map((cls: any) => ({
             classId: cls.classId,
             className: cls.title,
-            subject: "", // no subject in API
-            level: "", // no level in API
-            teacherName: "", // no teacher in API
-            studentCount: 0, // not provided
+            subject: cls.subject,
+            level: cls.level,
+            teacherName: cls.teacherName,
+            studentCount: cls.studentCount,
             monthlyFee: cls.feeTotal,
             totalRevenue: cls.feeTotal,
             receivedAmount: cls.feeTotal,
             pendingAmount: 0,
             collectionRate: 100,
-            students: [], // no detailed students in API response
+            students: [],
           })),
         }));
+
       setLocationRevenue(mappedLocationRevenue);
     } catch (err: any) {
       setError(err.message || "Failed to fetch data");

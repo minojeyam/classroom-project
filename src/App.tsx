@@ -7,7 +7,6 @@ import Header from "./components/Layout/Header";
 import AdminDashboard from "./components/Dashboard/AdminDashboard";
 import TeacherDashboard from "./components/Dashboard/TeacherDashboard";
 import StudentDashboard from "./components/Dashboard/StudentDashboard";
-import ParentDashboard from "./components/Dashboard/ParentDashboard";
 import UsersPage from "./components/Pages/UsersPage";
 import PendingApprovalsPage from "./components/Pages/PendingApprovalsPage";
 // import ComingSoonPage from "./components/Pages/ComingSoonPage";
@@ -65,8 +64,8 @@ const AppContent: React.FC = () => {
         return <TeacherDashboard />;
       case "student":
         return <StudentDashboard />;
-      case "parent":
-        return <ParentDashboard />;
+      // case "parent":
+      //   return <ParentDashboard />;
       default:
         return <div>Invalid role</div>;
     }
