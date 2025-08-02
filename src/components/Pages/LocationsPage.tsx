@@ -7,7 +7,6 @@ import { toast } from "react-toastify";
 import { useAuth } from "../../contexts/AuthContext";
 import ConfirmModal from "../Common/ConfirmModal";
 
-
 interface Location {
   id: string;
   name: string;
@@ -55,10 +54,10 @@ const LocationsPage: React.FC = () => {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  // for Disable 
+  // for Disable
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
-const [selectedStatusLocation, setSelectedStatusLocation] = useState<Location | null>(null);
-
+  const [selectedStatusLocation, setSelectedStatusLocation] =
+    useState<Location | null>(null);
 
   const { accessToken } = useAuth();
 
@@ -69,10 +68,11 @@ const [selectedStatusLocation, setSelectedStatusLocation] = useState<Location | 
   const fetchLocations = async () => {
     try {
       setLoading(true);
-  
-    
-      const response = await locationsAPI.getLocations(accessToken ?? undefined);
-  
+
+      const response = await locationsAPI.getLocations(
+        accessToken ?? undefined
+      );
+
       if (response.status === "success") {
         setLocations(response.data.locations || []);
       } else {
@@ -84,7 +84,6 @@ const [selectedStatusLocation, setSelectedStatusLocation] = useState<Location | 
       setLoading(false);
     }
   };
-  
 
   // const handleToggleStatus = async (location: Location) => {
   //   const newStatus = location.status === "active" ? "inactive" : "active";
@@ -118,26 +117,26 @@ const [selectedStatusLocation, setSelectedStatusLocation] = useState<Location | 
     setSelectedStatusLocation(location);
     setIsStatusModalOpen(true);
   };
-  
+
   const confirmToggleStatus = async () => {
     if (!selectedStatusLocation) return;
-  
+
     const newStatus =
       selectedStatusLocation.status === "active" ? "inactive" : "active";
-  
+
     try {
       await locationsAPI.updateLocation(selectedStatusLocation.id, {
         ...selectedStatusLocation,
         status: newStatus,
         address: selectedStatusLocation.address,
       });
-  
+
       toast.success(
         `"${selectedStatusLocation.name}" ${
           newStatus === "inactive" ? "disabled" : "enabled"
         } successfully`
       );
-  
+
       fetchLocations();
     } catch (err: any) {
       toast.error(err.message || "Failed to update location status");
@@ -146,8 +145,6 @@ const [selectedStatusLocation, setSelectedStatusLocation] = useState<Location | 
       setSelectedStatusLocation(null);
     }
   };
-  
-
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -167,23 +164,21 @@ const [selectedStatusLocation, setSelectedStatusLocation] = useState<Location | 
         color: formData.color,
         status: formData.status,
       };
-  
+
       if (isEditMode && selectedLocation) {
         await locationsAPI.updateLocation(selectedLocation.id, locationData);
-        toast.success("Location updated successfully");  
+        toast.success("Location updated successfully");
       } else {
         await locationsAPI.createLocation(locationData);
-        toast.success("Location created successfully"); 
+        toast.success("Location created successfully");
       }
-  
+
       fetchLocations();
       handleCloseModal();
     } catch (err: any) {
-      toast.error(err.message || "Failed to save location"); 
+      toast.error(err.message || "Failed to save location");
     }
   };
-
-
 
   const handleEdit = (location: Location) => {
     setSelectedLocation(location);
@@ -204,10 +199,8 @@ const [selectedStatusLocation, setSelectedStatusLocation] = useState<Location | 
     setIsModalOpen(true);
   };
 
- 
-
-   // When user clicks "Delete" button:
-   const handleOpenConfirm = (id: string) => {
+  // When user clicks "Delete" button:
+  const handleOpenConfirm = (id: string) => {
     setSelectedId(id);
     setIsConfirmOpen(true);
   };
@@ -272,25 +265,25 @@ const [selectedStatusLocation, setSelectedStatusLocation] = useState<Location | 
         </div>
       ),
     },
-    {
-      key: "capacity",
-      label: "Capacity",
-      render: (_: any, row: Location) => (
-        <div>
-          <p className="text-sm font-medium text-gray-900">
-            {row.currentEnrollment} / {row.capacity}
-          </p>
-          <div className="w-16 bg-gray-200 rounded-full h-2 mt-1">
-            <div
-              className="bg-teal-500 h-2 rounded-full"
-              style={{
-                width: `${(row.currentEnrollment / row.capacity) * 100}%`,
-              }}
-            ></div>
-          </div>
-        </div>
-      ),
-    },
+    // {
+    //   key: "capacity",
+    //   label: "Capacity",
+    //   render: (_: any, row: Location) => (
+    //     <div>
+    //       <p className="text-sm font-medium text-gray-900">
+    //         {row.currentEnrollment} / {row.capacity}
+    //       </p>
+    //       <div className="w-16 bg-gray-200 rounded-full h-2 mt-1">
+    //         <div
+    //           className="bg-teal-500 h-2 rounded-full"
+    //           style={{
+    //             width: `${(row.currentEnrollment / row.capacity) * 100}%`,
+    //           }}
+    //         ></div>
+    //       </div>
+    //     </div>
+    //   ),
+    // },
     {
       key: "status",
       label: "Status",
@@ -439,7 +432,7 @@ const [selectedStatusLocation, setSelectedStatusLocation] = useState<Location | 
               }
               required
             />
-            <input
+            {/* <input
               type="number"
               placeholder="Capacity"
               className="border p-2 rounded"
@@ -448,7 +441,7 @@ const [selectedStatusLocation, setSelectedStatusLocation] = useState<Location | 
                 setFormData({ ...formData, capacity: +e.target.value })
               }
               required
-            />
+            /> */}
             <input
               type="text"
               placeholder="Street"
@@ -530,17 +523,21 @@ const [selectedStatusLocation, setSelectedStatusLocation] = useState<Location | 
         cancelText="Cancel"
       />
 
-<ConfirmModal
-  isOpen={isStatusModalOpen}
-  onClose={() => setIsStatusModalOpen(false)}
-  onConfirm={confirmToggleStatus}
-  title={`${selectedStatusLocation?.status === "active" ? "Disable" : "Enable"} Location`}
-  message={`Are you sure you want to ${
-    selectedStatusLocation?.status === "active" ? "disable" : "enable"
-  } "${selectedStatusLocation?.name}"?`}
-  confirmText={selectedStatusLocation?.status === "active" ? "Disable" : "Enable"}
-  cancelText="Cancel"
-/>
+      <ConfirmModal
+        isOpen={isStatusModalOpen}
+        onClose={() => setIsStatusModalOpen(false)}
+        onConfirm={confirmToggleStatus}
+        title={`${
+          selectedStatusLocation?.status === "active" ? "Disable" : "Enable"
+        } Location`}
+        message={`Are you sure you want to ${
+          selectedStatusLocation?.status === "active" ? "disable" : "enable"
+        } "${selectedStatusLocation?.name}"?`}
+        confirmText={
+          selectedStatusLocation?.status === "active" ? "Disable" : "Enable"
+        }
+        cancelText="Cancel"
+      />
     </div>
   );
 };
