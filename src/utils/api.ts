@@ -310,6 +310,20 @@ export const feesAPI = {
     });
     return res.data;
   },
+
+  getTotalCollected: async (token?: string) => {
+    const res = await API.get("/fees/total-collected", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+  },
+
+  getTotalPending: async (token?: string) => {
+    const res = await API.get("/fees/total-pending", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+  },
 };
 
 // ADMIN

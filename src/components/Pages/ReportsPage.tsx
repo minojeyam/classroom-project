@@ -573,14 +573,14 @@ const ReportsPage: React.FC = () => {
     switch (selectedReport) {
       case "class-overview":
         return "Class Overview Report";
+      case "user-registration":
+        return "User Registration & Approval Report";
       case "fee-collection":
         return "Fee Collection Report";
       case "enrollment":
         return "Student Enrollment Report";
       case "revenue-summary":
         return "Revenue Summary Report";
-      case "user-registration":
-        return "User Registration & Approval Report";
       default:
         return "Report";
     }
@@ -1616,7 +1616,16 @@ const ReportsPage: React.FC = () => {
     if (user?.role === "admin") {
       return [
         { id: "class-overview", name: "Class Overview Report", icon: BookOpen },
-        // { id: 'attendance', name: 'Attendance Report', icon: Users },
+        {
+          id: "user-registration",
+          name: "User Registration & Approval Report",
+          icon: FileText,
+        },
+        {
+          id: "revenue-summary",
+          name: "Revenue Summary Report",
+          icon: BarChart3,
+        },
         {
           id: "fee-collection",
           name: "Fee Collection Report",
@@ -1626,16 +1635,6 @@ const ReportsPage: React.FC = () => {
           id: "enrollment",
           name: "Student Enrollment Report",
           icon: TrendingUp,
-        },
-        {
-          id: "revenue-summary",
-          name: "Revenue Summary Report",
-          icon: BarChart3,
-        },
-        {
-          id: "user-registration",
-          name: "User Registration & Approval Report",
-          icon: FileText,
         },
       ];
     } else if (user?.role === "teacher") {

@@ -52,6 +52,11 @@ const AdminDashboard: React.FC = () => {
   const [notices, setNotices] = useState<Notice[]>([]);
   const [loading, setLoading] = useState(true);
   const [locations, setLocations] = useState<any>(null);
+  const [revenueTotals, setRevenueTotals] = useState({
+    collected: 0,
+    pending: 0,
+  });
+
   const [chartData, setChartData] = useState<
     { name: string; revenue: number }[]
   >([]);
@@ -80,6 +85,11 @@ const AdminDashboard: React.FC = () => {
         setLocationOverview(locationsResponse.data);
         setPendingApprovals(pendingApprovalsResponse.data);
         setLocations(locationBasedRevenue.data);
+
+        setRevenueTotals({
+          collected: totalCollectedResponse.data.totalCollected,
+          pending: totalPendingResponse.data.totalPending,
+        });
 
         if (
           locationBasedRevenue.data?.locations &&
@@ -193,27 +203,6 @@ const AdminDashboard: React.FC = () => {
       ],
     },
     {
-      title: "Monthly Revenue",
-      value: `LKR ${locations?.overall?.totalFee || 0}`,
-      icon: DollarSign,
-      color: "blue" as const,
-      trend: { value: 15, isPositive: true },
-      chartData: [
-        { value: 40000 },
-        { value: 42000 },
-        { value: 45000 },
-        { value: 48250 },
-      ],
-    },
-    {
-      title: "Attendance Rate",
-      value: "94.2%",
-      icon: TrendingUp,
-      color: "green" as const,
-      trend: { value: 2, isPositive: true },
-      chartData: [{ value: 90 }, { value: 92 }, { value: 94 }, { value: 94.2 }],
-    },
-    {
       title: "Pending Approvals",
       value: pendingApprovals?.totalPending || 0,
       icon: AlertCircle,
@@ -229,6 +218,20 @@ const AdminDashboard: React.FC = () => {
         { value: pendingApprovals?.totalPending || 0 },
       ],
     },
+    {
+      title: "Monthly Revenue",
+      value: `LKR ${locations?.overall?.totalFee || 0}`,
+      icon: DollarSign,
+      color: "blue" as const,
+      trend: { value: 15, isPositive: true },
+      chartData: [
+        { value: 40000 },
+        { value: 42000 },
+        { value: 45000 },
+        { value: 48250 },
+      ],
+    },
+
     {
       title: "Overdue Payments",
       value: "LKR 12450",
@@ -255,25 +258,11 @@ const AdminDashboard: React.FC = () => {
 
       <div className="space-y-6">
         {/* Chart Section */}
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+        {/* <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+          * <h3 className="text-lg font-semibold text-gray-900 mb-4">
             Revenue Trend
-          </h3>
-          <Users /> {/* just render the icon */}
-          {chartData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="revenue" fill="#8884d8" />
-              </BarChart>
-            </ResponsiveContainer>
-          ) : (
-            <p>No revenue data available.</p>
-          )}
-        </div>
+          </h3> *
+        </div> */}
       </div>
     </div>
   );

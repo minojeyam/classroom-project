@@ -746,4 +746,60 @@ router.get("/summary", auth, authorize(["student"]), async (req, res) => {
   }
 });
 
+// @route   GET /api/fees/total-collected
+// @desc    Get total collected revenue across all locations
+// @access  Private (Admin)
+router.get("/total-collected", auth, authorize(["admin"]), async (req, res) => {
+  try {
+    const records = await StudentFee.find();
+
+    const totalCollected = records.reduce(
+      (sum, fee) => sum + (fee.paidAmount || 0),
+      0
+    );
+
+    res.json({
+      status: "success",
+      data: {
+        totalCollected,
+        currency: "LKR", // Optional, update if multi-currency
+      },
+    });
+  } catch (error) {
+    console.error("Total collected revenue error:", error);
+    res.status(500).json({
+      status: "error",
+      message: "Internal server error",
+    });
+  }
+});
+
+// @route   GET /api/fees/total-pending
+// @desc    Get total pending fee amount across all locations
+// @access  Private (Admin)
+router.get("/total-pending", auth, authorize(["admin"]), async (req, res) => {
+  try {
+    const records = await StudentFee.find();
+
+    const totalPending = records.reduce((sum, fee) => {
+      const pending = (fee.amount || 0) - (fee.paidAmount || 0);
+      return sum + (pending > 0 ? pending : 0);
+    }, 0);
+
+    res.json({
+      status: "success",
+      data: {
+        totalPending,
+        currency: "LKR", // Optional
+      },
+    });
+  } catch (error) {
+    console.error("Total pending payment error:", error);
+    res.status(500).json({
+      status: "error",
+      message: "Internal server error",
+    });
+  }
+});
+
 export default router;
