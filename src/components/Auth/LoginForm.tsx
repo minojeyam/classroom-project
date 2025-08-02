@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Eye, EyeOff, GraduationCap } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 
 interface LoginFormProps {
@@ -29,14 +29,20 @@ const LoginForm: React.FC<LoginFormProps> = ({ onToggleForm }) => {
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
           <div className="flex justify-center">
-            <div className="w-16 h-16 bg-gradient-to-r from-teal-400 to-teal-500 rounded-2xl flex items-center justify-center shadow-lg">
-              <GraduationCap className="w-8 h-8 text-white" />
+            <div className="flex flex-col items-center space-y-2 mb-4">
+              <img
+                src="/src/assets/logo.png"
+                alt="Logo"
+                className="w-64 h-auto object-contain"
+              />
+              {/* <h1 className="text-2xl font-bold text-center text-gray-900">
+                IO Space
+              </h1> */}
+              <p className="text-sm text-gray-600">
+                <b>English Language Learning Center</b>
+              </p>
             </div>
           </div>
-          <h2 className="mt-6 text-3xl font-bold text-gray-900">IO Space</h2>
-          <p className="mt-2 text-sm text-gray-600">
-            English Language Learning Center
-          </p>
         </div>
 
         <form

@@ -26,23 +26,6 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleForm }) => {
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // useEffect(() => {
-  //   const fetchLocations = async () => {
-  //     try {
-  //       const res = await fetch("http://localhost:5000/api/locations");
-  //       const json = await res.json();
-  //       console.log("Fetched locations:", json.data.locations);
-  //       if (json?.data?.locations) {
-  //         setLocations(json.data.locations);
-  //       }
-  //     } catch (err) {
-  //       console.error("Failed to fetch locations:", err);
-  //     }
-  //   };
-
-  //   fetchLocations();
-  // }, []);
-
   useEffect(() => {
     const fetchLocations = async () => {
       try {
@@ -150,13 +133,14 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleForm }) => {
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
           <div className="flex justify-center">
-            <div className="w-16 h-16 bg-gradient-to-r from-teal-400 to-teal-500 rounded-2xl flex items-center justify-center shadow-lg">
-              <GraduationCap className="w-8 h-8 text-white" />
-            </div>
+            <img
+              src="/src/assets/logo.png"
+              alt="Logo"
+              className="w-64 h-auto object-contain"
+            />
           </div>
-          <h2 className="mt-6 text-3xl font-bold text-gray-900">IO Space</h2>
           <p className="mt-2 text-sm text-gray-600">
-            Register for Multi-Location Classroom Management
+            <b>Register for Multi-Location Classroom Management</b>
           </p>
         </div>
         {success ? (
