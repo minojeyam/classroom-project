@@ -5,53 +5,58 @@ import { auth, authorize } from "../middleware/auth.js";
 
 const router = express.Router();
 
+router.get(
+  "/approved-students",
+  auth,
+  authorize(["admin", "teacher"]),
+  async (req, res) => {
+    try {
+      const { page = 1, limit = 10, search } = req.query;
 
-router.get("/approved-students", auth, authorize(["admin", "teacher"]), async (req, res) => {
-  try {
-    const { page = 1, limit = 10, search } = req.query;
+      const query = { role: "student", status: "active" };
+      if (search) {
+        query.$or = [
+          { firstName: { $regex: search, $options: "i" } },
+          { lastName: { $regex: search, $options: "i" } },
+          { email: { $regex: search, $options: "i" } },
+        ];
+      }
 
-    const query = { role: "student", status: "active" };
-    if (search) {
-      query.$or = [
-        { firstName: { $regex: search, $options: "i" } },
-        { lastName: { $regex: search, $options: "i" } },
-        { email: { $regex: search, $options: "i" } },
-      ];
-    }
+      const skip = (parseInt(page) - 1) * parseInt(limit);
 
-    const skip = (parseInt(page) - 1) * parseInt(limit);
+      // fetch students
+      const users = await User.find(query)
+        .populate("locationId", "name address")
+        .populate("classIds", "title level")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(parseInt(limit));
 
-    // fetch students
-    const users = await User.find(query)
-      .populate("locationId", "name address")
-      .populate("classIds", "title level")
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(parseInt(limit));
+      // total count of approved students
+      const total = await User.countDocuments(query);
 
-    // total count of approved students
-    const total = await User.countDocuments(query);
-
-    res.json({
-      status: "success",
-      data: {
-        totalApprovedStudents: total, 
-        users,
-        pagination: {
-          currentPage: parseInt(page),
-          totalPages: Math.ceil(total / parseInt(limit)),
-          totalUsers: total,
-          hasNext: skip + users.length < total,
-          hasPrev: parseInt(page) > 1,
+      res.json({
+        status: "success",
+        data: {
+          totalApprovedStudents: total,
+          users,
+          pagination: {
+            currentPage: parseInt(page),
+            totalPages: Math.ceil(total / parseInt(limit)),
+            totalUsers: total,
+            hasNext: skip + users.length < total,
+            hasPrev: parseInt(page) > 1,
+          },
         },
-      },
-    });
-  } catch (error) {
-    console.error("Get approved students error:", error);
-    res.status(500).json({ status: "error", message: "Internal server error" });
+      });
+    } catch (error) {
+      console.error("Get approved students error:", error);
+      res
+        .status(500)
+        .json({ status: "error", message: "Internal server error" });
+    }
   }
-});
-
+);
 
 // @route   GET /api/users
 // @desc    Get all users (admin or teacher)
@@ -144,9 +149,6 @@ router.get("/:id", auth, async (req, res) => {
     res.status(500).json({ status: "error", message: "Internal server error" });
   }
 });
-
-
-
 
 // @route   PUT /api/users/:id/approve
 // @desc    Approve pending or rejected user (admin only)
@@ -348,33 +350,41 @@ router.delete("/:id", auth, authorize(["admin"]), async (req, res) => {
 });
 
 // @route   GET /api/users/stats/overview
-// @desc    Students & Teachers monthly overview
+// @desc    Students & Teachers monthly + total overview
 // @access  Private (Admin)
 router.get("/stats/overview", auth, authorize(["admin"]), async (req, res) => {
   try {
     const now = new Date();
-
-    // --- Current Month Range ---
     const startOfCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const endOfCurrentMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-
-    // --- Last Month Range ---
+    const endOfCurrentMonth = new Date(
+      now.getFullYear(),
+      now.getMonth() + 1,
+      1
+    );
     const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    // --- Students ---
+    // All-time totals
+    const totalStudents = await User.countDocuments({
+      role: "student",
+      status: "active",
+    });
+    const totalTeachers = await User.countDocuments({
+      role: "teacher",
+      status: "active",
+    });
+
+    // Monthly trends
     const currentMonthStudents = await User.countDocuments({
       role: "student",
       status: "active",
       createdAt: { $gte: startOfCurrentMonth, $lt: endOfCurrentMonth },
     });
-
     const lastMonthStudents = await User.countDocuments({
       role: "student",
       status: "active",
       createdAt: { $gte: startOfLastMonth, $lt: endOfLastMonth },
     });
-
     const studentPercentage =
       lastMonthStudents > 0
         ? ((currentMonthStudents - lastMonthStudents) / lastMonthStudents) * 100
@@ -382,19 +392,16 @@ router.get("/stats/overview", auth, authorize(["admin"]), async (req, res) => {
         ? 100
         : 0;
 
-    // --- Teachers ---
     const currentMonthTeachers = await User.countDocuments({
       role: "teacher",
       status: "active",
       createdAt: { $gte: startOfCurrentMonth, $lt: endOfCurrentMonth },
     });
-
     const lastMonthTeachers = await User.countDocuments({
       role: "teacher",
       status: "active",
       createdAt: { $gte: startOfLastMonth, $lt: endOfLastMonth },
     });
-
     const teacherPercentage =
       lastMonthTeachers > 0
         ? ((currentMonthTeachers - lastMonthTeachers) / lastMonthTeachers) * 100
@@ -406,14 +413,14 @@ router.get("/stats/overview", auth, authorize(["admin"]), async (req, res) => {
       status: "success",
       data: {
         students: {
-          count: currentMonthStudents,
+          count: totalStudents,
           trend: {
             value: Number(studentPercentage.toFixed(2)),
             isPositive: studentPercentage >= 0,
           },
         },
         teachers: {
-          count: currentMonthTeachers,
+          count: totalTeachers,
           trend: {
             value: Number(teacherPercentage.toFixed(2)),
             isPositive: teacherPercentage >= 0,
@@ -427,65 +434,78 @@ router.get("/stats/overview", auth, authorize(["admin"]), async (req, res) => {
   }
 });
 
-
-
 // @route   GET /api/users/stats/pending-approvals
 // @desc    Get pending approvals count and monthly percentage change
 // @access  Private (Admin)
-router.get("/stats/pending-approvals", auth, authorize(["admin"]), async (req, res) => {
-  try {
-    const now = new Date();
+router.get(
+  "/stats/pending-approvals",
+  auth,
+  authorize(["admin"]),
+  async (req, res) => {
+    try {
+      const now = new Date();
 
-    // --- Current Month Range ---
-    const startOfCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const endOfCurrentMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+      // --- Current Month Range ---
+      const startOfCurrentMonth = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        1
+      );
+      const endOfCurrentMonth = new Date(
+        now.getFullYear(),
+        now.getMonth() + 1,
+        1
+      );
 
-    // --- Last Month Range ---
-    const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      // --- Last Month Range ---
+      const startOfLastMonth = new Date(
+        now.getFullYear(),
+        now.getMonth() - 1,
+        1
+      );
+      const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    // --- Pending Approvals ---
-    const currentMonthPending = await User.countDocuments({
-      status: "pending",
-      createdAt: { $gte: startOfCurrentMonth, $lt: endOfCurrentMonth },
-    });
+      // --- Pending Approvals ---
+      const currentMonthPending = await User.countDocuments({
+        status: "pending",
+        createdAt: { $gte: startOfCurrentMonth, $lt: endOfCurrentMonth },
+      });
 
-    const lastMonthPending = await User.countDocuments({
-      status: "pending",
-      createdAt: { $gte: startOfLastMonth, $lt: endOfLastMonth },
-    });
+      const lastMonthPending = await User.countDocuments({
+        status: "pending",
+        createdAt: { $gte: startOfLastMonth, $lt: endOfLastMonth },
+      });
 
-    const percentageChange =
-      lastMonthPending > 0
-        ? ((currentMonthPending - lastMonthPending) / lastMonthPending) * 100
-        : currentMonthPending > 0
-        ? 100
-        : 0;
+      const percentageChange =
+        lastMonthPending > 0
+          ? ((currentMonthPending - lastMonthPending) / lastMonthPending) * 100
+          : currentMonthPending > 0
+          ? 100
+          : 0;
 
-    // --- Total Pending Approvals (all time) ---
-    const totalPending = await User.countDocuments({ status: "pending" });
+      // --- Total Pending Approvals (all time) ---
+      const totalPending = await User.countDocuments({ status: "pending" });
 
-    res.json({
-      status: "success",
-      data: {
-        totalPending,
-        monthly: {
-          count: currentMonthPending,
-          trend: {
-            value: Number(percentageChange.toFixed(2)),
-            isPositive: percentageChange >= 0,
+      res.json({
+        status: "success",
+        data: {
+          totalPending,
+          monthly: {
+            count: currentMonthPending,
+            trend: {
+              value: Number(percentageChange.toFixed(2)),
+              isPositive: percentageChange >= 0,
+            },
           },
         },
-      },
-    });
-  } catch (error) {
-    console.error("Get pending approvals stats error:", error);
-    res.status(500).json({ status: "error", message: "Internal server error" });
+      });
+    } catch (error) {
+      console.error("Get pending approvals stats error:", error);
+      res
+        .status(500)
+        .json({ status: "error", message: "Internal server error" });
+    }
   }
-});
-
-
-
-
+);
 
 export default router;
