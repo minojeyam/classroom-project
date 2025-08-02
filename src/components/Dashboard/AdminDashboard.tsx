@@ -11,7 +11,13 @@ import {
   BarChart as LucideBarChart,
 } from "lucide-react";
 import StatsCard from "./StatsCard";
-import { noticesAPI, usersAPI, classesAPI, locationsAPI, feesAPI } from "../../utils/api";
+import {
+  noticesAPI,
+  usersAPI,
+  classesAPI,
+  locationsAPI,
+  feesAPI,
+} from "../../utils/api";
 
 import {
   LineChart,
@@ -46,14 +52,22 @@ const AdminDashboard: React.FC = () => {
   const [notices, setNotices] = useState<Notice[]>([]);
   const [loading, setLoading] = useState(true);
   const [locations, setLocations] = useState<any>(null);
-  const [chartData, setChartData] = useState<{ name: string; revenue: number }[]>([]);
+  const [chartData, setChartData] = useState<
+    { name: string; revenue: number }[]
+  >([]);
 
   useEffect(() => {
     const fetchOverview = async () => {
       try {
         setLoading(true);
 
-        const [userResponse, classesResponse, locationsResponse, pendingApprovalsResponse, locationBasedRevenue] = await Promise.all([
+        const [
+          userResponse,
+          classesResponse,
+          locationsResponse,
+          pendingApprovalsResponse,
+          locationBasedRevenue,
+        ] = await Promise.all([
           usersAPI.getStatusOverview(),
           classesAPI.classOverview(),
           locationsAPI.locationOverview(),
@@ -67,11 +81,16 @@ const AdminDashboard: React.FC = () => {
         setPendingApprovals(pendingApprovalsResponse.data);
         setLocations(locationBasedRevenue.data);
 
-        if (locationBasedRevenue.data?.locations && Array.isArray(locationBasedRevenue.data.locations)) {
-          const preparedChartData = locationBasedRevenue.data.locations.map((loc: LocationFee) => ({
-            name: loc.location,
-            revenue: Number(loc.totalFee) || 0,
-          }));
+        if (
+          locationBasedRevenue.data?.locations &&
+          Array.isArray(locationBasedRevenue.data.locations)
+        ) {
+          const preparedChartData = locationBasedRevenue.data.locations.map(
+            (loc: LocationFee) => ({
+              name: loc.location,
+              revenue: Number(loc.totalFee) || 0,
+            })
+          );
           setChartData(preparedChartData);
         } else {
           setChartData([]);
@@ -90,7 +109,10 @@ const AdminDashboard: React.FC = () => {
           const noticeDate = new Date(notice.date);
           return noticeDate >= new Date();
         });
-        upcoming.sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        upcoming.sort(
+          (a: any, b: any) =>
+            new Date(a.date).getTime() - new Date(b.date).getTime()
+        );
         setNotices(upcoming);
       } catch (err: any) {
         console.error(err.message || "Failed to fetch notices");
@@ -110,32 +132,65 @@ const AdminDashboard: React.FC = () => {
       value: overview.students?.count || 0,
       icon: Users,
       color: "teal" as const,
-      trend: { value: overview.students?.trend?.value || 0, isPositive: (overview.students?.trend?.value ?? 0) >= 0 },
-      chartData: [{ value: 4 }, { value: 6 }, { value: 8 }, { value: overview.students?.count || 0 }],
+      trend: {
+        value: overview.students?.trend?.value || 0,
+        isPositive: (overview.students?.trend?.value ?? 0) >= 0,
+      },
+      chartData: [
+        { value: 4 },
+        { value: 6 },
+        { value: 8 },
+        { value: overview.students?.count || 0 },
+      ],
     },
     {
       title: "Total Teachers",
       value: overview.teachers?.count || 0,
       icon: UserCheck,
       color: "coral" as const,
-      trend: { value: overview.teachers?.trend?.value || 0, isPositive: (overview.teachers?.trend?.value ?? 0) >= 0 },
-      chartData: [{ value: 1 }, { value: 1 }, { value: 2 }, { value: overview.teachers?.count || 0 }],
+      trend: {
+        value: overview.teachers?.trend?.value || 0,
+        isPositive: (overview.teachers?.trend?.value ?? 0) >= 0,
+      },
+      chartData: [
+        { value: 1 },
+        { value: 1 },
+        { value: 2 },
+        { value: overview.teachers?.count || 0 },
+      ],
     },
     {
       title: "Total Classes",
       value: classOverview?.totalClasses || 0,
       icon: BookOpen,
       color: "green" as const,
-      trend: { value: classOverview?.percentageChange || 0, isPositive: (classOverview?.percentageChange ?? 0) >= 0 },
-      chartData: [{ value: 2 }, { value: 3 }, { value: 4 }, { value: classOverview?.totalClasses || 0 }],
+      trend: {
+        value: classOverview?.percentageChange || 0,
+        isPositive: (classOverview?.percentageChange ?? 0) >= 0,
+      },
+      chartData: [
+        { value: 2 },
+        { value: 3 },
+        { value: 4 },
+        { value: classOverview?.totalClasses || 0 },
+      ],
     },
     {
       title: "Locations",
       value: locationOverview?.stats?.totalLocations || 0,
       icon: MapPin,
       color: "purple" as const,
-      trend: { value: locationOverview?.trends?.activeLocations?.value || 0, isPositive: (locationOverview?.trends?.activeLocations?.value ?? 0) >= 0 },
-      chartData: [{ value: 1 }, { value: 2 }, { value: 3 }, { value: locationOverview?.stats?.totalLocations || 0 }],
+      trend: {
+        value: locationOverview?.trends?.activeLocations?.value || 0,
+        isPositive:
+          (locationOverview?.trends?.activeLocations?.value ?? 0) >= 0,
+      },
+      chartData: [
+        { value: 1 },
+        { value: 2 },
+        { value: 3 },
+        { value: locationOverview?.stats?.totalLocations || 0 },
+      ],
     },
     {
       title: "Monthly Revenue",
@@ -143,7 +198,12 @@ const AdminDashboard: React.FC = () => {
       icon: DollarSign,
       color: "blue" as const,
       trend: { value: 15, isPositive: true },
-      chartData: [{ value: 40000 }, { value: 42000 }, { value: 45000 }, { value: 48250 }],
+      chartData: [
+        { value: 40000 },
+        { value: 42000 },
+        { value: 45000 },
+        { value: 48250 },
+      ],
     },
     {
       title: "Attendance Rate",
@@ -158,16 +218,29 @@ const AdminDashboard: React.FC = () => {
       value: pendingApprovals?.totalPending || 0,
       icon: AlertCircle,
       color: "orange" as const,
-      trend: { value: pendingApprovals?.monthly?.trend?.value || 0, isPositive: (pendingApprovals?.monthly?.trend?.value ?? 0) >= 0 },
-      chartData: [{ value: 1 }, { value: 2 }, { value: 2 }, { value: pendingApprovals?.totalPending || 0 }],
+      trend: {
+        value: pendingApprovals?.monthly?.trend?.value || 0,
+        isPositive: (pendingApprovals?.monthly?.trend?.value ?? 0) >= 0,
+      },
+      chartData: [
+        { value: 1 },
+        { value: 2 },
+        { value: 2 },
+        { value: pendingApprovals?.totalPending || 0 },
+      ],
     },
     {
       title: "Overdue Payments",
-      value: "$12,450",
+      value: "LKR 12450",
       icon: Calendar,
       color: "coral" as const,
       trend: { value: -5, isPositive: false },
-      chartData: [{ value: 15000 }, { value: 14000 }, { value: 13000 }, { value: 12450 }],
+      chartData: [
+        { value: 15000 },
+        { value: 14000 },
+        { value: 13000 },
+        { value: 12450 },
+      ],
     },
   ];
 
@@ -183,7 +256,9 @@ const AdminDashboard: React.FC = () => {
       <div className="space-y-6">
         {/* Chart Section */}
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Revenue Trend</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+            Revenue Trend
+          </h3>
           <Users /> {/* just render the icon */}
           {chartData.length > 0 ? (
             <ResponsiveContainer width="100%" height={300}>
